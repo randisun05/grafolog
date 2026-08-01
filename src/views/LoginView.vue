@@ -16,7 +16,7 @@ async function submit() {
   errors.value = {}
   try {
     await auth.login(form.value)
-    router.push(route.query.redirect || { name: 'riwayat' })
+    router.push(route.query.redirect || { name: 'dashboard' })
   } catch (e) {
     errors.value = e.response?.data?.errors ?? { email: [e.response?.data?.message ?? 'Gagal masuk.'] }
   } finally {

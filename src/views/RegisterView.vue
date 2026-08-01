@@ -21,7 +21,7 @@ async function submit() {
   errors.value = {}
   try {
     await auth.register(form.value)
-    router.push({ name: 'riwayat' })
+    router.push({ name: 'dashboard' })
   } catch (e) {
     errors.value = e.response?.data?.errors ?? {}
   } finally {

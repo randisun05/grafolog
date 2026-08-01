@@ -17,6 +17,7 @@ async function handleLogout() {
 
     <nav class="app-navbar__nav">
       <template v-if="auth.isAuthenticated">
+        <RouterLink to="/dashboard">Dashboard</RouterLink>
         <RouterLink to="/riwayat">Riwayat</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
         <span class="app-navbar__user">{{ auth.user?.name }}</span>

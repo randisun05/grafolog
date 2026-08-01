@@ -22,6 +22,12 @@ const router = createRouter({
       meta: { guestOnly: true },
     },
     {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('../views/DashboardView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/riwayat',
       name: 'riwayat',
       component: () => import('../views/RiwayatView.vue'),
@@ -56,11 +62,11 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {
-    return { name: 'riwayat' }
+    return { name: 'dashboard' }
   }
 
   if (to.meta.role && auth.user?.role !== to.meta.role) {
-    return { name: 'riwayat' }
+    return { name: 'dashboard' }
   }
 
   return true
