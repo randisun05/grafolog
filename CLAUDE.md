@@ -15,8 +15,14 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 ## Structure (as of 2026-08-01 — Rapid tier retired, see below)
 
-- `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `RiwayatView`,
-  `ReportView`, `PortalGrafologView`, `NotFoundView`. **`UploadView` and
+- `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
+  `RiwayatView`, `ReportView`, `PortalGrafologView`, `NotFoundView`.
+  **`DashboardView` added 2026-08-01** (MGA pivot Fase 03) — 4 KPI cards +
+  5-item activity feed from `GET /api/dashboard`, now the post-login landing
+  page (`/dashboard`; login/register/guestOnly-guard all redirect here
+  instead of `riwayat`). `RiwayatView` is unchanged and still reachable via
+  its own nav link — it's the detailed list, Dashboard is the summary; per
+  the plan neither replaces the other. **`UploadView` and
   `HasilRapidView` were deleted 2026-08-01** (MGA pivot Fase 01, Rapid tier
   retired — the backend now rejects `tier: rapid` at creation, so the
   self-upload flow was dead code). Old rapid-tier reports are still viewable
