@@ -6,11 +6,18 @@ this file describes what exists, not a plan.
 
 ## Product context
 
-Three tiers:
-- **Rapid**: free, meant to be CV-based scoring from a photo. CV is NOT built.
-  `SampleController::generatePlaceholderRapidReport()` assigns **random**
-  scores per aspek as a stand-in so the upload→report flow can be demoed.
-  Do not treat rapid-tier output as a real analysis.
+**Rapid tier retired 2026-08-01** (MGA pivot decision, see root
+`ROADMAP.md` "Pivot — Master Graphology Assistant"): `StoreSampleRequest`
+only accepts `tier: comprehensive|master` now — a `rapid` value gets a 422.
+The old placeholder-CV code path (`SampleController::generatePlaceholderRapidReport`)
+was deleted since it became unreachable. **Existing rapid samples/reports in
+the DB are untouched and still fully readable** via `GET /api/samples/{id}`
+and `GET /api/reports` — only *creation* of new rapid samples is blocked.
+If you're reading this expecting a free/CV tier to exist going forward, it
+doesn't; don't resurrect `generatePlaceholderRapidReport` without an
+explicit new user decision reversing the retirement.
+
+Two tiers now:
 - **Comprehensive** / **Master**: paid. A certified grafolog manually scores
   40 aspek per sample via `ScoringController::submit`.
 
@@ -199,7 +206,8 @@ both cases; `php artisan test` still 6/6 passing.
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.
-2. Don't build Rapid tier's real CV scoring — keep it a placeholder.
+2. Rapid tier is retired (2026-08-01) — don't build real CV scoring, don't
+   re-add rapid-tier sample creation, without an explicit new user decision.
 3. Fix knowledge-base data-quality issues at the JSON source
    (`database/seeders/data/grafologi_knowledge_base.json`), never patch in
    `GrafologiKnowledgeSeeder`.
@@ -213,9 +221,11 @@ both cases; `php artisan test` still 6/6 passing.
   `ReportController`'s authorization + audit log. Filenames are Laravel's
   default non-guessable hash, so this isn't a practical IDOR today, but it's
   inconsistent with "sensitive psychological data" handling once something
-  actually links to `image_path`. Options: keep public (low real risk, rapid
-  tier is free/placeholder-scored anyway) or move to a private disk +
-  authenticated streaming route like `pdf`. Needs a call, not a silent fix.
+  actually links to `image_path`. Since Rapid tier retirement (2026-08-01)
+  this set of images can't grow anymore, but the historical ones from before
+  retirement are still served this way — same options as before (keep
+  public since low real risk, or move to a private disk + authenticated
+  streaming route like `pdf`). Still needs a call, not a silent fix.
 - **Sanctum tokens never expire** (`config/sanctum.php` `'expiration' =>
   null`) and carry no ability scoping — a leaked token is valid forever
   until manually revoked via logout. Setting an expiration is a UX tradeoff
