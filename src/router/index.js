@@ -22,19 +22,6 @@ const router = createRouter({
       meta: { guestOnly: true },
     },
     {
-      path: '/upload',
-      name: 'upload',
-      component: () => import('../views/UploadView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/hasil-rapid/:sampleId',
-      name: 'hasil-rapid',
-      component: () => import('../views/HasilRapidView.vue'),
-      meta: { requiresAuth: true },
-      props: true,
-    },
-    {
       path: '/riwayat',
       name: 'riwayat',
       component: () => import('../views/RiwayatView.vue'),
