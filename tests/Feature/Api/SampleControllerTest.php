@@ -20,10 +20,8 @@ class SampleControllerTest extends TestCase
         $this->getJson('/api/samples')->assertUnauthorized();
     }
 
-    public function test_user_can_upload_rapid_sample_and_gets_auto_generated_report(): void
+    public function test_rapid_tier_is_retired_and_rejected_on_create(): void
     {
-        $this->seedMinimalAspek(3);
-        Storage::fake('public');
         $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'sanctum')->postJson('/api/samples', [
@@ -31,29 +29,25 @@ class SampleControllerTest extends TestCase
             'image' => UploadedFile::fake()->image('tulisan.jpg'),
         ]);
 
-        $response->assertCreated()
-            ->assertJsonPath('tier', 'rapid')
-            ->assertJsonPath('status', 'completed')
-            ->assertJsonCount(1, 'reports');
-
-        $this->assertDatabaseHas('handwriting_samples', [
-            'user_id' => $user->id,
-            'created_by' => $user->id,
-            'tier' => 'rapid',
-        ]);
-        $this->assertDatabaseCount('personality_reports', 1);
-        $this->assertDatabaseCount('report_aspek_scores', 3);
+        $response->assertUnprocessable()->assertJsonValidationErrors('tier');
+        $this->assertDatabaseCount('handwriting_samples', 0);
     }
 
-    public function test_rapid_upload_requires_image(): void
+    public function test_old_rapid_sample_stays_viewable_after_retirement(): void
     {
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user, 'sanctum')->postJson('/api/samples', [
+        $owner = User::factory()->create();
+        $sample = HandwritingSample::create([
+            'user_id' => $owner->id,
+            'created_by' => $owner->id,
             'tier' => 'rapid',
+            'status' => 'completed',
+            'image_path' => 'handwriting-samples/old-sample.jpg',
         ]);
 
-        $response->assertUnprocessable()->assertJsonValidationErrors('image');
+        $this->actingAs($owner, 'sanctum')
+            ->getJson("/api/samples/{$sample->id}")
+            ->assertOk()
+            ->assertJsonPath('tier', 'rapid');
     }
 
     public function test_comprehensive_upload_rejects_image(): void
