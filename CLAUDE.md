@@ -21,6 +21,20 @@ Two tiers now:
 - **Comprehensive** / **Master**: paid. A certified grafolog manually scores
   40 aspek per sample via `ScoringController::submit`.
 
+**`Project` entity added 2026-08-01** (MGA pivot Fase 02): every
+`HandwritingSample` now belongs to a `Project` (`project_id` FK, nullable at
+the DB level but always set by `SampleController::store`). A Project has a
+`source` enum (`grafolog`/`hr`/`client`) recording who initiated it — this is
+a **different axis than `tier`**, not a replacement for it; `tier`
+(comprehensive/master) still lives on the sample and still drives pricing.
+Schema-wise `Project` supports 1 project : many samples (agreed with the
+user for the future HR bulk-candidate case), but nothing in the app
+currently creates more than one sample per project — `SampleController::store`
+always creates exactly one new `Project` per new sample. Existing samples
+were backfilled 1:1 (one project per pre-existing sample, source inferred
+from the sample's creator role) — see
+`database/migrations/2026_08_01_144019_add_project_id_to_handwriting_samples_table.php`.
+
 Knowledge base: 8 Sindrom → 40 Aspek → 704 Indikator, seeded from
 `database/seeders/data/grafologi_knowledge_base.json` via
 `GrafologiKnowledgeSeeder`. Excel `kode` is kept as a reference column, never
@@ -41,7 +55,7 @@ the process's `Path` before assuming it's a `guratan-api` bug.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **41 tests as of 2026-07-27** (up from 6).
+- Tests: `php artisan test` — **49 tests as of 2026-08-01** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -87,8 +101,9 @@ both cases; `php artisan test` still 6/6 passing.
 
 - **Models** (`app/Models/`): `Sindrom`, `Aspek`, `Indikator`,
   `IndikatorCrossReference`, `MeasurementVariable`, `MeasurementCategory`,
-  `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`,
-  `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `AuditLog`.
+  `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`, `Project`,
+  `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
+  `AuditLog`.
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone

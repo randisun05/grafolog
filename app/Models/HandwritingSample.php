@@ -9,8 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class HandwritingSample extends Model
 {
     protected $fillable = [
-        'user_id', 'created_by', 'image_path', 'tier', 'status',
+        'project_id', 'user_id', 'created_by', 'image_path', 'tier', 'status',
     ];
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
 
     public function user(): BelongsTo
     {

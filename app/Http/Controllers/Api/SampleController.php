@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sample\StoreSampleRequest;
 use App\Models\HandwritingSample;
+use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,7 +29,13 @@ class SampleController extends Controller
     {
         $user = $request->user();
 
+        $project = Project::create([
+            'source' => $user->isGrafolog() ? 'grafolog' : 'client',
+            'created_by' => $user->id,
+        ]);
+
         $sample = HandwritingSample::create([
+            'project_id' => $project->id,
             'user_id' => $user->isGrafolog() ? $request->validated('client_user_id') : $user->id,
             'created_by' => $user->id,
             'tier' => $request->validated('tier'),

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\HandwritingSample;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -104,6 +105,44 @@ class SampleControllerTest extends TestCase
             'status' => 'pending',
         ]);
         $this->assertDatabaseCount('personality_reports', 0);
+    }
+
+    public function test_creating_a_sample_creates_a_wrapping_project(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $client = User::factory()->create(['role' => 'user']);
+
+        $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/samples', [
+            'tier' => 'comprehensive',
+            'client_user_id' => $client->id,
+        ]);
+
+        $sampleId = $response->json('id');
+        $sample = HandwritingSample::find($sampleId);
+
+        $this->assertNotNull($sample->project_id);
+        $this->assertDatabaseHas('projects', [
+            'id' => $sample->project_id,
+            'source' => 'grafolog',
+            'created_by' => $grafolog->id,
+        ]);
+    }
+
+    public function test_self_service_client_project_source_is_client(): void
+    {
+        $client = User::factory()->create(['role' => 'user']);
+
+        $response = $this->actingAs($client, 'sanctum')->postJson('/api/samples', [
+            'tier' => 'comprehensive',
+        ]);
+
+        $sample = HandwritingSample::find($response->json('id'));
+
+        $this->assertDatabaseHas('projects', [
+            'id' => $sample->project_id,
+            'source' => 'client',
+            'created_by' => $client->id,
+        ]);
     }
 
     public function test_user_cannot_view_sample_belonging_to_someone_else(): void
