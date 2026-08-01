@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SampleController;
@@ -21,6 +22,8 @@ Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentContr
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
     Route::get('/samples', [SampleController::class, 'index']);
     Route::post('/samples', [SampleController::class, 'store']);
