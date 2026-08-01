@@ -35,6 +35,17 @@ were backfilled 1:1 (one project per pre-existing sample, source inferred
 from the sample's creator role) — see
 `database/migrations/2026_08_01_144019_add_project_id_to_handwriting_samples_table.php`.
 
+**`DashboardController` added 2026-08-01** (MGA pivot Fase 03):
+`GET /api/dashboard` returns role-differentiated content — grafolog gets
+`active_projects`/`pending_review`/`completed_this_month`/`avg_turnaround_days`
+scoped to samples they created; client (`role: user`) gets
+`total_assessments`/`completed`/`in_progress`/`avg_turnaround_days` scoped
+to samples where they're the subject (`user_id`). Response shape is a
+generic `{ role, kpi: [{key,label,value}], activity: [...] }` so the
+frontend doesn't need per-role branching — the backend decides labels and
+which KPIs apply. Deliberately does **not** include the wireframe's chart
+or quick-actions — out of scope for the agreed Fase 03 minimum.
+
 Knowledge base: 8 Sindrom → 40 Aspek → 704 Indikator, seeded from
 `database/seeders/data/grafologi_knowledge_base.json` via
 `GrafologiKnowledgeSeeder`. Excel `kode` is kept as a reference column, never
@@ -55,7 +66,7 @@ the process's `Path` before assuming it's a `guratan-api` bug.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **49 tests as of 2026-08-01** (up from 6).
+- Tests: `php artisan test` — **53 tests as of 2026-08-01** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -74,6 +85,7 @@ the process's `Path` before assuming it's a `guratan-api` bug.
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
 POST /api/auth/logout, GET /api/auth/me          (auth:sanctum, throttle:60,1)
+GET  /api/dashboard                              (auth:sanctum, → DashboardController — role-aware KPI + activity)
 GET/POST /api/samples, GET /api/samples/{sample} (auth:sanctum)
 POST /api/samples/{sample}/scores                (auth:sanctum, → ScoringController)
 POST /api/samples/{sample}/payment               (auth:sanctum, → PaymentController@store)
