@@ -1,0 +1,233 @@
+# guratan-api
+
+Laravel 13 (PHP ^8.3) backend for Guratan, an Indonesian-language SaaS for
+grafology (handwriting) analysis. Verified against actual code on 2026-07-26 —
+this file describes what exists, not a plan.
+
+## Product context
+
+Three tiers:
+- **Rapid**: free, meant to be CV-based scoring from a photo. CV is NOT built.
+  `SampleController::generatePlaceholderRapidReport()` assigns **random**
+  scores per aspek as a stand-in so the upload→report flow can be demoed.
+  Do not treat rapid-tier output as a real analysis.
+- **Comprehensive** / **Master**: paid. A certified grafolog manually scores
+  40 aspek per sample via `ScoringController::submit`.
+
+Knowledge base: 8 Sindrom → 40 Aspek → 704 Indikator, seeded from
+`database/seeders/data/grafologi_knowledge_base.json` via
+`GrafologiKnowledgeSeeder`. Excel `kode` is kept as a reference column, never
+the PK (all tables use Laravel auto-increment `id`).
+
+**Local dev environment note:** this machine runs Laragon. MySQL (`mysqld`)
+and the port-8123 dev server are NOT always running by default — start them
+before testing anything that touches the DB or hits the API over HTTP. Also,
+port 8123 was once found squatted by a stale `php artisan serve` process from
+`D:\Project\web-aspro` (this project's pre-reorg folder, see root `CLAUDE.md`)
+— if a request to 8123 returns something unexpected, check `netstat -ano` and
+the process's `Path` before assuming it's a `guratan-api` bug.
+
+## Dev commands
+
+- API dev server: `php artisan serve --port=8123` (guratan-web's
+  `VITE_API_URL` expects this exact port — see `.env.development` there).
+- `composer run dev` also works (runs server + queue + pail + vite together),
+  but defaults to port 8000, which will NOT match the frontend's expectation
+  unless you override it.
+- Tests: `php artisan test` — **41 tests as of 2026-07-27** (up from 6).
+  `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
+  `ScoringControllerTest`, `ReportControllerTest` (all real, cover
+  authorization/IDOR checks, validation, rate limiting, audit logging, PDF
+  generation). `tests/Unit/ScoringEngineServiceTest` is the original engine
+  test. Two `ExampleTest` stubs remain (harmless Laravel defaults). Shared
+  KB fixture builder: `tests/Concerns/SeedsGrafologiKb::seedMinimalAspek()`.
+- `.env`: `DB_CONNECTION=mysql`, `DB_DATABASE=guratan_db` (real dev DB — do
+  not let `RefreshDatabase` touch it). Tests use sqlite in-memory instead;
+  `pdo_sqlite`/`sqlite3` are enabled in the Laragon php.ini and `phpunit.xml`
+  overrides `DB_CONNECTION=sqlite` / `DB_DATABASE=:memory:`.
+- `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
+  passthrough, returns source text unchanged, no network call).
+
+## Routes (20 total, `routes/api.php`)
+
+```
+POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
+POST /api/auth/logout, GET /api/auth/me          (auth:sanctum, throttle:60,1)
+GET/POST /api/samples, GET /api/samples/{sample} (auth:sanctum)
+POST /api/samples/{sample}/scores                (auth:sanctum, → ScoringController)
+POST /api/samples/{sample}/payment               (auth:sanctum, → PaymentController@store)
+POST /api/payments/notification                  (throttle:30,1, PUBLIC — DOKU webhook, no Sanctum)
+GET  /api/reports, /api/reports/{report}         (auth:sanctum, +log.report_access on show/pdf)
+GET  /api/reports/{report}/pdf                   (auth:sanctum, +log.report_access)
+GET  /api/sindrom                                (auth:sanctum)
+GET  /api/users/lookup                           (auth:sanctum, throttle:15,1 — grafolog-only, exact-email lookup)
+```
+
+**Fixed 2026-07-27**: an unauthenticated request to any `auth:sanctum` route
+that did **not** send `Accept: application/json` used to get a raw 500
+(`RouteNotFoundException: Route [login] not defined`) instead of a clean 401.
+Root cause: Laravel's `ApplicationBuilder::withMiddleware()` unconditionally
+calls `redirectGuestsTo(fn () => route('login'))` as a default *before*
+running the app's own `withMiddleware` callback in `bootstrap/app.php` — since
+this is an API-only app with no named `login` route, that default blew up.
+Fix: `bootstrap/app.php`'s `withMiddleware` callback now explicitly calls
+`$middleware->redirectGuestsTo(fn () => null)` to override the framework
+default, so guests fall through to a plain 401 JSON response instead of a
+redirect attempt. Verified both with and without the `Accept` header → 401 in
+both cases; `php artisan test` still 6/6 passing.
+
+## Architecture
+
+- **Models** (`app/Models/`): `Sindrom`, `Aspek`, `Indikator`,
+  `IndikatorCrossReference`, `MeasurementVariable`, `MeasurementCategory`,
+  `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`,
+  `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `AuditLog`.
+  Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
+  its own class — it was designed as a per-band generic "ringkasan" but never
+  got wired into the scoring engine; treat it as dead code unless someone
+  revives that idea.
+- **`ScoringEngineService::generate(array $skorPerAspek)`** (kode → skor 1-10):
+  for each aspek, looks up `band_label` via `ScoringRuleBand::labelUntukSkor()`
+  (3-way per polaritas: Nilai Rendah/Sedang/Tinggi) and a **separate 4-way**
+  `narasi_level` via `self::narasiLevelUntukSkor()`:
+  `1-3 → low, 4-6 → medium, 7-8 → high, 9-10 → very_high`. This is a real,
+  tested 4-bucket split — `narasi_very_high` in the source JSON IS used. (An
+  earlier design note said very_high was unused; that was wrong/stale — this
+  is the current, correct behavior as of 2026-07-26.) Output is grouped by
+  sindrom: `{ sindrom: [{ id, kode_romawi, nama, polaritas, catatan_polaritas,
+  rata_rata_skor, band_label_rata_rata, aspek: [{ kode, nama, skor,
+  band_label, narasi_level, narasi }] }] }`. Throws `InvalidArgumentException`
+  for unknown kode or out-of-range skor (1-10).
+- **`NarasiCacheService::ambil(Aspek, level, bahasa='id')`**: cache-through —
+  checks `narasi_cache` table first; on miss, reads `$aspek->narasi[$level]`
+  (falls back to `keterangan_umum`), runs it through the active
+  `LlmProviderInterface`, and persists the result. With `LLM_PROVIDER=none`
+  this never actually calls out — never bypass this service to call an LLM
+  provider directly at report time.
+- **Audit logging**: writes happen via a `PersonalityReportObserver` (not
+  re-verified this session, referenced by `LogReportAccess`'s docblock); every
+  *read* of a report (`show`, `pdf`) is logged by the `log.report_access`
+  middleware (`App\Http\Middleware\LogReportAccess`, aliased in
+  `bootstrap/app.php`) regardless of auth outcome — `lihat_laporan` /
+  `lihat_laporan_ditolak`.
+- **Form Requests** (`app/Http/Requests/`): `Auth\LoginRequest`,
+  `Auth\RegisterRequest`, `Scoring\SubmitScoresRequest`,
+  `Sample\StoreSampleRequest` — validation is not inline in controllers.
+- **PDF**: `App\Services\Reporting\ReportPdfService` (barryvdh/laravel-dompdf),
+  used by `ReportController::pdf`.
+- **Email notification**: `PersonalityReportObserver::updated()` dispatches
+  `App\Jobs\SendReportCompletedNotification` (queued, `ShouldQueue`) whenever
+  a report's status transitions to `completed`; the job sends
+  `App\Mail\ReportCompletedMail` (view: `resources/views/emails/report-completed.blade.php`)
+  to the sample owner. `QUEUE_CONNECTION=database` — a queue worker
+  (`php artisan queue:work` / `queue:listen`) must be running for this to
+  actually fire. **Verified working end-to-end 2026-07-27** with a real Gmail
+  SMTP account (`MAIL_MAILER=smtp`, credentials in `.env` — not committed
+  anywhere, don't paste them into docs/commits): created a real
+  sample→report via Eloquent, flipped status to `completed`, confirmed the
+  job landed in the `jobs` table, ran `php artisan queue:work --once` and
+  confirmed delivery with zero entries in `failed_jobs`. If `.env`'s
+  `MAIL_USERNAME`/`MAIL_PASSWORD` ever get reset to placeholder values, this
+  path will fail loudly (Gmail returns `535 Bad Credentials`) rather than
+  silently — don't assume it's still connected without testing.
+- **CORS** (`config/cors.php`): `allowed_origins` from `CORS_ALLOWED_ORIGINS`
+  env, defaults to `http://localhost:5173`; `.env` explicitly sets it to the
+  same. `supports_credentials => false` — fine, since auth is Bearer-token
+  Sanctum (SPA cookie mode is not in use).
+- **`ScoringController::submit` now rejects resubmission** (fixed
+  2026-07-27): a sample whose `status` is already `completed` gets a 422
+  instead of silently creating a second `PersonalityReport` for the same
+  sample. Found during the Fase 1 security review — there was no guard
+  before, so a grafolog resubmitting the form (double-click, retry after a
+  network blip) created duplicate reports with no error.
+- **`public/storage` symlink was dangling** (fixed 2026-07-27): it pointed at
+  `/d/Project/guratan-api/...`, the pre-reorg path, which no longer exists.
+  Recreated via `php artisan storage:link`. This means rapid-tier uploaded
+  images were unreachable at their public URL — dormant bug, since no
+  frontend view currently renders `image_path` back as an `<img>`. If you
+  wire that up later, verify the symlink still resolves.
+
+## Payment (DOKU) — added 2026-07-27
+
+- **Credentials go in `.env`**: `DOKU_CLIENT_ID`, `DOKU_SECRET_KEY`,
+  `DOKU_IS_PRODUCTION` (bool). Get them from DOKU Back Office — **sandbox and
+  production are separate accounts with separate credentials**, don't reuse
+  one for the other. Read via `config('services.doku.*')`
+  (`config/services.php`). Currently empty/placeholder — payment creation
+  will throw a clear `RuntimeException` until real sandbox credentials are
+  filled in (checked in `DokuService::ensureConfigured()`).
+- **`App\Services\Payment\DokuService`**: `createCheckout(Payment, name,
+  email)` POSTs to `{base_url}/checkout/v1/payment` (sandbox:
+  `api-sandbox.doku.com`, production: `api.doku.com`) and returns
+  `['url', 'token_id', 'expired_date']`. Signature scheme (Digest +
+  Client-Id/Request-Id/Request-Timestamp/Request-Target/Digest → HMAC-SHA256
+  with the secret key) was pulled from developers.doku.com on 2026-07-27, not
+  guessed — see the class docblock before changing it, a wrong signature
+  fails DOKU-side auth with no useful error message.
+- **`App\Http\Controllers\Api\PaymentController::store`**: only the sample's
+  *owner* (`user_id`, i.e. the paying client) can trigger a payment — not the
+  grafolog who may have created the sample on their behalf. Rejects `rapid`
+  tier (free) and samples that already have a `paid` payment. Price comes
+  from `config/pricing.php` (`comprehensive` = 49000 matches the root
+  CLAUDE.md's "~Rp49rb"; **`master` = 149000 is an unconfirmed placeholder**,
+  confirm the real price with the business before go-live).
+- **`::notification`** is DOKU's webhook (public route, no `auth:sanctum` —
+  DOKU has no Sanctum token). Security depends entirely on
+  `DokuService::verifyNotificationSignature()`; never relax or bypass it.
+  **Not fully verified against a real DOKU sandbox notification** — the body
+  field names used (`order.invoice_number`, `transaction.status`) are sourced
+  from DOKU's official docs but a literal example payload couldn't be
+  fetched. Send one real test transaction from DOKU Sandbox and compare
+  against what lands in `payments.notification_payload` before trusting this
+  in production.
+- **Migration**: `payments` table (`sample_id`, `invoice_number` unique,
+  `amount`, `status`: pending/paid/failed/expired, `doku_token_id`,
+  `doku_payment_url`, `notification_payload` json, `paid_at`).
+- **No frontend checkout UI exists yet.** There's currently no self-service
+  flow for a regular `user` to order Comprehensive/Master at all (the only
+  existing path creates the sample grafolog-side, via `PortalGrafologView`,
+  with the *client* as `user_id` — the client never visits the app to
+  initiate or pay). Wiring a "Bayar Sekarang" button needs a product decision
+  on where that flow should live before it's built — see conversation/
+  memory for the open question raised 2026-07-27.
+- Tests: `tests/Feature/Api/PaymentControllerTest.php` — mocks DOKU's HTTP
+  response via `Http::fake()`, covers authorization (only owner pays),
+  rapid-tier rejection, already-paid rejection, and both valid/invalid
+  webhook signature verification (computed independently in the test to
+  cross-check the production algorithm, not just re-using the same code path).
+
+## Hard constraints (user-stated, still in force)
+
+1. Never call an LLM per-report — always go through `NarasiCacheService`.
+2. Don't build Rapid tier's real CV scoring — keep it a placeholder.
+3. Fix knowledge-base data-quality issues at the JSON source
+   (`database/seeders/data/grafologi_knowledge_base.json`), never patch in
+   `GrafologiKnowledgeSeeder`.
+4. Security/validation (rate limiting, Form Requests, audit log) is mandatory
+   — already in place for the routes above; keep it that way for anything new.
+
+## Open security findings (2026-07-27 review — not fixed, need a product decision)
+
+- **Uploaded rapid-tier images are served from the public disk with no
+  ownership check**, unlike PDFs/reports which go through
+  `ReportController`'s authorization + audit log. Filenames are Laravel's
+  default non-guessable hash, so this isn't a practical IDOR today, but it's
+  inconsistent with "sensitive psychological data" handling once something
+  actually links to `image_path`. Options: keep public (low real risk, rapid
+  tier is free/placeholder-scored anyway) or move to a private disk +
+  authenticated streaming route like `pdf`. Needs a call, not a silent fix.
+- **Sanctum tokens never expire** (`config/sanctum.php` `'expiration' =>
+  null`) and carry no ability scoping — a leaked token is valid forever
+  until manually revoked via logout. Setting an expiration is a UX tradeoff
+  (users get logged out periodically), so left for the user to decide.
+- `APP_DEBUG=true` in `.env` is correct for local dev (and is how this
+  session's debugging worked at all — stack traces with real file paths were
+  essential for diagnosing the 500 bug) but **must** become `false` before
+  any production deploy, or internal file paths and stack traces leak to
+  anyone who triggers a 500. Already tracked under ROADMAP.md Fase 2.
+
+## Not built yet
+
+- Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
+  frontend trigger point is an open product question).
+- Production DOKU credentials (sandbox-only scaffolding so far).

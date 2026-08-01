@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class UserLookupController extends Controller
+{
+    /**
+     * Cari 1 klien (role=user) berdasarkan email PERSIS - dipakai grafolog
+     * untuk memilih pemilik sample baru. Sengaja bukan endpoint listing/pencarian
+     * bebas supaya tidak jadi direktori email semua pengguna (data sensitif).
+     */
+    public function byEmail(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->isGrafolog(), 403);
+
+        $request->validate(['email' => ['required', 'email']]);
+
+        $client = User::where('email', $request->query('email'))
+            ->where('role', 'user')
+            ->first(['id', 'name', 'email']);
+
+        abort_unless($client, 404, 'Klien tidak ditemukan.');
+
+        return response()->json($client);
+    }
+}
