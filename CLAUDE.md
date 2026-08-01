@@ -13,19 +13,24 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   **must** be started with `php artisan serve --port=8123` for this to
   resolve; the default `php artisan serve` (port 8000) will NOT match.
 
-## Structure (actual, as of 2026-07-26)
+## Structure (as of 2026-08-01 — Rapid tier retired, see below)
 
-- `src/views/`: all 9 originally-planned views exist — `LandingView`,
-  `LoginView`, `RegisterView`, `UploadView`, `HasilRapidView`, `RiwayatView`,
-  `ReportView`, `PortalGrafologView`, `NotFoundView`.
+- `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `RiwayatView`,
+  `ReportView`, `PortalGrafologView`, `NotFoundView`. **`UploadView` and
+  `HasilRapidView` were deleted 2026-08-01** (MGA pivot Fase 01, Rapid tier
+  retired — the backend now rejects `tier: rapid` at creation, so the
+  self-upload flow was dead code). Old rapid-tier reports are still viewable
+  through the unrelated `RiwayatView` → `ReportView` path, which never
+  depended on the deleted views.
 - `src/components/report/`: `TraitBar`, `ReportDocument`.
 - `src/components/scoring/`: `AspekRow`, `ScoreSelector`, `SindromAccordion`.
 - **Built 2026-07-27** (were missing as of 2026-07-26, now done):
   - `components/layout/AppNavbar.vue` — extracted verbatim from `App.vue`'s
     inline header (no behavior change), mounted there via `<AppNavbar />`.
-  - `components/upload/UploadDropzone.vue` — drag-and-drop file picker with
-    preview, `v-model="file"`; replaces the old plain `<input type="file">`
-    in `UploadView`.
+    **Updated 2026-08-01**: "Unggah" link removed (led to the retired Rapid
+    upload flow).
+  - `components/upload/UploadDropzone.vue` — **deleted 2026-08-01** along
+    with `UploadView`, its only consumer.
   - `components/shared/LoadingSpinner.vue` — wired into `RiwayatView`,
     `ReportView`, `HasilRapidView` (replacing plain "Memuat..." text).
   - `components/shared/ToastNotification.vue` + `src/composables/useToast.js`
@@ -77,6 +82,7 @@ Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
 
 ## Not built yet
 
-- `components/layout/`, `components/upload/`, `components/shared/` (see
-  above).
 - No test setup found (no test runner in `package.json` scripts).
+- `components/upload/` is intentionally absent (deleted 2026-08-01, Rapid
+  tier retired) — don't recreate it without an explicit new user decision
+  reversing that.
