@@ -29,7 +29,9 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   through the unrelated `RiwayatView` → `ReportView` path, which never
   depended on the deleted views.
 - `src/components/report/`: `TraitBar`, `ReportDocument`.
-- `src/components/scoring/`: `AspekRow`, `ScoreSelector`, `SindromAccordion`.
+- `src/components/scoring/`: `AspekRow`, `ScoreSelector`, `SindromAccordion`
+  (all unchanged since 2026-07-26 — reused as-is, only repositioned),
+  `AutoCalculationPanel` (added 2026-08-03, MGA Fase 04).
 - **Built 2026-07-27** (were missing as of 2026-07-26, now done):
   - `components/layout/AppNavbar.vue` — extracted verbatim from `App.vue`'s
     inline header (no behavior change), mounted there via `<AppNavbar />`.
@@ -38,7 +40,9 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   - `components/upload/UploadDropzone.vue` — **deleted 2026-08-01** along
     with `UploadView`, its only consumer.
   - `components/shared/LoadingSpinner.vue` — wired into `RiwayatView`,
-    `ReportView`, `HasilRapidView` (replacing plain "Memuat..." text).
+    `ReportView`, `DashboardView` (replacing plain "Memuat..." text).
+    (Was also wired into `HasilRapidView` until that view was deleted
+    2026-08-01 with the rest of the retired Rapid tier.)
   - `components/shared/ToastNotification.vue` + `src/composables/useToast.js`
     (tiny shared reactive array, not Pinia) — mounted once in `App.vue`.
     Real usage: `ReportView`'s PDF-download failure now shows a toast instead
@@ -49,7 +53,21 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   - **Not browser-tested visually** — verified via `npm run build`,
     `npm run lint`, and serving the dev server + curling the changed files
     (200 OK, no compile errors). No actual click-through in a real browser
-    was done this session; if something looks off visually, that's why.
+    was done this session; if something looks off visually, that's why. This
+    is a recurring gap across every UI change in this project so far — no
+    browser automation tool has been available in any session — not
+    specific to this component.
+- **`PortalGrafologView`'s step 2 refactored 2026-08-03** (MGA pivot Fase
+  04): "Isi Skor" is now a 3-column Assessment Workspace (client/sample info
+  | `SindromAccordion` form, unchanged | `AutoCalculationPanel`, live).
+  `AutoCalculationPanel` is fed by a 500ms-debounced `watch(scores, ...)`
+  calling the new `POST /api/samples/{id}/scores/preview` — see
+  `guratan-api/CLAUDE.md`. Steps 1 (pick client) and 3 (done) are unchanged.
+  **Deferred**: the plan's fuller idea of splitting this view into 3 routes
+  (`/grafolog/clients`, `/grafolog/projects/new`, a standalone workspace
+  route) — out of scope for this phase, `PortalGrafologView` still owns all
+  3 steps as one component. Revisit if/when Fase 05 role work needs
+  separate URLs for these steps.
 - `src/stores/auth.js` (Pinia): holds `user`/`token` refs, persists both to
   `localStorage` under `guratan_user` / `guratan_token` on register/login,
   clears them on logout. **Confirmed using `localStorage` correctly** — a
