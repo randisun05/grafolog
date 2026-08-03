@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Scoring\PreviewScoresRequest;
 use App\Http\Requests\Scoring\SubmitScoresRequest;
 use App\Models\Aspek;
 use App\Models\HandwritingSample;
@@ -15,6 +16,30 @@ use Illuminate\Support\Facades\DB;
 class ScoringController extends Controller
 {
     public function __construct(private ScoringEngineService $scoringEngine) {}
+
+    /**
+     * Pratinjau live Assessment Workspace: hitung ulang ScoringEngineService
+     * dari skor yang sudah diisi sejauh ini (boleh sebagian, tidak perlu 40
+     * aspek lengkap seperti submit()). Tidak menyimpan apa pun ke DB - murni
+     * baca (Aspek/ScoringRuleBand/NarasiCache lewat cache-through biasa).
+     */
+    public function preview(PreviewScoresRequest $request, HandwritingSample $sample): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat melihat pratinjau skor.');
+        abort_unless($sample->created_by === $user->id, 403, 'Anda bukan grafolog yang menangani sample ini.');
+        abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan form skor manual.');
+
+        $skorPerAspek = collect($request->validated('skor'))
+            ->mapWithKeys(fn (array $entry) => [$entry['kode'] => (int) $entry['skor']])
+            ->all();
+
+        if ($skorPerAspek === []) {
+            return response()->json(['sindrom' => []]);
+        }
+
+        return response()->json($this->scoringEngine->generate($skorPerAspek));
+    }
 
     /**
      * Terima submit 40 skor grafolog untuk satu sample (tier comprehensive/master),

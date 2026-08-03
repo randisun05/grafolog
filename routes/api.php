@@ -28,6 +28,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/samples', [SampleController::class, 'index']);
     Route::post('/samples', [SampleController::class, 'store']);
     Route::get('/samples/{sample}', [SampleController::class, 'show']);
+    Route::post('/samples/{sample}/scores/preview', [ScoringController::class, 'preview']);
     Route::post('/samples/{sample}/scores', [ScoringController::class, 'submit']);
     Route::post('/samples/{sample}/payment', [PaymentController::class, 'store']);
 

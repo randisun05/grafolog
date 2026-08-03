@@ -158,4 +158,60 @@ class ScoringControllerTest extends TestCase
 
         $response->assertUnprocessable()->assertJsonValidationErrors('skor.0.skor');
     }
+
+    public function test_preview_accepts_partial_scores_and_persists_nothing(): void
+    {
+        $this->seedMinimalAspek(3);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        // Baru 1 dari 3 aspek terisi - submit() akan menolak ini, preview() tidak.
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores/preview", $this->skorPayload(1));
+
+        $response->assertOk()->assertJsonCount(1, 'sindrom.0.aspek');
+        $this->assertDatabaseCount('personality_reports', 0);
+        $this->assertDatabaseCount('report_aspek_scores', 0);
+        $this->assertDatabaseHas('handwriting_samples', ['id' => $sample->id, 'status' => 'pending']);
+    }
+
+    public function test_preview_with_empty_scores_returns_empty_result(): void
+    {
+        $this->seedMinimalAspek(3);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores/preview", ['skor' => []]);
+
+        $response->assertOk()->assertJsonPath('sindrom', []);
+    }
+
+    public function test_preview_forbidden_for_grafolog_who_did_not_create_sample(): void
+    {
+        $this->seedMinimalAspek(3);
+        $grafologA = User::factory()->create(['role' => 'grafolog']);
+        $grafologB = User::factory()->create(['role' => 'grafolog']);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafologA->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($grafologB, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores/preview", $this->skorPayload(1));
+
+        $response->assertForbidden();
+    }
 }
