@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/lib/api'
 import SindromAccordion from '@/components/scoring/SindromAccordion.vue'
 import ProgressTracker from '@/components/shared/ProgressTracker.vue'
+import AutoCalculationPanel from '@/components/scoring/AutoCalculationPanel.vue'
 
 const router = useRouter()
 const steps = ['Pilih Klien', 'Isi Skor', 'Laporan Selesai']
@@ -34,10 +35,50 @@ const submitting = ref(false)
 const submitError = ref('')
 const submittedReport = ref(null)
 
+const preview = ref({ sindrom: [] })
+const previewLoading = ref(false)
+let previewTimer = null
+
 onMounted(async () => {
   const { data } = await api.get('/sindrom')
   sindromList.value = data
 })
+
+function buildSkorPayload() {
+  return Object.entries(scores.value)
+    .filter(([, v]) => Number.isInteger(v?.skor))
+    .map(([kode, v]) => ({ kode, skor: v.skor, catatan_grafolog: v.catatan_grafolog || null }))
+}
+
+// Kalkulasi otomatis di panel kanan Assessment Workspace: debounce 500ms
+// biar tidak memanggil API tiap keystroke, lalu pratinjau (bukan submit)
+// skor yang sudah terisi sejauh ini lewat ScoringController::preview.
+watch(
+  scores,
+  () => {
+    if (!sample.value || submittedReport.value) return
+    clearTimeout(previewTimer)
+    previewTimer = setTimeout(fetchPreview, 500)
+  },
+  { deep: true },
+)
+
+async function fetchPreview() {
+  const skor = buildSkorPayload()
+  if (skor.length === 0) {
+    preview.value = { sindrom: [] }
+    return
+  }
+  previewLoading.value = true
+  try {
+    const { data } = await api.post(`/samples/${sample.value.id}/scores/preview`, { skor })
+    preview.value = data
+  } catch {
+    // Pratinjau gagal senyap - form pengisian skor utama tidak boleh terganggu.
+  } finally {
+    previewLoading.value = false
+  }
+}
 
 async function lookupClient() {
   lookupError.value = ''
@@ -74,14 +115,7 @@ async function submitScores() {
   submitting.value = true
   submitError.value = ''
   try {
-    const payload = {
-      skor: Object.entries(scores.value).map(([kode, v]) => ({
-        kode,
-        skor: v.skor,
-        catatan_grafolog: v.catatan_grafolog || null,
-      })),
-    }
-    const { data } = await api.post(`/samples/${sample.value.id}/scores`, payload)
+    const { data } = await api.post(`/samples/${sample.value.id}/scores`, { skor: buildSkorPayload() })
     submittedReport.value = data
   } catch (e) {
     submitError.value = e.response?.data?.message ?? 'Gagal mengirim skor.'
@@ -129,19 +163,39 @@ function viewReport() {
 
     <section v-else-if="!submittedReport" class="portal-grafolog__step">
       <h2>2. Isi Skor 40 Aspek</h2>
-      <p class="portal-grafolog__progress">{{ scoredCount }} / {{ totalAspek }} aspek terisi</p>
       <p class="portal-grafolog__warning">
         ⚠ Progres tidak tersimpan otomatis — hindari refresh atau menutup halaman sebelum submit,
         isian skor akan hilang.
       </p>
 
-      <SindromAccordion
-        v-for="sindrom in sindromList"
-        :key="sindrom.id"
-        :sindrom="sindrom"
-        :scores="scores"
-        @update:scores="(v) => (scores = v)"
-      />
+      <div class="assessment-workspace">
+        <aside class="assessment-workspace__col assessment-workspace__col--info">
+          <div class="assessment-workspace__card">
+            <h3>Klien</h3>
+            <p>{{ client.name }}</p>
+            <p class="assessment-workspace__meta">{{ client.email }}</p>
+          </div>
+          <div class="assessment-workspace__card">
+            <h3>Sample</h3>
+            <p class="assessment-workspace__meta">Tier: {{ tier }}</p>
+            <p class="assessment-workspace__meta">Progress: {{ scoredCount }} / {{ totalAspek }} aspek</p>
+          </div>
+        </aside>
+
+        <div class="assessment-workspace__col assessment-workspace__col--form">
+          <SindromAccordion
+            v-for="sindrom in sindromList"
+            :key="sindrom.id"
+            :sindrom="sindrom"
+            :scores="scores"
+            @update:scores="(v) => (scores = v)"
+          />
+        </div>
+
+        <aside class="assessment-workspace__col assessment-workspace__col--calc">
+          <AutoCalculationPanel :sindrom="preview.sindrom" :loading="previewLoading" />
+        </aside>
+      </div>
 
       <p v-if="submitError" class="error">{{ submitError }}</p>
       <button
@@ -189,11 +243,6 @@ function viewReport() {
   align-items: center;
   gap: 12px;
 }
-.portal-grafolog__progress {
-  color: var(--color-text-soft);
-  font-size: 13px;
-  margin-bottom: 8px;
-}
 .portal-grafolog__warning {
   background: var(--color-seal-soft);
   border: 1px solid var(--color-seal);
@@ -202,5 +251,39 @@ function viewReport() {
   padding: 8px 12px;
   font-size: 13px;
   margin-bottom: 16px;
+}
+
+.assessment-workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 260px;
+  gap: 20px;
+  align-items: start;
+}
+.assessment-workspace__col--form {
+  min-width: 0;
+}
+.assessment-workspace__card {
+  padding: 14px;
+  margin-bottom: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.assessment-workspace__card h3 {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.assessment-workspace__meta {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+}
+
+@media (max-width: 900px) {
+  .assessment-workspace {
+    grid-template-columns: 1fr;
+  }
+  .assessment-workspace__col--calc .auto-calc {
+    position: static;
+  }
 }
 </style>
