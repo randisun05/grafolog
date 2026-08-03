@@ -66,7 +66,7 @@ the process's `Path` before assuming it's a `guratan-api` bug.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **53 tests as of 2026-08-01** (up from 6).
+- Tests: `php artisan test` — **56 tests as of 2026-08-03** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -87,7 +87,8 @@ POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
 POST /api/auth/logout, GET /api/auth/me          (auth:sanctum, throttle:60,1)
 GET  /api/dashboard                              (auth:sanctum, → DashboardController — role-aware KPI + activity)
 GET/POST /api/samples, GET /api/samples/{sample} (auth:sanctum)
-POST /api/samples/{sample}/scores                (auth:sanctum, → ScoringController)
+POST /api/samples/{sample}/scores/preview         (auth:sanctum, → ScoringController@preview — live calc, no persistence)
+POST /api/samples/{sample}/scores                (auth:sanctum, → ScoringController@submit)
 POST /api/samples/{sample}/payment               (auth:sanctum, → PaymentController@store)
 POST /api/payments/notification                  (throttle:30,1, PUBLIC — DOKU webhook, no Sanctum)
 GET  /api/reports, /api/reports/{report}         (auth:sanctum, +log.report_access on show/pdf)
@@ -131,7 +132,11 @@ both cases; `php artisan test` still 6/6 passing.
   sindrom: `{ sindrom: [{ id, kode_romawi, nama, polaritas, catatan_polaritas,
   rata_rata_skor, band_label_rata_rata, aspek: [{ kode, nama, skor,
   band_label, narasi_level, narasi }] }] }`. Throws `InvalidArgumentException`
-  for unknown kode or out-of-range skor (1-10).
+  for unknown kode or out-of-range skor (1-10). **Tolerates partial input by
+  design** — `$skorPerAspek` doesn't need to cover all 40 aspek, it just
+  groups/averages whatever's given. `ScoringController::preview` (2026-08-03,
+  MGA Fase 04) relies on exactly this to power the Assessment Workspace's
+  live "Auto Calculation" panel without needing any change to this method.
 - **`NarasiCacheService::ambil(Aspek, level, bahasa='id')`**: cache-through —
   checks `narasi_cache` table first; on miss, reads `$aspek->narasi[$level]`
   (falls back to `keterangan_umum`), runs it through the active
@@ -174,6 +179,12 @@ both cases; `php artisan test` still 6/6 passing.
   sample. Found during the Fase 1 security review — there was no guard
   before, so a grafolog resubmitting the form (double-click, retry after a
   network blip) created duplicate reports with no error.
+- **`ScoringController::preview`** (added 2026-08-03): same authorization
+  rules as `submit` (must be the grafolog who created the sample, sample
+  can't be `rapid`) but does **not** check completeness or `status ===
+  'completed'` — it's read-only and safe to call repeatedly while a
+  grafolog is still filling the form. Don't add a completeness check here;
+  that would defeat its purpose (live feedback on an in-progress form).
 - **`public/storage` symlink was dangling** (fixed 2026-07-27): it pointed at
   `/d/Project/guratan-api/...`, the pre-reorg path, which no longer exists.
   Recreated via `php artisan storage:link`. This means rapid-tier uploaded
