@@ -20,6 +20,9 @@ const commands = computed(() => {
     { label: 'Dashboard', to: { name: 'dashboard' } },
     { label: 'Riwayat', to: { name: 'riwayat' } },
   ]
+  if (auth.isClient) {
+    items.push({ label: 'Pesan Laporan', to: { name: 'order' } })
+  }
   if (auth.isGrafolog) {
     items.push({ label: 'Portal Grafolog', to: { name: 'portal-grafolog' } })
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
