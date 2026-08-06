@@ -20,7 +20,9 @@ async function handleLogout() {
         <RouterLink to="/dashboard">Dashboard</RouterLink>
         <RouterLink to="/riwayat">Riwayat</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
+        <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/users">Kelola Staf</RouterLink>
+        <RouterLink v-if="auth.isHr" to="/hr/candidates">Kandidat</RouterLink>
         <span class="app-navbar__user">{{ auth.user?.name }}</span>
         <button type="button" class="app-navbar__logout" @click="handleLogout">Keluar</button>
       </template>

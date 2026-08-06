@@ -1,12 +1,13 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/lib/api'
 import SindromAccordion from '@/components/scoring/SindromAccordion.vue'
 import ProgressTracker from '@/components/shared/ProgressTracker.vue'
 import AutoCalculationPanel from '@/components/scoring/AutoCalculationPanel.vue'
 
 const router = useRouter()
+const route = useRoute()
 const steps = ['Pilih Klien', 'Isi Skor', 'Laporan Selesai']
 const currentStep = computed(() => {
   if (!sample.value) return 1
@@ -39,10 +40,38 @@ const preview = ref({ sindrom: [] })
 const previewLoading = ref(false)
 let previewTimer = null
 
+const resuming = ref(false)
+const resumeError = ref('')
+
 onMounted(async () => {
   const { data } = await api.get('/sindrom')
   sindromList.value = data
+
+  if (route.query.sampleId) {
+    await resumeSample(route.query.sampleId)
+  }
 })
+
+// Masuk lewat link "Ditugaskan ke Saya" (/portal-grafolog?sampleId=X) - sample
+// dibuat HR/grafolog lain, bukan lewat lookup klien di langkah 1 di bawah.
+// Lompat langsung ke langkah 2 (atau 3 kalau sudah pernah diisi).
+async function resumeSample(sampleId) {
+  resuming.value = true
+  resumeError.value = ''
+  try {
+    const { data } = await api.get(`/samples/${sampleId}`)
+    sample.value = data
+    tier.value = data.tier
+    client.value = data.user
+    if (data.reports?.[0]?.status === 'completed') {
+      submittedReport.value = data.reports[0]
+    }
+  } catch (e) {
+    resumeError.value = e.response?.data?.message ?? 'Gagal memuat sample yang ditugaskan.'
+  } finally {
+    resuming.value = false
+  }
+}
 
 function buildSkorPayload() {
   return Object.entries(scores.value)
@@ -134,7 +163,10 @@ function viewReport() {
     <h1>Portal Grafolog</h1>
     <ProgressTracker :steps="steps" :current="currentStep" />
 
-    <section v-if="!sample" class="portal-grafolog__step">
+    <p v-if="resuming" class="portal-grafolog__note">Memuat sample yang ditugaskan...</p>
+    <p v-else-if="resumeError" class="error">{{ resumeError }}</p>
+
+    <section v-else-if="!sample" class="portal-grafolog__step">
       <h2>1. Pilih Klien</h2>
       <div class="portal-grafolog__lookup">
         <input v-model="clientEmail" type="email" placeholder="Email klien" />
@@ -242,6 +274,10 @@ function viewReport() {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+.portal-grafolog__note {
+  color: var(--color-text-soft);
+  margin-bottom: 16px;
 }
 .portal-grafolog__warning {
   background: var(--color-seal-soft);

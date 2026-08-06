@@ -47,10 +47,22 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'grafolog' },
     },
     {
+      path: '/grafolog/ditugaskan',
+      name: 'assigned-to-me',
+      component: () => import('../views/AssignedToMeView.vue'),
+      meta: { requiresAuth: true, role: 'grafolog' },
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUsersView.vue'),
       meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/hr/candidates',
+      name: 'hr-candidates',
+      component: () => import('../views/HrCandidatesView.vue'),
+      meta: { requiresAuth: true, role: 'hr' },
     },
     {
       path: '/:pathMatch(.*)*',
