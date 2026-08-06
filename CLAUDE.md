@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **104 tests as of 2026-08-06** (up from 6).
+- Tests: `php artisan test` — **125 tests as of 2026-08-06** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -96,12 +96,13 @@ die silently between tool calls with no log output at all.
 - `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
   passthrough, returns source text unchanged, no network call).
 
-## Routes (29 total, `routes/api.php`)
+## Routes (32 total, `routes/api.php`)
 
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
 POST /api/auth/logout, GET /api/auth/me          (auth:sanctum, throttle:60,1)
-GET  /api/pricing                                (PUBLIC, no auth → PricingController — active price per tier)
+GET  /api/pricing                                (PUBLIC, no auth → PricingController@index — active price per tier)
+POST /api/pricing/preview                        (auth:sanctum → PricingController@preview — tier + optional discount code → final price)
 GET  /api/dashboard                              (auth:sanctum, → DashboardController — role-aware KPI + activity)
 GET/POST /api/samples, GET /api/samples/{sample} (auth:sanctum)
 POST /api/samples/{sample}/scores/preview         (auth:sanctum, → ScoringController@preview — live calc, no persistence)
@@ -117,6 +118,7 @@ GET  /api/grafologs                              (auth:sanctum, role:hr,administ
 GET/POST /api/admin/users                        (auth:sanctum, role:administrator → AdminUserController)
 GET/POST /api/admin/companies                    (auth:sanctum, role:administrator → CompanyController)
 GET  /api/admin/pricing, PUT /api/admin/pricing/{tier} (auth:sanctum, role:administrator → Admin\PricingController)
+GET/POST/PATCH /api/admin/discount-codes[/{id}]  (auth:sanctum, role:administrator → Admin\DiscountCodeController)
 POST /api/hr/candidates/import                   (auth:sanctum, role:hr → CandidateImportController)
 ```
 
@@ -139,7 +141,7 @@ both cases; `php artisan test` still 6/6 passing.
   `IndikatorCrossReference`, `MeasurementVariable`, `MeasurementCategory`,
   `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`, `Project`,
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
-  `PricingPlan`, `Company`, `Assignment`, `AuditLog`.
+  `PricingPlan`, `DiscountCode`, `Company`, `Assignment`, `AuditLog`.
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone
@@ -419,6 +421,59 @@ both cases; `php artisan test` still 6/6 passing.
   log), and three new cases in `ScoringControllerTest.php` covering the
   402 gate (unpaid blocks both preview and submit, paid allows it,
   grafolog/hr-sourced samples are unaffected).
+
+## Discount codes — added 2026-08-06 (Commerce Fase B)
+
+- **`discount_codes` table / `App\Models\DiscountCode`**. Business
+  decision (2026-08-06): both `percentage` and `fixed` types are needed,
+  not just one. `applicable_tiers` (nullable json array) restricts a code
+  to specific tiers — `null` means it applies to all. `max_uses`/
+  `used_count` enforce a quota — `max_uses: null` means unlimited.
+  `valid_from`/`valid_until` are both optional and independent (a code can
+  have just a start, just an end, both, or neither).
+- **`isValidFor(string $tier): bool`** is the single source of truth for
+  "can this code be used right now for this tier" — checks `is_active`,
+  the time window, quota, and tier restriction all in one place.
+  **`amountOff(int $basePrice): int`** computes the discount, capped so it
+  never exceeds the base price (a fixed-amount code larger than the price
+  just makes it free, not negative). **Always call these, never
+  reimplement the checks inline** — the preview endpoint and the future
+  Fase D checkout both need to agree on what "valid" means, and that only
+  works if there's one method deciding it.
+- **`incrementUsage()` exists but is called nowhere yet.** It's meant to
+  fire once at the point a discount is actually *consumed* (a successful
+  payment in Fase D), not at preview time — calling it from
+  `PricingController::preview` would burn quota just from someone typing a
+  code to see what it does, before ever paying.
+- **Gotcha already fixed, don't reintroduce it**: `is_active`/`used_count`
+  have DB-level defaults (`true`/`0`) but MySQL doesn't refetch those onto
+  the in-memory model after Eloquent's `create()` — without the matching
+  `protected $attributes = [...]` on the model, a freshly created code's
+  `isValidFor()` would incorrectly return `false` until you called
+  `->fresh()`. If you add another boolean/counter column with a DB
+  default to this or any other model, mirror it in `$attributes` too or
+  write a test that would catch the gap (this one was caught by exactly
+  that kind of test failure).
+- **`POST /api/pricing/preview`** (`Api\PricingController::preview`,
+  auth:sanctum): `{tier, code?}` → `{tier, base_price, code, code_valid,
+  code_message, discount_amount, final_price}`. An unknown/expired/
+  wrong-tier code does **not** 422 — it returns `code_valid: false` with
+  `final_price` equal to `base_price`, so a checkout UI can show inline
+  "kode tidak berlaku" feedback without a failed request breaking the
+  page. Only `tier` is required.
+- **Admin CRUD** (`Api\Admin\DiscountCodeController`, `role:administrator`):
+  `store()` creates (code auto-uppercased in
+  `StoreDiscountCodeRequest::prepareForValidation()`); `update()` **only**
+  toggles `is_active`, no other field is editable after creation — changing
+  a code's value/quota/tiers after it may have already been used would
+  silently redefine what past redemptions meant. Need different terms?
+  Deactivate the old code, create a new one. Every create/activate/
+  deactivate call is `AuditLog::record()`-ed, same principle as pricing
+  changes above.
+- Tests: `tests/Unit/DiscountCodeTest.php` (model validation/calculation
+  logic in isolation), `tests/Feature/Api/Admin/DiscountCodeControllerTest.php`
+  (admin CRUD + audit log), `tests/Feature/Api/PricingPreviewControllerTest.php`
+  (the preview endpoint, including the invalid-code-doesn't-error case).
 
 ## Hard constraints (user-stated, still in force)
 
