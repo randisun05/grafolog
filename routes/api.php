@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
+use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContentController;
@@ -38,6 +40,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::post('/pricing/preview', [PricingController::class, 'preview']);
+    Route::get('/announcements', [AnnouncementController::class, 'index']);
 
     Route::get('/samples', [SampleController::class, 'index']);
     Route::post('/samples', [SampleController::class, 'store']);
@@ -67,6 +70,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::patch('/discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
         Route::get('/content', [AdminContentBlockController::class, 'index']);
         Route::put('/content/{key}', [AdminContentBlockController::class, 'update']);
+        Route::get('/announcements', [AdminAnnouncementController::class, 'index']);
+        Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
+        Route::put('/announcements/{announcement}', [AdminAnnouncementController::class, 'update']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {
