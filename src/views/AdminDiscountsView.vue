@@ -113,6 +113,7 @@ onMounted(loadCodes)
           <span>
             <label><input v-model="form.tiers" type="checkbox" value="comprehensive" /> Comprehensive</label>
             <label><input v-model="form.tiers" type="checkbox" value="master" /> Master</label>
+            <label><input v-model="form.tiers" type="checkbox" value="token" /> Token (pembelian token grafolog)</label>
           </span>
         </label>
         <label>

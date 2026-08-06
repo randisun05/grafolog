@@ -40,6 +40,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'user' },
     },
     {
+      path: '/token-saya',
+      name: 'token-wallet',
+      component: () => import('../views/TokenWalletView.vue'),
+      meta: { requiresAuth: true, role: 'grafolog' },
+    },
+    {
       path: '/reports/:id',
       name: 'report',
       component: () => import('../views/ReportView.vue'),
@@ -86,6 +92,12 @@ const router = createRouter({
       path: '/admin/announcements',
       name: 'admin-announcements',
       component: () => import('../views/AdminAnnouncementsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/tokens',
+      name: 'admin-tokens',
+      component: () => import('../views/AdminTokensView.vue'),
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {

@@ -26,6 +26,7 @@ const commands = computed(() => {
   if (auth.isGrafolog) {
     items.push({ label: 'Portal Grafolog', to: { name: 'portal-grafolog' } })
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
+    items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
   }
   if (auth.isAdministrator) {
     items.push({ label: 'Kelola Staf', to: { name: 'admin-users' } })
@@ -33,6 +34,7 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Diskon', to: { name: 'admin-discounts' } })
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })
     items.push({ label: 'Pengumuman', to: { name: 'admin-announcements' } })
+    items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })
   }
   if (auth.isHr) {
     items.push({ label: 'Kandidat', to: { name: 'hr-candidates' } })
@@ -75,7 +77,11 @@ function onKeydown(event) {
   const isTogglePressed = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k'
   if (isTogglePressed) {
     event.preventDefault()
-    open.value ? closePalette() : openPalette()
+    if (open.value) {
+      closePalette()
+    } else {
+      openPalette()
+    }
     return
   }
 
