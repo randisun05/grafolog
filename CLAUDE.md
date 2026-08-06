@@ -110,13 +110,37 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   no Accept header → 500).
 - `src/router/index.js` (vue-router): route guards check
   `meta.requiresAuth` (redirect to `login` with `?redirect=`),
-  `meta.guestOnly` (redirect authenticated users to `riwayat`), and
-  `meta.role` (redirect if `auth.user.role` doesn't match, e.g.
-  `/portal-grafolog` requires `role: 'grafolog'`).
+  `meta.guestOnly` (redirect authenticated users to `dashboard` — was
+  `riwayat` before the Fase 03 pivot), and `meta.role` (redirect if
+  `auth.user.role` doesn't match, e.g. `/portal-grafolog` requires
+  `role: 'grafolog'`; same pattern gates `/admin/users` → `administrator`,
+  `/hr/candidates` → `hr`, `/grafolog/ditugaskan` → `grafolog`).
 - `src/assets/base.css` + `main.css`: design tokens (`--color-ink`,
   `--color-seal`, `--color-sage`, `--font-heading: Fraunces`, `--font-body:
   Inter`, `--font-accent: Caveat`) plus shared `.btn`/`.error`/form-input
   styles. Confirmed applied — this was a previously-reported bug, now fixed.
+  **Dark mode added 2026-08-06** (MGA Fase 07): only the base color tokens
+  are redefined for dark (`@media (prefers-color-scheme: dark)` for the OS
+  default, `:root[data-theme='dark'/'light']` for an explicit override) —
+  everything else (`--color-background`, `--color-surface`,
+  `--color-primary`, ...) already derives from those via `var()`, so no
+  component has (or should ever need) its own dark-mode CSS. If you add a
+  new hardcoded color anywhere instead of a token, it silently breaks dark
+  mode — grep for literal hex/rgb before assuming a new component is done.
+  Theme state: `src/composables/useTheme.js` (module-level ref, same
+  shared-singleton pattern as `useToast.js`, not Pinia), persisted to
+  `localStorage['guratan_theme']`, applied by setting/removing
+  `data-theme` on `<html>`. Toggle lives in `AppNavbar.vue`.
+- **`CommandPalette.vue` added 2026-08-06** (MGA Fase 07,
+  `components/shared/`) — Ctrl/Cmd+K opens a role-aware page-jump list
+  (mirrors `AppNavbar`'s own `v-if` role checks — if you add a new
+  role-gated route to the navbar, add it here too, they're not derived
+  from a shared source) plus a "toggle theme" action. Own global `keydown`
+  listener registered in the component itself (mounted once via `App.vue`
+  — no store/composable needed since nothing else triggers it). Does
+  **not** search entities (Projects, candidates, reports) by name/content
+  — that would need a search endpoint that doesn't exist; deliberately
+  scoped to page navigation only, per the original Fase 07 ask.
 
 ## Stack
 
