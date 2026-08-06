@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const isGrafolog = computed(() => user.value?.role === 'grafolog')
+  const isAdministrator = computed(() => user.value?.role === 'administrator')
 
   function persist(newUser, newToken) {
     user.value = newUser
@@ -46,5 +47,5 @@ export const useAuthStore = defineStore('auth', () => {
     return data.user
   }
 
-  return { user, token, isAuthenticated, isGrafolog, register, login, logout, fetchMe }
+  return { user, token, isAuthenticated, isGrafolog, isAdministrator, register, login, logout, fetchMe }
 })
