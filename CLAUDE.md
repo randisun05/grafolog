@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **137 tests as of 2026-08-06** (up from 6).
+- Tests: `php artisan test` — **152 tests as of 2026-08-06** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -96,7 +96,7 @@ die silently between tool calls with no log output at all.
 - `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
   passthrough, returns source text unchanged, no network call).
 
-## Routes (35 total, `routes/api.php`)
+## Routes (39 total, `routes/api.php`)
 
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
@@ -121,6 +121,8 @@ GET/POST /api/admin/companies                    (auth:sanctum, role:administrat
 GET  /api/admin/pricing, PUT /api/admin/pricing/{tier} (auth:sanctum, role:administrator → Admin\PricingController)
 GET/POST/PATCH /api/admin/discount-codes[/{id}]  (auth:sanctum, role:administrator → Admin\DiscountCodeController)
 GET/PUT /api/admin/content[/{key}]               (auth:sanctum, role:administrator → Admin\ContentBlockController)
+GET  /api/announcements                          (auth:sanctum, → AnnouncementController@index — visible-to-me only)
+GET/POST/PUT /api/admin/announcements[/{id}]     (auth:sanctum, role:administrator → Admin\AnnouncementController)
 POST /api/hr/candidates/import                   (auth:sanctum, role:hr → CandidateImportController)
 ```
 
@@ -143,8 +145,8 @@ both cases; `php artisan test` still 6/6 passing.
   `IndikatorCrossReference`, `MeasurementVariable`, `MeasurementCategory`,
   `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`, `Project`,
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
-  `PricingPlan`, `DiscountCode`, `ContentBlock`, `Company`, `Assignment`,
-  `AuditLog`.
+  `PricingPlan`, `DiscountCode`, `ContentBlock`, `Announcement`, `Company`,
+  `Assignment`, `AuditLog`.
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone
@@ -531,6 +533,46 @@ both cases; `php artisan test` still 6/6 passing.
 - Tests: `tests/Feature/Api/ContentControllerTest.php` (public endpoint,
   flat shape), `tests/Feature/Api/Admin/ContentBlockControllerTest.php`
   (admin CRUD, unknown-key rejection, audit log, update-not-duplicate).
+
+## Announcements — added 2026-08-06 (Commerce Fase F)
+
+- **`announcements` table / `App\Models\Announcement`**: `title`, `body`,
+  `is_active` (default `true`), `starts_at`/`ends_at` (both nullable and
+  independent — a row can have just one, both, or neither), `target_roles`
+  (nullable json array of role strings — `null` means visible to every
+  role, not an empty array), `created_by` (nullable FK to `users`,
+  `nullOnDelete`).
+- **`isVisibleTo(User $user): bool`** is the single source of truth for
+  "should this user see this announcement right now" — checks
+  `is_active`, the time window, and `target_roles` all in one place, same
+  role as `DiscountCode::isValidFor()`. **Always call this, never
+  reimplement the checks inline.**
+- **`GET /api/announcements`** (`Api\AnnouncementController::index`,
+  auth:sanctum): filters `Announcement::all()` through `isVisibleTo()` in
+  PHP rather than a DB query — deliberate, announcement volume is expected
+  to stay low enough that this isn't worth a query builder. Returns only
+  what the current user should see, never the full table.
+- **Admin CRUD** (`Api\Admin\AnnouncementController`, `role:administrator`):
+  `store()` creates; `update()` allows **full in-place edit**, including
+  `is_active`, `title`, `body`, `target_roles`, and the date window — this
+  is the opposite of `PricingPlan`/`DiscountCode`'s deactivate-and-recreate
+  pattern, and that's intentional: an announcement carries no "past usage"
+  semantic worth protecting, so editing one doesn't retroactively redefine
+  anything the way editing a redeemed discount code's value would. Every
+  create/update is `AuditLog::record()`-ed (`buat_pengumuman`/
+  `ubah_pengumuman`), same principle as pricing/discount/content changes.
+- **Gotcha avoided, don't reintroduce it**: same class of bug as
+  `DiscountCode` (Fase B) — `is_active`'s DB-level default doesn't get
+  refetched onto the in-memory model after Eloquent's `create()` on MySQL.
+  Mirrored via `protected $attributes = ['is_active' => true];` on the
+  model from the start, so this one never actually broke a test — if you
+  add another boolean/counter column with a DB default anywhere, mirror it
+  in `$attributes` too.
+- Tests: `tests/Unit/AnnouncementTest.php` (visibility logic in isolation —
+  untargeted, inactive, not-yet-started, ended, role-targeted),
+  `tests/Feature/Api/AnnouncementControllerTest.php` (public endpoint,
+  role-filtering behavior), `tests/Feature/Api/Admin/AnnouncementControllerTest.php`
+  (admin CRUD, validation, audit log).
 
 ## Hard constraints (user-stated, still in force)
 
