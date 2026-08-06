@@ -62,6 +62,10 @@ return [
         'base_url' => env('DOKU_IS_PRODUCTION', false)
             ? 'https://api.doku.com'
             : 'https://api-sandbox.doku.com',
+        // Ke mana browser klien diarahkan balik setelah bayar di halaman
+        // DOKU (auto_redirect). Bukan webhook - itu Notification URL,
+        // dikonfigurasi di DOKU Back Office, bukan di sini.
+        'callback_url' => env('DOKU_CALLBACK_URL', rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/dashboard'),
     ],
 
 ];

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreatePaymentRequest;
+use App\Models\DiscountCode;
 use App\Models\HandwritingSample;
 use App\Models\Payment;
 use App\Models\PricingPlan;
@@ -11,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class PaymentController extends Controller
 {
@@ -20,26 +23,51 @@ class PaymentController extends Controller
      * Mulai pembayaran DOKU untuk satu sample tier comprehensive/master.
      * Hanya pemilik sample (klien) yang boleh membayar - grafolog/pihak lain
      * yang membuatkan sample tidak otomatis boleh bayar atas nama klien.
+     * `discount_code` opsional (Commerce Fase D) - divalidasi lewat
+     * DiscountCode::isValidFor() yang sama dipakai PricingController::preview,
+     * jangan duplikasi cek di sini.
      */
-    public function store(Request $request, HandwritingSample $sample): JsonResponse
+    public function store(CreatePaymentRequest $request, HandwritingSample $sample): JsonResponse
     {
         $user = $request->user();
         abort_unless($sample->user_id === $user->id, 403, 'Anda bukan pemilik sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Tier rapid gratis, tidak perlu pembayaran.');
         abort_if($sample->payments()->where('status', 'paid')->exists(), 422, 'Sample ini sudah dibayar.');
 
-        $amount = PricingPlan::activePriceFor($sample->tier);
-        abort_if($amount === null, 422, "Harga untuk tier {$sample->tier} belum dikonfigurasi.");
+        $baseAmount = PricingPlan::activePriceFor($sample->tier);
+        abort_if($baseAmount === null, 422, "Harga untuk tier {$sample->tier} belum dikonfigurasi.");
+
+        $discountCode = null;
+        $amount = $baseAmount;
+        if ($codeInput = $request->validated('discount_code')) {
+            $discountCode = DiscountCode::where('code', strtoupper($codeInput))->first();
+            abort_unless($discountCode?->isValidFor($sample->tier), 422, 'Kode diskon tidak berlaku.');
+            $amount = $baseAmount - $discountCode->amountOff($baseAmount);
+        }
 
         $payment = Payment::create([
             'sample_id' => $sample->id,
             'invoice_number' => 'INV-'.now()->format('Ymd').'-'.$sample->id.'-'.Str::upper(Str::random(6)),
+            'base_amount' => $baseAmount,
             'amount' => $amount,
+            'discount_code_id' => $discountCode?->id,
             'currency' => 'IDR',
             'status' => 'pending',
         ]);
 
-        $checkout = $this->doku->createCheckout($payment, $user->name, $user->email);
+        // DokuService melempar RuntimeException kalau kredensial belum diisi
+        // atau DOKU menolak request - jangan biarkan itu bocor jadi 500 mentah
+        // (leak stack trace/nama env var kalau APP_DEBUG kelupaan aktif di
+        // production). Detail asli tetap masuk log server untuk developer.
+        try {
+            $checkout = $this->doku->createCheckout($payment, $user->name, $user->email);
+        } catch (RuntimeException $e) {
+            Log::error('DOKU checkout gagal dibuat', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => 'Pembayaran sedang tidak tersedia, coba lagi nanti.',
+            ], 503);
+        }
 
         $payment->update([
             'doku_token_id' => $checkout['token_id'],
@@ -82,11 +110,20 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Unknown invoice_number'], 404);
         }
 
+        $wasAlreadyPaid = $payment->isPaid();
+
         $payment->update([
             'notification_payload' => $request->all(),
             'status' => $status === 'SUCCESS' ? 'paid' : 'failed',
             'paid_at' => $status === 'SUCCESS' ? now() : null,
         ]);
+
+        // Kuota kode diskon baru terpakai saat pembayaran BENAR-BENAR sukses,
+        // bukan saat preview atau saat Payment dibuat - dan hanya sekali,
+        // jaga-jaga DOKU mengirim notifikasi SUCCESS dobel untuk invoice yang sama.
+        if ($status === 'SUCCESS' && ! $wasAlreadyPaid) {
+            $payment->discountCode?->incrementUsage();
+        }
 
         return response()->json(['message' => 'OK']);
     }
