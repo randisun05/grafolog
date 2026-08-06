@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **92 tests as of 2026-08-06** (up from 6).
+- Tests: `php artisan test` — **104 tests as of 2026-08-06** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -96,11 +96,12 @@ die silently between tool calls with no log output at all.
 - `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
   passthrough, returns source text unchanged, no network call).
 
-## Routes (26 total, `routes/api.php`)
+## Routes (29 total, `routes/api.php`)
 
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
 POST /api/auth/logout, GET /api/auth/me          (auth:sanctum, throttle:60,1)
+GET  /api/pricing                                (PUBLIC, no auth → PricingController — active price per tier)
 GET  /api/dashboard                              (auth:sanctum, → DashboardController — role-aware KPI + activity)
 GET/POST /api/samples, GET /api/samples/{sample} (auth:sanctum)
 POST /api/samples/{sample}/scores/preview         (auth:sanctum, → ScoringController@preview — live calc, no persistence)
@@ -115,6 +116,7 @@ GET  /api/users/lookup                           (auth:sanctum, throttle:15,1 �
 GET  /api/grafologs                              (auth:sanctum, role:hr,administrator → UserLookupController@grafologs)
 GET/POST /api/admin/users                        (auth:sanctum, role:administrator → AdminUserController)
 GET/POST /api/admin/companies                    (auth:sanctum, role:administrator → CompanyController)
+GET  /api/admin/pricing, PUT /api/admin/pricing/{tier} (auth:sanctum, role:administrator → Admin\PricingController)
 POST /api/hr/candidates/import                   (auth:sanctum, role:hr → CandidateImportController)
 ```
 
@@ -137,7 +139,7 @@ both cases; `php artisan test` still 6/6 passing.
   `IndikatorCrossReference`, `MeasurementVariable`, `MeasurementCategory`,
   `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`, `Project`,
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
-  `AuditLog`.
+  `PricingPlan`, `Company`, `Assignment`, `AuditLog`.
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone
@@ -346,9 +348,13 @@ both cases; `php artisan test` still 6/6 passing.
   *owner* (`user_id`, i.e. the paying client) can trigger a payment — not the
   grafolog who may have created the sample on their behalf. Rejects `rapid`
   tier (free) and samples that already have a `paid` payment. Price comes
-  from `config/pricing.php` (`comprehensive` = 49000 matches the root
-  CLAUDE.md's "~Rp49rb"; **`master` = 149000 is an unconfirmed placeholder**,
-  confirm the real price with the business before go-live).
+  from `PricingPlan::activePriceFor($tier)` (**changed 2026-08-06**, was
+  `config('pricing.tiers.*')` — that config file is deleted, see "Pricing &
+  commerce" section below). `comprehensive` = 49000 matches the root
+  CLAUDE.md's "~Rp49rb"; **`master` = 149000 is still an unconfirmed
+  placeholder** — confirm the real price with the business before go-live,
+  it can now be changed via `PUT /api/admin/pricing/master` without a
+  deploy.
 - **`::notification`** is DOKU's webhook (public route, no `auth:sanctum` —
   DOKU has no Sanctum token). Security depends entirely on
   `DokuService::verifyNotificationSignature()`; never relax or bypass it.
@@ -361,18 +367,58 @@ both cases; `php artisan test` still 6/6 passing.
 - **Migration**: `payments` table (`sample_id`, `invoice_number` unique,
   `amount`, `status`: pending/paid/failed/expired, `doku_token_id`,
   `doku_payment_url`, `notification_payload` json, `paid_at`).
-- **No frontend checkout UI exists yet.** There's currently no self-service
-  flow for a regular `user` to order Comprehensive/Master at all (the only
-  existing path creates the sample grafolog-side, via `PortalGrafologView`,
-  with the *client* as `user_id` — the client never visits the app to
-  initiate or pay). Wiring a "Bayar Sekarang" button needs a product decision
-  on where that flow should live before it's built — see conversation/
-  memory for the open question raised 2026-07-27.
+- **Still no frontend checkout UI** (as of 2026-08-06, Commerce Fase A —
+  Fase D in root `ROADMAP.md`'s "Inisiatif — Commerce & CMS" will build
+  this). `PortalGrafologView` (grafolog creates the sample, client as
+  `user_id`) is still the only *practical* path — but note
+  `StoreSampleRequest` already lets a regular `user` call `POST /api/samples`
+  themselves too (this has existed since Fase 02, `Project.source =
+  'client'`), it's just never had a UI. **As of 2026-08-06 that path is
+  payment-gated** (see below) so it's no longer a free-scoring loophole,
+  but it's still not a real checkout flow — no price shown, no discount, no
+  "Bayar Sekarang" button anywhere.
 - Tests: `tests/Feature/Api/PaymentControllerTest.php` — mocks DOKU's HTTP
   response via `Http::fake()`, covers authorization (only owner pays),
   rapid-tier rejection, already-paid rejection, and both valid/invalid
   webhook signature verification (computed independently in the test to
   cross-check the production algorithm, not just re-using the same code path).
+
+## Pricing & commerce — added 2026-08-06 (Commerce Fase A)
+
+- **`pricing_plans` table / `App\Models\PricingPlan`** replaces the old
+  static `config/pricing.php` (deleted — nothing references it anymore,
+  don't recreate it). One row per price point; `is_active` marks the
+  current price for a tier. `PricingPlan::activePriceFor($tier)` is the
+  read path (`PaymentController`, public `GET /api/pricing`).
+  `PricingPlan::setPriceFor($tier, $price, $user)` is the *only* write
+  path — it deactivates the previous active row and creates a new one,
+  **never** updates a row in place, so price history survives (useful for
+  reconciling old invoices against the price that was active when they
+  were paid). If you need "what was the price on date X," query by
+  `updated_at`/`created_at` across all rows for that tier, not just the
+  active one.
+- **Public read**: `GET /api/pricing` (no auth) → active price per tier.
+  Will be consumed by the checkout page once Commerce Fase D exists.
+- **Admin write**: `GET/PUT /api/admin/pricing[/{tier}]`
+  (`Api\Admin\PricingController`, `role:administrator`). Every price
+  change is logged via `AuditLog::record('ubah_harga', ...)` — pricing is
+  sensitive business data, same principle as report-access logging.
+- **Payment gate on client-sourced samples** (`HandwritingSample::
+  requiresPayment()` / `isPaid()`, checked in `ScoringController::
+  preview`/`submit`, returns HTTP 402): closes the gap described in the
+  "No frontend checkout UI" note above. **Scoped to `Project.source ===
+  'client'` only** — samples from `SampleController::store` when called by
+  a self-service client. Grafolog-direct (`source: grafolog`) and
+  HR-imported (`source: hr`) samples are explicitly exempt; the assumption
+  (not yet confirmed by the business, flagged in root `ROADMAP.md`'s
+  Commerce inisiatif) is that those have payment/invoicing arranged
+  outside the per-sample flow. If that assumption changes, this is the
+  method to extend — don't add a second, separate gate elsewhere.
+- Tests: `tests/Feature/Api/PricingControllerTest.php` (public endpoint),
+  `tests/Feature/Api/Admin/PricingControllerTest.php` (admin CRUD + audit
+  log), and three new cases in `ScoringControllerTest.php` covering the
+  402 gate (unpaid blocks both preview and submit, paid allows it,
+  grafolog/hr-sourced samples are unaffected).
 
 ## Hard constraints (user-stated, still in force)
 
