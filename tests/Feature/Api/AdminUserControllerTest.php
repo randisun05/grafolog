@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -94,6 +95,55 @@ class AdminUserControllerTest extends TestCase
 
         $created = User::where('email', 'grafolog-new@example.com')->firstOrFail();
         $this->assertTrue(Hash::check('password123', $created->password));
+    }
+
+    public function test_administrator_can_create_hr_account_with_company(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $company = Company::create(['name' => 'PT Nusantara Rekrut']);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
+            'name' => 'HR Baru',
+            'email' => 'hr-new@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'hr',
+            'company_id' => $company->id,
+        ]);
+
+        $response->assertCreated()->assertJsonPath('role', 'hr')->assertJsonPath('company_id', $company->id);
+    }
+
+    public function test_hr_account_requires_company_id(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
+            'name' => 'HR Tanpa Company',
+            'email' => 'hr-no-company@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'hr',
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('company_id');
+    }
+
+    public function test_non_hr_account_rejects_company_id(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $company = Company::create(['name' => 'PT Iseng']);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
+            'name' => 'Grafolog Salah Field',
+            'email' => 'grafolog-wrong-field@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'grafolog',
+            'company_id' => $company->id,
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('company_id');
     }
 
     public function test_cannot_create_staff_account_with_client_role(): void

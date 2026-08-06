@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\CompanyController;
+use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SampleController;
@@ -32,6 +35,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/samples/{sample}/scores/preview', [ScoringController::class, 'preview']);
     Route::post('/samples/{sample}/scores', [ScoringController::class, 'submit']);
     Route::post('/samples/{sample}/payment', [PaymentController::class, 'store']);
+    Route::middleware('role:hr,administrator')->post('/samples/{sample}/assignment', [AssignmentController::class, 'store']);
 
     Route::get('/reports', [ReportController::class, 'index']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
@@ -39,9 +43,16 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     Route::get('/sindrom', [SindromController::class, 'index']);
     Route::middleware('throttle:15,1')->get('/users/lookup', [UserLookupController::class, 'byEmail']);
+    Route::middleware('role:hr,administrator')->get('/grafologs', [UserLookupController::class, 'grafologs']);
 
     Route::middleware('role:administrator')->prefix('admin')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::post('/users', [AdminUserController::class, 'store']);
+        Route::get('/companies', [CompanyController::class, 'index']);
+        Route::post('/companies', [CompanyController::class, 'store']);
+    });
+
+    Route::middleware('role:hr')->prefix('hr')->group(function () {
+        Route::post('/candidates/import', [CandidateImportController::class, 'import']);
     });
 });

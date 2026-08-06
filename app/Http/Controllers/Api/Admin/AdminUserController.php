@@ -18,7 +18,7 @@ class AdminUserController extends Controller
     public function index(Request $request): JsonResponse
     {
         $users = User::query()
-            ->select(['id', 'name', 'email', 'role', 'created_at'])
+            ->select(['id', 'name', 'email', 'role', 'company_id', 'created_at'])
             ->latest()
             ->paginate(20);
 
@@ -32,8 +32,9 @@ class AdminUserController extends Controller
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
             'role' => $request->validated('role'),
+            'company_id' => $request->validated('company_id'),
         ]);
 
-        return response()->json($user->only(['id', 'name', 'email', 'role']), 201);
+        return response()->json($user->only(['id', 'name', 'email', 'role', 'company_id']), 201);
     }
 }

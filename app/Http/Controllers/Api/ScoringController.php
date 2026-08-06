@@ -27,7 +27,7 @@ class ScoringController extends Controller
     {
         $user = $request->user();
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat melihat pratinjau skor.');
-        abort_unless($sample->created_by === $user->id, 403, 'Anda bukan grafolog yang menangani sample ini.');
+        abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan form skor manual.');
 
         $skorPerAspek = collect($request->validated('skor'))
@@ -49,7 +49,7 @@ class ScoringController extends Controller
     {
         $user = $request->user();
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat mengisi form skor.');
-        abort_unless($sample->created_by === $user->id, 403, 'Anda bukan grafolog yang menangani sample ini.');
+        abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan form skor manual.');
         abort_if($sample->status === 'completed', 422, 'Sample ini sudah memiliki laporan selesai, tidak bisa diisi ulang.');
 
@@ -83,6 +83,7 @@ class ScoringController extends Controller
             ]);
 
             $sample->update(['status' => 'completed']);
+            $sample->assignment?->update(['status' => 'completed']);
 
             return $report;
         });

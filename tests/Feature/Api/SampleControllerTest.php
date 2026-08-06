@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Assignment;
 use App\Models\HandwritingSample;
 use App\Models\Project;
 use App\Models\User;
@@ -194,5 +195,30 @@ class SampleControllerTest extends TestCase
         $response = $this->actingAs($user, 'sanctum')->getJson('/api/samples');
 
         $response->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    public function test_assigned_grafolog_can_view_and_list_sample_they_did_not_create(): void
+    {
+        $hr = User::factory()->create(['role' => 'hr']);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $hr->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+        Assignment::create([
+            'sample_id' => $sample->id, 'grafolog_id' => $grafolog->id,
+            'assigned_by' => $hr->id, 'status' => 'assigned',
+        ]);
+
+        $this->actingAs($grafolog, 'sanctum')
+            ->getJson("/api/samples/{$sample->id}")
+            ->assertOk();
+
+        $this->actingAs($grafolog, 'sanctum')
+            ->getJson('/api/samples')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
     }
 }

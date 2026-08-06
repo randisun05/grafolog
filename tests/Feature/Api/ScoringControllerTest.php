@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Assignment;
 use App\Models\HandwritingSample;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -195,6 +196,33 @@ class ScoringControllerTest extends TestCase
             ->postJson("/api/samples/{$sample->id}/scores/preview", ['skor' => []]);
 
         $response->assertOk()->assertJsonPath('sindrom', []);
+    }
+
+    public function test_assigned_grafolog_who_is_not_the_creator_can_submit_scores(): void
+    {
+        // MGA Fase 06: HR creates the sample (created_by = HR), a different
+        // grafolog is explicitly assigned - that grafolog must still be
+        // able to score it even though isScorableBy()'s original half
+        // (created_by === user.id) is false for them.
+        $this->seedMinimalAspek(3);
+        $hr = User::factory()->create(['role' => 'hr']);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $hr->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+        Assignment::create([
+            'sample_id' => $sample->id, 'grafolog_id' => $grafolog->id,
+            'assigned_by' => $hr->id, 'status' => 'assigned',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('assignments', ['sample_id' => $sample->id, 'status' => 'completed']);
     }
 
     public function test_preview_forbidden_for_grafolog_who_did_not_create_sample(): void

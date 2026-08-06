@@ -28,4 +28,15 @@ class UserLookupController extends Controller
 
         return response()->json($client);
     }
+
+    /**
+     * Daftar semua grafolog - dipakai HR/Administrator untuk memilih siapa
+     * yang di-assign ke sebuah sample (AssignmentController). Gated lewat
+     * middleware 'role:hr,administrator' di routes/api.php, bukan inline
+     * abort_unless seperti byEmail() di atas - pola baru sejak MGA Fase 05.
+     */
+    public function grafologs(): JsonResponse
+    {
+        return response()->json(User::where('role', 'grafolog')->get(['id', 'name', 'email']));
+    }
 }

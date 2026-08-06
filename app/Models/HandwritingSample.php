@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class HandwritingSample extends Model
 {
@@ -35,5 +36,33 @@ class HandwritingSample extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'sample_id');
+    }
+
+    public function assignment(): HasOne
+    {
+        return $this->hasOne(Assignment::class, 'sample_id');
+    }
+
+    /**
+     * MGA Fase 06: a sample can be scored either by the grafolog who
+     * created it directly (the original flow) OR by whoever an HR/admin
+     * explicitly assigned it to (the new HR flow) - additive, doesn't
+     * replace the original check.
+     */
+    public function isScorableBy(User $user): bool
+    {
+        return $this->created_by === $user->id
+            || $this->assignment?->grafolog_id === $user->id;
+    }
+
+    /**
+     * Same additive pattern as isScorableBy(), for read access
+     * (SampleController::show / ReportController).
+     */
+    public function isViewableBy(User $user): bool
+    {
+        return $this->user_id === $user->id
+            || $this->created_by === $user->id
+            || $this->assignment?->grafolog_id === $user->id;
     }
 }

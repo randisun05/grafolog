@@ -20,7 +20,9 @@ class ReportController extends Controller
 
         $reports = PersonalityReport::query()
             ->whereHas('sample', function ($q) use ($user) {
-                $q->where('user_id', $user->id)->orWhere('created_by', $user->id);
+                $q->where('user_id', $user->id)
+                    ->orWhere('created_by', $user->id)
+                    ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
             })
             ->with('sample:id,user_id,created_by,tier')
             ->latest()
@@ -48,8 +50,6 @@ class ReportController extends Controller
 
     private function authorizeAccess(Request $request, PersonalityReport $report): void
     {
-        $user = $request->user();
-        $sample = $report->sample;
-        abort_unless($sample->user_id === $user->id || $sample->created_by === $user->id, 403);
+        abort_unless($report->sample->isViewableBy($request->user()), 403);
     }
 }

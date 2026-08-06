@@ -16,9 +16,16 @@ class SampleController extends Controller
         $user = $request->user();
 
         $samples = HandwritingSample::query()
-            ->where('user_id', $user->id)
-            ->orWhere('created_by', $user->id)
-            ->with('reports:id,sample_id,tier,status,generated_at')
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                    ->orWhere('created_by', $user->id)
+                    ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
+            })
+            ->with([
+                'reports:id,sample_id,tier,status,generated_at',
+                'user:id,name,email',
+                'assignment.grafolog:id,name,email',
+            ])
             ->latest()
             ->paginate(20);
 
@@ -49,12 +56,11 @@ class SampleController extends Controller
     {
         $this->authorizeAccess($request, $sample);
 
-        return response()->json($sample->load('reports'));
+        return response()->json($sample->load('reports', 'user:id,name,email', 'assignment'));
     }
 
     private function authorizeAccess(Request $request, HandwritingSample $sample): void
     {
-        $user = $request->user();
-        abort_unless($sample->user_id === $user->id || $sample->created_by === $user->id, 403);
+        abort_unless($sample->isViewableBy($request->user()), 403);
     }
 }
