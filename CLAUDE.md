@@ -59,6 +59,20 @@ port 8123 was once found squatted by a stale `php artisan serve` process from
 — if a request to 8123 returns something unexpected, check `netstat -ano` and
 the process's `Path` before assuming it's a `guratan-api` bug.
 
+**`mysqld` is genuinely flaky on this machine (observed repeatedly
+2026-08-03)** — it dies silently between commands with no crash log,
+sometimes minutes after confirming it was up, likely low free RAM (~4GB
+observed) from the many dev processes (php, node/vite, VSCode's PHP
+language servers, the user's own browser) competing for memory. Symptoms:
+API requests suddenly return `SQLSTATE[HY000] [2002] ... actively refused`.
+Fix is always the same — restart it: `mysqld.exe --defaults-file=<path to
+my.ini>` — and re-verify with `mysql.exe -u root -e "SELECT 1;"` (poll,
+don't `sleep`; cold InnoDB init alone can take ~30s). Prefer the harness's
+background-task launcher over shell `&`/`disown` for long-running dev
+servers (`php artisan serve`, `mysqld`, `npm run dev`) — plain `&`/`disown`
+in this git-bash/Windows setup has also been observed to let the process
+die silently between tool calls with no log output at all.
+
 ## Dev commands
 
 - API dev server: `php artisan serve --port=8123` (guratan-web's
@@ -66,7 +80,7 @@ the process's `Path` before assuming it's a `guratan-api` bug.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **56 tests as of 2026-08-03** (up from 6).
+- Tests: `php artisan test` — **64 tests as of 2026-08-03** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -95,6 +109,7 @@ GET  /api/reports, /api/reports/{report}         (auth:sanctum, +log.report_acce
 GET  /api/reports/{report}/pdf                   (auth:sanctum, +log.report_access)
 GET  /api/sindrom                                (auth:sanctum)
 GET  /api/users/lookup                           (auth:sanctum, throttle:15,1 — grafolog-only, exact-email lookup)
+GET/POST /api/admin/users                        (auth:sanctum, role:administrator → AdminUserController)
 ```
 
 **Fixed 2026-07-27**: an unauthenticated request to any `auth:sanctum` route
@@ -191,6 +206,44 @@ both cases; `php artisan test` still 6/6 passing.
   images were unreachable at their public URL — dormant bug, since no
   frontend view currently renders `image_path` back as an `<img>`. If you
   wire that up later, verify the symlink still resolves.
+
+## Roles & staff provisioning — added 2026-08-03 (MGA pivot Fase 05)
+
+- `users.role` enum: `user` (client), `grafolog`, `administrator`,
+  `supervisor` — expanded from just `user`/`grafolog` via
+  `database/migrations/2026_08_03_060730_expand_users_role_enum.php`. That
+  migration is **driver-aware**: raw `ALTER TABLE ... MODIFY COLUMN` for
+  real MySQL (doctrine/dbal isn't installed, same reason as the `Project`
+  migration), `Schema::table()->enum()->change()` for the sqlite test DB
+  (Laravel's sqlite grammar rebuilds the table natively, no doctrine/dbal
+  needed there). If you ever add another role, update **both** branches.
+- `User::isAdministrator()` / `isSupervisor()` mirror the existing
+  `isGrafolog()`.
+- **New generic middleware** `App\Http\Middleware\EnsureUserHasRole`
+  (aliased `role` in `bootstrap/app.php`) — `Route::middleware('role:administrator')`.
+  This is the intended pattern for any *new* role-gated route going
+  forward. The older `abort_unless($user->isGrafolog(), 403)` inline checks
+  in `ScoringController`/`SampleController`/`UserLookupController` were
+  **not** migrated to this — they still work, touching them risked
+  regressions for no benefit.
+- **Provisioning** (locked-in product decision, don't re-litigate): the
+  first Administrator comes from `database/seeders/AdministratorSeeder.php`,
+  which reads `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` from `.env` via
+  `config/admin.php` and silently no-ops if the email/password aren't set —
+  it will never create an account with a guessable default password. Every
+  subsequent administrator/supervisor/grafolog account is created by an
+  already-logged-in Administrator via `POST /api/admin/users`
+  (`AdminUserController`, `StoreStaffUserRequest`) — **not** by re-running
+  the seeder and **not** via public registration. `RegisterRequest` still
+  only accepts `role: user|grafolog`; this is enforced by a test
+  (`test_register_rejects_administrator_and_supervisor_roles`) — if that
+  test ever needs to change, it means the provisioning decision changed and
+  root `ROADMAP.md` / memory need updating too.
+- Supervisor has **no dedicated functionality yet** — the role exists and
+  is assignable, but there's no review queue or supervisor-specific view.
+  That was explicitly deferred (see ROADMAP.md Fase 05 entry), not
+  forgotten — don't build it speculatively without a product decision on
+  what a supervisor actually reviews.
 
 ## Payment (DOKU) — added 2026-07-27
 
