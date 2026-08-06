@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\HandwritingSample;
 use App\Models\Payment;
+use App\Models\PricingPlan;
 use App\Services\Payment\DokuService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ class PaymentController extends Controller
         abort_if($sample->tier === 'rapid', 422, 'Tier rapid gratis, tidak perlu pembayaran.');
         abort_if($sample->payments()->where('status', 'paid')->exists(), 422, 'Sample ini sudah dibayar.');
 
-        $amount = config("pricing.tiers.{$sample->tier}");
+        $amount = PricingPlan::activePriceFor($sample->tier);
         abort_if($amount === null, 422, "Harga untuk tier {$sample->tier} belum dikonfigurasi.");
 
         $payment = Payment::create([

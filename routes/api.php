@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\CompanyController;
+use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\ScoringController;
@@ -22,6 +24,9 @@ Route::middleware('throttle:20,1')->group(function () {
 // DOKU memanggil ini server-to-server, tidak punya token Sanctum kita -
 // keamanan bergantung penuh pada DokuService::verifyNotificationSignature().
 Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentController::class, 'notification']);
+
+// Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
+Route::get('/pricing', [PricingController::class, 'index']);
 
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -50,6 +55,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/users', [AdminUserController::class, 'store']);
         Route::get('/companies', [CompanyController::class, 'index']);
         Route::post('/companies', [CompanyController::class, 'store']);
+        Route::get('/pricing', [AdminPricingController::class, 'index']);
+        Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

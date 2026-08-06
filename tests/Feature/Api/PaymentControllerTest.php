@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\HandwritingSample;
 use App\Models\Payment;
+use App\Models\PricingPlan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -24,9 +25,10 @@ class PaymentControllerTest extends TestCase
             'services.doku.client_id' => self::CLIENT_ID,
             'services.doku.secret_key' => self::SECRET_KEY,
             'services.doku.base_url' => 'https://api-sandbox.doku.com',
-            'pricing.tiers.comprehensive' => 49000,
-            'pricing.tiers.master' => 149000,
         ]);
+
+        PricingPlan::create(['tier' => 'comprehensive', 'price' => 49000, 'is_active' => true]);
+        PricingPlan::create(['tier' => 'master', 'price' => 149000, 'is_active' => true]);
     }
 
     private function dokuSignature(string $requestId, string $timestamp, string $target, string $rawBody, string $clientId = self::CLIENT_ID): string

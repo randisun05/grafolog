@@ -65,4 +65,23 @@ class HandwritingSample extends Model
             || $this->created_by === $user->id
             || $this->assignment?->grafolog_id === $user->id;
     }
+
+    /**
+     * Commerce inisiatif (2026-08-06): samples dari checkout mandiri klien
+     * (Project.source === 'client') harus lunas dulu sebelum bisa di-skor -
+     * endpoint pembuatan sample-nya (POST /api/samples) sudah bisa dipanggil
+     * klien sejak Fase 02 tapi TIDAK PERNAH dicek pembayarannya sampai
+     * sekarang. Sample dari grafolog-langsung ('grafolog') dan HR-impor
+     * ('hr') sengaja TIDAK kena gate ini - diasumsikan ada pengaturan
+     * pembayaran terpisah (invoice B2B/manual), bukan per-sample.
+     */
+    public function requiresPayment(): bool
+    {
+        return $this->project?->source === 'client';
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->payments()->where('status', 'paid')->exists();
+    }
 }

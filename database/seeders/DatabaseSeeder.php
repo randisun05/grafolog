@@ -11,8 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             GrafologiKnowledgeSeeder::class,
             AdministratorSeeder::class,
-            // Tambahkan seeder lain di sini seiring pengembangan
-            // (mis. OrganizationSeeder saat Fase 06 HR dibangun)
+            PricingPlanSeeder::class,
         ]);
     }
 }

@@ -29,6 +29,7 @@ class ScoringController extends Controller
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat melihat pratinjau skor.');
         abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan form skor manual.');
+        abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
         $skorPerAspek = collect($request->validated('skor'))
             ->mapWithKeys(fn (array $entry) => [$entry['kode'] => (int) $entry['skor']])
@@ -52,6 +53,7 @@ class ScoringController extends Controller
         abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan form skor manual.');
         abort_if($sample->status === 'completed', 422, 'Sample ini sudah memiliki laporan selesai, tidak bisa diisi ulang.');
+        abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
         $report = DB::transaction(function () use ($request, $sample) {
             $report = PersonalityReport::create([

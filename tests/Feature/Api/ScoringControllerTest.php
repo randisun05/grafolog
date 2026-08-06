@@ -4,6 +4,8 @@ namespace Tests\Feature\Api;
 
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
+use App\Models\Payment;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsGrafologiKb;
@@ -241,5 +243,77 @@ class ScoringControllerTest extends TestCase
             ->postJson("/api/samples/{$sample->id}/scores/preview", $this->skorPayload(1));
 
         $response->assertForbidden();
+    }
+
+    public function test_unpaid_client_sourced_sample_blocks_scoring(): void
+    {
+        // Commerce inisiatif: Project.source === 'client' wajib lunas dulu.
+        $this->seedMinimalAspek(3);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $client = User::factory()->create();
+        $project = Project::create(['source' => 'client', 'created_by' => $client->id]);
+        $sample = HandwritingSample::create([
+            'project_id' => $project->id,
+            'user_id' => $client->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        $preview = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores/preview", $this->skorPayload(1));
+        $preview->assertStatus(402);
+
+        $submit = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+        $submit->assertStatus(402);
+        $this->assertDatabaseCount('personality_reports', 0);
+    }
+
+    public function test_paid_client_sourced_sample_allows_scoring(): void
+    {
+        $this->seedMinimalAspek(3);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $client = User::factory()->create();
+        $project = Project::create(['source' => 'client', 'created_by' => $client->id]);
+        $sample = HandwritingSample::create([
+            'project_id' => $project->id,
+            'user_id' => $client->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+        Payment::create([
+            'sample_id' => $sample->id, 'invoice_number' => 'INV-PAID-1',
+            'amount' => 49000, 'status' => 'paid',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertCreated();
+    }
+
+    public function test_grafolog_and_hr_sourced_samples_are_not_payment_gated(): void
+    {
+        // Sample tanpa project (pola paling umum di test lain di file ini)
+        // dan sample dengan project source hr/grafolog harus tetap bisa
+        // discor tanpa Payment sama sekali - gate cuma untuk source client.
+        $this->seedMinimalAspek(3);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+
+        $hrProject = Project::create(['source' => 'hr', 'created_by' => $grafolog->id]);
+        $sample = HandwritingSample::create([
+            'project_id' => $hrProject->id,
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertCreated();
     }
 }
