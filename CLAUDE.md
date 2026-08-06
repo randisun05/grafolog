@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **129 tests as of 2026-08-06** (up from 6).
+- Tests: `php artisan test` — **137 tests as of 2026-08-06** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -96,10 +96,11 @@ die silently between tool calls with no log output at all.
 - `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
   passthrough, returns source text unchanged, no network call).
 
-## Routes (32 total, `routes/api.php`)
+## Routes (35 total, `routes/api.php`)
 
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
+GET  /api/content                                (PUBLIC, no auth → ContentController — homepage CMS text)
 POST /api/auth/logout, GET /api/auth/me          (auth:sanctum, throttle:60,1)
 GET  /api/pricing                                (PUBLIC, no auth → PricingController@index — active price per tier)
 POST /api/pricing/preview                        (auth:sanctum → PricingController@preview — tier + optional discount code → final price)
@@ -119,6 +120,7 @@ GET/POST /api/admin/users                        (auth:sanctum, role:administrat
 GET/POST /api/admin/companies                    (auth:sanctum, role:administrator → CompanyController)
 GET  /api/admin/pricing, PUT /api/admin/pricing/{tier} (auth:sanctum, role:administrator → Admin\PricingController)
 GET/POST/PATCH /api/admin/discount-codes[/{id}]  (auth:sanctum, role:administrator → Admin\DiscountCodeController)
+GET/PUT /api/admin/content[/{key}]               (auth:sanctum, role:administrator → Admin\ContentBlockController)
 POST /api/hr/candidates/import                   (auth:sanctum, role:hr → CandidateImportController)
 ```
 
@@ -141,7 +143,8 @@ both cases; `php artisan test` still 6/6 passing.
   `IndikatorCrossReference`, `MeasurementVariable`, `MeasurementCategory`,
   `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`, `Project`,
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
-  `PricingPlan`, `DiscountCode`, `Company`, `Assignment`, `AuditLog`.
+  `PricingPlan`, `DiscountCode`, `ContentBlock`, `Company`, `Assignment`,
+  `AuditLog`.
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone
@@ -497,6 +500,37 @@ both cases; `php artisan test` still 6/6 passing.
   logic in isolation), `tests/Feature/Api/Admin/DiscountCodeControllerTest.php`
   (admin CRUD + audit log), `tests/Feature/Api/PricingPreviewControllerTest.php`
   (the preview endpoint, including the invalid-code-doesn't-error case).
+
+## Homepage CMS — added 2026-08-06 (Commerce Fase E)
+
+- **`content_blocks` table / `App\Models\ContentBlock`**: a flat
+  key-value store, deliberately **not** a page-builder (business decision
+  2026-08-06). `ContentBlock::EDITABLE_KEYS` is the whitelist of keys an
+  admin can write (`landing_eyebrow`, `landing_tagline`,
+  `landing_cta_label` as of writing) — `Admin\ContentBlockController::update`
+  404s on anything else. **Adding a new editable field means updating
+  `EDITABLE_KEYS` AND `database/seeders/ContentBlockSeeder.php`'s
+  defaults, both — the seeder's defaults exist specifically so a fresh
+  install (or one where an admin never touched a field) still shows
+  sensible text, not a blank string.**
+- **`GET /api/content`** (public, no auth): returns a **flat** `{key:
+  value}` object (`ContentBlock::pluck('value', 'key')`), not a paginated
+  list — this is the shape `LandingView.vue` actually consumes directly,
+  don't change it to a list-of-objects without updating the frontend to
+  match.
+- **Admin CRUD**: `GET/PUT /api/admin/content[/{key}]`
+  (`Admin\ContentBlockController`, `role:administrator`). `update()` uses
+  `updateOrCreate` keyed on `key`, so calling it on a key with no existing
+  row creates one — there's no separate "create" step the frontend needs
+  to worry about. Every update is `AuditLog::record('ubah_konten', ...)`-ed,
+  same pattern as pricing/discount changes.
+- **Seeder values are the exact text that used to be hardcoded in
+  `LandingView.vue`** before this feature existed — migrating to the CMS
+  changed zero visible content until an admin actually edits a field
+  through `/admin/content`.
+- Tests: `tests/Feature/Api/ContentControllerTest.php` (public endpoint,
+  flat shape), `tests/Feature/Api/Admin/ContentBlockControllerTest.php`
+  (admin CRUD, unknown-key rejection, audit log, update-not-duplicate).
 
 ## Hard constraints (user-stated, still in force)
 
