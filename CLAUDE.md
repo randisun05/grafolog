@@ -17,8 +17,22 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
-  `AdminPricingView`, `AdminDiscountsView`, `AssignedToMeView`,
-  `HrCandidatesView`, `OrderView`, `NotFoundView`.
+  `AdminPricingView`, `AdminDiscountsView`, `AdminContentView`,
+  `AssignedToMeView`, `HrCandidatesView`, `OrderView`, `NotFoundView`.
+  **`AdminContentView` added 2026-08-06** (Commerce Fase E) —
+  `/admin/content`, `role: 'administrator'`. One input/textarea per field
+  in a local `fields` array that **must match** `ContentBlock::
+  EDITABLE_KEYS` on the backend — they're not derived from each other, if
+  you add a field on one side add it on the other too. Save button per
+  field, not one combined form submit. **`LandingView.vue` changed
+  2026-08-06** — no longer static template text. On mount it fetches
+  `GET /api/content` and merges the result over a hardcoded defaults
+  object that's still in the component (not deleted) — if the API call
+  fails or is slow, the page silently keeps showing those defaults rather
+  than an empty hero. Don't remove the defaults object thinking it's now
+  dead code; it's the fallback path, and there's no loading spinner gating
+  the initial render specifically so the page is never blank while
+  waiting.
   **`OrderView` added 2026-08-06** (Commerce Fase D) — `/pesan`,
   `role: 'user'` (the plain-client role only; `auth.isClient` in
   `stores/auth.js`, mirrors `isGrafolog`/`isHr`/etc). Tier cards from
