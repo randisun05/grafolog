@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\CompanyController;
+use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\PaymentController;
@@ -28,6 +30,7 @@ Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentContr
 
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);
+Route::get('/content', [ContentController::class, 'index']);
 
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -62,6 +65,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/discount-codes', [DiscountCodeController::class, 'index']);
         Route::post('/discount-codes', [DiscountCodeController::class, 'store']);
         Route::patch('/discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
+        Route::get('/content', [AdminContentBlockController::class, 'index']);
+        Route::put('/content/{key}', [AdminContentBlockController::class, 'update']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             GrafologiKnowledgeSeeder::class,
             AdministratorSeeder::class,
             PricingPlanSeeder::class,
+            ContentBlockSeeder::class,
         ]);
     }
 }
