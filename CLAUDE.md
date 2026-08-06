@@ -18,8 +18,33 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
   `AdminPricingView`, `AdminDiscountsView`, `AdminContentView`,
-  `AdminAnnouncementsView`, `AssignedToMeView`, `HrCandidatesView`,
-  `OrderView`, `NotFoundView`.
+  `AdminAnnouncementsView`, `AdminTokensView`, `TokenWalletView`,
+  `AssignedToMeView`, `HrCandidatesView`, `OrderView`, `NotFoundView`.
+  **`AdminTokensView` + `TokenWalletView` added 2026-08-07** (grafolog
+  token system, see root `ROADMAP.md`'s "Inisiatif — Token Grafolog").
+  `AdminTokensView` (`/admin/tokens`, `role: 'administrator'`) has two
+  independent sections in one page — price per token
+  (`GET/PUT /api/admin/token-price`) and tokens-required per tier
+  (`GET/PUT /api/admin/token-costs/{tier}`) — each with its own draft/save/
+  history, same structural pattern as `AdminPricingView` duplicated twice
+  in one component rather than two separate routes, since an admin tuning
+  the token economy needs both at once. `TokenWalletView`
+  (`/token-saya`, `role: 'grafolog'`) shows `GET /api/tokens/wallet`'s
+  balance + last 20 ledger transactions, plus a buy form (quantity +
+  optional discount code previewed via `POST /api/tokens/preview`) that
+  posts to `POST /api/tokens/purchase` and hard-redirects to DOKU's
+  `payment_url` exactly like `OrderView` does — **same untested-past-503
+  caveat applies**: the actual DOKU redirect has never been exercised
+  (blocked on Commerce Fase C's sandbox credentials), only the clean-503
+  failure path is verified. Nav link "Kelola Token" (administrator) /
+  "Token Saya" (grafolog) + `CommandPalette.vue` entries.
+  `AdminDiscountsView.vue`'s tier checkboxes gained a third option,
+  `token`, so a discount code can be scoped to token purchases the same
+  way it's scoped to comprehensive/master — no other change needed there,
+  `applicable_tiers` was already a free-form array on the backend.
+  `DashboardView.vue` needed **no changes** for the new "Sisa Token" KPI
+  card — its `v-for="kpi in dashboard.kpi"` already renders whatever the
+  API sends generically.
   **`AdminAnnouncementsView` added 2026-08-06** (Commerce Fase F) —
   `/admin/announcements`, `role: 'administrator'`. Create form (title,
   body, optional target-role checkboxes from a local `roleOptions` array —
