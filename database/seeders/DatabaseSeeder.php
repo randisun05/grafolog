@@ -10,8 +10,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             GrafologiKnowledgeSeeder::class,
+            AdministratorSeeder::class,
             // Tambahkan seeder lain di sini seiring pengembangan
-            // (mis. UserSeeder, OrganizationSeeder saat sudah dibangun)
+            // (mis. OrganizationSeeder saat Fase 06 HR dibangun)
         ]);
     }
 }

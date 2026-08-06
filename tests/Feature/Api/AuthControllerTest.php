@@ -79,6 +79,23 @@ class AuthControllerTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('role');
     }
 
+    public function test_register_rejects_administrator_and_supervisor_roles(): void
+    {
+        // MGA Fase 05: hanya user/grafolog boleh daftar sendiri. administrator/
+        // supervisor cuma bisa dibuat lewat POST /api/admin/users oleh admin.
+        foreach (['administrator', 'supervisor'] as $role) {
+            $response = $this->postJson('/api/auth/register', [
+                'name' => 'Someone',
+                'email' => "sneaky-$role@example.com",
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => $role,
+            ]);
+
+            $response->assertUnprocessable()->assertJsonValidationErrors('role');
+        }
+    }
+
     public function test_login_succeeds_with_correct_credentials(): void
     {
         User::factory()->create([

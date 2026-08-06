@@ -23,6 +23,16 @@ class User extends Authenticatable
         return $this->role === 'grafolog';
     }
 
+    public function isAdministrator(): bool
+    {
+        return $this->role === 'administrator';
+    }
+
+    public function isSupervisor(): bool
+    {
+        return $this->role === 'supervisor';
+    }
+
     /**
      * Get the attributes that should be cast.
      *
