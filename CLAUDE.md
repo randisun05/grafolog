@@ -17,7 +17,14 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
-  `AssignedToMeView`, `HrCandidatesView`, `NotFoundView`.
+  `AdminPricingView`, `AssignedToMeView`, `HrCandidatesView`, `NotFoundView`.
+  **`AdminPricingView` added 2026-08-06** (Commerce Fase A, see root
+  `ROADMAP.md`'s "Inisiatif — Commerce & CMS") — `/admin/pricing`,
+  `role: 'administrator'`. Shows the active price + change history per
+  tier, inline edit backed by `GET/PUT /api/admin/pricing[/{tier}]`. Same
+  admin-page pattern as `AdminUsersView`/`HrCandidatesView` (toast on
+  success, reload list after mutation). Nav link "Kelola Harga" +
+  `CommandPalette.vue` entry.
   **`HrCandidatesView` + `AssignedToMeView` added 2026-08-06** (MGA Fase
   06). `HrCandidatesView` (`/hr/candidates`, `role: 'hr'`): CSV upload form
   + a candidate table reusing `GET /api/samples` (already scoped to the HR
