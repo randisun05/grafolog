@@ -17,7 +17,16 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
-  `AdminPricingView`, `AssignedToMeView`, `HrCandidatesView`, `NotFoundView`.
+  `AdminPricingView`, `AdminDiscountsView`, `AssignedToMeView`,
+  `HrCandidatesView`, `NotFoundView`.
+  **`AdminDiscountsView` added 2026-08-06** (Commerce Fase B) —
+  `/admin/discounts`, `role: 'administrator'`. Create form (code auto-
+  uppercases server-side, type percentage/fixed, optional tier checkboxes,
+  optional quota/expiry) + a table with an activate/deactivate toggle
+  (`PATCH /api/admin/discount-codes/{id}`, `is_active` only — there's no
+  edit for value/quota after creation, see `guratan-api/CLAUDE.md`'s
+  "Discount codes" section for why). Same admin-page pattern as the other
+  admin views. Nav link "Kelola Diskon" + `CommandPalette.vue` entry.
   **`AdminPricingView` added 2026-08-06** (Commerce Fase A, see root
   `ROADMAP.md`'s "Inisiatif — Commerce & CMS") — `/admin/pricing`,
   `role: 'administrator'`. Shows the active price + change history per
