@@ -2,6 +2,7 @@
 import { RouterView } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import ToastNotification from '@/components/shared/ToastNotification.vue'
+import CommandPalette from '@/components/shared/CommandPalette.vue'
 </script>
 
 <template>
@@ -13,6 +14,7 @@ import ToastNotification from '@/components/shared/ToastNotification.vue'
     </main>
 
     <ToastNotification />
+    <CommandPalette />
   </div>
 </template>
 
