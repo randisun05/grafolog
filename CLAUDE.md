@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **152 tests as of 2026-08-06** (up from 6).
+- Tests: `php artisan test` — **190 tests as of 2026-08-07** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -96,7 +96,7 @@ die silently between tool calls with no log output at all.
 - `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
   passthrough, returns source text unchanged, no network call).
 
-## Routes (39 total, `routes/api.php`)
+## Routes (47 total, `routes/api.php`)
 
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
@@ -123,6 +123,12 @@ GET/POST/PATCH /api/admin/discount-codes[/{id}]  (auth:sanctum, role:administrat
 GET/PUT /api/admin/content[/{key}]               (auth:sanctum, role:administrator → Admin\ContentBlockController)
 GET  /api/announcements                          (auth:sanctum, → AnnouncementController@index — visible-to-me only)
 GET/POST/PUT /api/admin/announcements[/{id}]     (auth:sanctum, role:administrator → Admin\AnnouncementController)
+GET  /api/tokens/price                           (auth:sanctum → TokenController@price — current price per token, null if unset)
+GET  /api/tokens/wallet                          (auth:sanctum, role:grafolog → TokenController@wallet — balance + recent ledger)
+POST /api/tokens/preview                         (auth:sanctum, role:grafolog → TokenController@preview — quantity + optional code → final amount)
+POST /api/tokens/purchase                        (auth:sanctum, role:grafolog → TokenPurchaseController@store — starts DOKU checkout)
+GET/PUT /api/admin/token-price                   (auth:sanctum, role:administrator → Admin\TokenPriceController)
+GET/PUT /api/admin/token-costs[/{tier}]          (auth:sanctum, role:administrator → Admin\TokenCostController)
 POST /api/hr/candidates/import                   (auth:sanctum, role:hr → CandidateImportController)
 ```
 
@@ -146,7 +152,8 @@ both cases; `php artisan test` still 6/6 passing.
   `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`, `Project`,
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
   `PricingPlan`, `DiscountCode`, `ContentBlock`, `Announcement`, `Company`,
-  `Assignment`, `AuditLog`.
+  `Assignment`, `AuditLog`, `TokenPrice`, `TokenCost`, `TokenPurchase`,
+  `TokenLedgerEntry`.
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone
@@ -573,6 +580,77 @@ both cases; `php artisan test` still 6/6 passing.
   `tests/Feature/Api/AnnouncementControllerTest.php` (public endpoint,
   role-filtering behavior), `tests/Feature/Api/Admin/AnnouncementControllerTest.php`
   (admin CRUD, validation, audit log).
+
+## Token system for grafolog — added 2026-08-07
+
+- **Grafolog spend tokens to generate reports.** `TokenCost` (per tier)
+  and `TokenPrice` (per-token Rupiah, buying tokens) both use the exact
+  history-preserving pattern as `PricingPlan::setPriceFor()` — changing a
+  value deactivates the old row, creates a new one. **Both tables start
+  EMPTY** — `TokenCost::activeTokensFor($tier)` returning `null` is
+  treated as `0` (no gate) in `ScoringController::submit`, deliberately,
+  so this feature does not silently block any existing grafolog before an
+  admin turns it on by setting a cost via `/admin/tokens`.
+- **`TokenWalletService` is the ONLY place allowed to change
+  `User::token_balance`.** `credit()`/`debit()` lock the user row
+  (`lockForUpdate`) and write one immutable `token_ledger_entries` row
+  (with `balance_after` snapshotted) in the same transaction — the cached
+  `users.token_balance` column and the ledger can never drift apart even
+  under concurrent requests. `debit()` throws a 402 when balance is
+  insufficient (`abort_if`) — this is called from *inside*
+  `ScoringController::submit`'s existing `DB::transaction`, right after
+  the report is created, so an insufficient-balance report is never
+  partially persisted; there's also a fast pre-check `abort_if` before the
+  transaction even opens, for a quick 402 without doing any work first.
+  `User::token_balance` is technically fillable (added to the `#[Fillable]`
+  attribute so `User::factory()->create(['token_balance' => N])` works in
+  tests) but `TokenWalletService` still writes it via `forceFill()` as the
+  one authorized path — no controller should ever set it directly.
+- **Token purchases reuse the DOKU integration, not a second payment
+  flow.** `DokuService::createCheckout()` no longer type-hints `Payment` —
+  it takes `(string $invoiceNumber, int $amount, string $currency, ...)`
+  as plain arguments, so both `Payment` (sample checkout) and the new
+  `TokenPurchase` share one implementation. **DOKU Back Office only has
+  ONE Notification URL** (configured outside this codebase, not per
+  request), so `PaymentController::notification` now looks up the
+  invoice_number in `Payment` first, then `TokenPurchase` — distinguished
+  by prefix (`INV-` vs `TOKEN-`) — and dispatches to
+  `handleSamplePaymentNotification()` or `handleTokenPurchaseNotification()`
+  accordingly. Tokens are only credited (`TokenWalletService::credit()`)
+  on a genuine `SUCCESS` transition, guarded by `$wasAlreadyPaid` against
+  double-crediting a retried webhook — same pattern as discount usage.
+- **Discount codes now also apply to token purchases.**
+  `StoreDiscountCodeRequest`'s `applicable_tiers.*` accepts `token` in
+  addition to `comprehensive`/`master` — `DiscountCode::isValidFor('token')`
+  and `amountOff()` are called completely unchanged, no separate discount
+  logic for tokens anywhere.
+- **`TokenController`** (public/authenticated reads only — `price()`,
+  `wallet()`, `preview()`) is kept separate from **`TokenPurchaseController`**
+  (the one action that actually starts a DOKU checkout), mirroring the
+  `PricingController` (read) vs `PaymentController` (action) split
+  elsewhere in this codebase.
+- `DashboardController`'s grafolog KPI list gained `token_balance` /
+  "Sisa Token" — no other backend change needed for it to show up, the
+  frontend's KPI cards already render generically from that array.
+- Tests: `tests/Unit/TokenWalletServiceTest.php` (credit/debit/402 in
+  isolation), `tests/Feature/Api/TokenControllerTest.php`,
+  `tests/Feature/Api/TokenPurchaseControllerTest.php`, two new methods in
+  `tests/Feature/Api/ScoringControllerTest.php` (gate blocks/allows +
+  deducts), two new methods in `tests/Feature/Api/PaymentControllerTest.php`
+  (webhook credits tokens, does not double-credit a retried SUCCESS),
+  `tests/Feature/Api/Admin/TokenPriceControllerTest.php`,
+  `tests/Feature/Api/Admin/TokenCostControllerTest.php`.
+- **Live-verified against the real dev DB, not just tests** (2026-08-07):
+  admin set a price/cost via the browser, dashboard showed the new KPI,
+  the wallet page's buy flow failed cleanly on unconfigured DOKU (same
+  503 as `OrderView`), and the full gate lifecycle — blocked at balance 0
+  → credited via `TokenWalletService::credit()` directly (no real DOKU
+  webhook possible without sandbox credentials) → submit succeeded and
+  deducted exactly the configured amount, ledger entry linked to the
+  resulting report — was confirmed through direct API calls. All test
+  data was cleaned up and `token_prices`/`token_costs` reset back to
+  inactive afterward, so the gate stays off for other dev accounts until
+  an admin deliberately configures it for real.
 
 ## Hard constraints (user-stated, still in force)
 
