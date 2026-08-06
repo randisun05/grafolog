@@ -16,7 +16,19 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 ## Structure (as of 2026-08-01 — Rapid tier retired, see below)
 
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
-  `RiwayatView`, `ReportView`, `PortalGrafologView`, `NotFoundView`.
+  `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
+  `NotFoundView`.
+  **`AdminUsersView` added 2026-08-03** (MGA pivot Fase 05) — `/admin/users`,
+  gated by `meta: { role: 'administrator' }` in the router (same pattern as
+  `/portal-grafolog`'s `role: 'grafolog'`). Create-staff-account form +
+  live table, backed by `GET/POST /api/admin/users`. Nav link "Kelola Staf"
+  shows only for `auth.isAdministrator` (new computed in `stores/auth.js`,
+  mirrors `isGrafolog`). **This is the one UI change in the project
+  actually confirmed rendering correctly in a real browser** (Playwright,
+  ad-hoc via `npx playwright install chromium` — no project skill for this
+  existed yet, worth generating one via `/run-skill-generator` if this
+  becomes a recurring need). Every other view in this file's "not visually
+  verified" notes is still just build/lint-checked.
   **`DashboardView` added 2026-08-01** (MGA pivot Fase 03) — 4 KPI cards +
   5-item activity feed from `GET /api/dashboard`, now the post-login landing
   page (`/dashboard`; login/register/guestOnly-guard all redirect here
