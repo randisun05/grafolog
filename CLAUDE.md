@@ -18,7 +18,22 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
   `AdminPricingView`, `AdminDiscountsView`, `AssignedToMeView`,
-  `HrCandidatesView`, `NotFoundView`.
+  `HrCandidatesView`, `OrderView`, `NotFoundView`.
+  **`OrderView` added 2026-08-06** (Commerce Fase D) — `/pesan`,
+  `role: 'user'` (the plain-client role only; `auth.isClient` in
+  `stores/auth.js`, mirrors `isGrafolog`/`isHr`/etc). Tier cards from
+  `GET /api/pricing`, optional discount code applied via
+  `POST /api/pricing/preview` for a live total before paying. "Bayar
+  Sekarang" calls `POST /api/samples` then `POST /api/samples/{id}/payment`
+  — two existing endpoints, no new backend endpoint for this view. On
+  success it does a hard `window.location.href` redirect to DOKU's
+  `payment_url` (leaves the SPA entirely, this is intentional — DOKU's
+  checkout page isn't ours). **The actual DOKU redirect has never been
+  tested** — no sandbox credentials yet (Commerce Fase C). What *is*
+  verified: the failure path — with DOKU unconfigured,
+  `PaymentController::store` returns a clean 503 (see
+  `guratan-api/CLAUDE.md`'s "DOKU config errors are caught" note) and this
+  view shows it as an inline message + toast, not a crash.
   **`AdminDiscountsView` added 2026-08-06** (Commerce Fase B) —
   `/admin/discounts`, `role: 'administrator'`. Create form (code auto-
   uppercases server-side, type percentage/fixed, optional tier checkboxes,
