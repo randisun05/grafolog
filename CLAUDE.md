@@ -17,18 +17,35 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
-  `NotFoundView`.
+  `AssignedToMeView`, `HrCandidatesView`, `NotFoundView`.
+  **`HrCandidatesView` + `AssignedToMeView` added 2026-08-06** (MGA Fase
+  06). `HrCandidatesView` (`/hr/candidates`, `role: 'hr'`): CSV upload form
+  + a candidate table reusing `GET /api/samples` (already scoped to the HR
+  user via `created_by` — no new list endpoint needed), with inline
+  grafolog assignment (dropdown fed by `GET /api/grafologs`, posts to the
+  existing assignment endpoint). `AssignedToMeView`
+  (`/grafolog/ditugaskan`, `role: 'grafolog'`): lists every non-completed
+  sample visible to the grafolog — both self-created and HR-assigned, since
+  `GET /api/samples` now covers both — linking into
+  `PortalGrafologView`'s new resume flow. **`PortalGrafologView` now
+  accepts a `?sampleId=` query param**: on mount, if present, it fetches
+  that sample and jumps straight to step 2 (skipping the client-lookup
+  step), which is what makes an HR-assigned sample actually reachable —
+  the original flow only ever populated `sample` via lookup-then-create.
+  `stores/auth.js` gets `isHr`.
   **`AdminUsersView` added 2026-08-03** (MGA pivot Fase 05) — `/admin/users`,
   gated by `meta: { role: 'administrator' }` in the router (same pattern as
   `/portal-grafolog`'s `role: 'grafolog'`). Create-staff-account form +
   live table, backed by `GET/POST /api/admin/users`. Nav link "Kelola Staf"
   shows only for `auth.isAdministrator` (new computed in `stores/auth.js`,
-  mirrors `isGrafolog`). **This is the one UI change in the project
-  actually confirmed rendering correctly in a real browser** (Playwright,
-  ad-hoc via `npx playwright install chromium` — no project skill for this
-  existed yet, worth generating one via `/run-skill-generator` if this
-  becomes a recurring need). Every other view in this file's "not visually
-  verified" notes is still just build/lint-checked.
+  mirrors `isGrafolog`). **Browser-verified in Fase 05 and again in Fase
+  06** (Playwright, ad-hoc via `npx playwright install chromium` — no
+  project skill for this existed yet, worth generating one via
+  `/run-skill-generator` if this becomes a recurring need): Fase 06's
+  script drove the *entire* HR→assignment→grafolog-scoring loop across two
+  browser contexts and screenshotted every step, zero console errors. Every
+  view NOT touched by Fase 05/06 is still only build/lint-checked — say so
+  explicitly if asked.
   **`DashboardView` added 2026-08-01** (MGA pivot Fase 03) — 4 KPI cards +
   5-item activity feed from `GET /api/dashboard`, now the post-login landing
   page (`/dashboard`; login/register/guestOnly-guard all redirect here
