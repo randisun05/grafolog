@@ -28,9 +28,11 @@ the DB level but always set by `SampleController::store`). A Project has a
 a **different axis than `tier`**, not a replacement for it; `tier`
 (comprehensive/master) still lives on the sample and still drives pricing.
 Schema-wise `Project` supports 1 project : many samples (agreed with the
-user for the future HR bulk-candidate case), but nothing in the app
-currently creates more than one sample per project — `SampleController::store`
-always creates exactly one new `Project` per new sample. Existing samples
+user for the HR bulk-candidate case). `SampleController::store` (the
+original grafolog/self-service flow) still always creates exactly one new
+`Project` per new sample — **`CandidateImportController` (Fase 06) is the
+first place that actually uses the 1:many shape**, creating one `Project`
+(`source: hr`) holding every candidate row from one CSV upload. Existing samples
 were backfilled 1:1 (one project per pre-existing sample, source inferred
 from the sample's creator role) — see
 `database/migrations/2026_08_01_144019_add_project_id_to_handwriting_samples_table.php`.
@@ -80,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **64 tests as of 2026-08-03** (up from 6).
+- Tests: `php artisan test` — **92 tests as of 2026-08-06** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -94,7 +96,7 @@ die silently between tool calls with no log output at all.
 - `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
   passthrough, returns source text unchanged, no network call).
 
-## Routes (20 total, `routes/api.php`)
+## Routes (26 total, `routes/api.php`)
 
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
@@ -104,12 +106,16 @@ GET/POST /api/samples, GET /api/samples/{sample} (auth:sanctum)
 POST /api/samples/{sample}/scores/preview         (auth:sanctum, → ScoringController@preview — live calc, no persistence)
 POST /api/samples/{sample}/scores                (auth:sanctum, → ScoringController@submit)
 POST /api/samples/{sample}/payment               (auth:sanctum, → PaymentController@store)
+POST /api/samples/{sample}/assignment            (auth:sanctum, role:hr,administrator → AssignmentController@store)
 POST /api/payments/notification                  (throttle:30,1, PUBLIC — DOKU webhook, no Sanctum)
 GET  /api/reports, /api/reports/{report}         (auth:sanctum, +log.report_access on show/pdf)
 GET  /api/reports/{report}/pdf                   (auth:sanctum, +log.report_access)
 GET  /api/sindrom                                (auth:sanctum)
 GET  /api/users/lookup                           (auth:sanctum, throttle:15,1 — grafolog-only, exact-email lookup)
+GET  /api/grafologs                              (auth:sanctum, role:hr,administrator → UserLookupController@grafologs)
 GET/POST /api/admin/users                        (auth:sanctum, role:administrator → AdminUserController)
+GET/POST /api/admin/companies                    (auth:sanctum, role:administrator → CompanyController)
+POST /api/hr/candidates/import                   (auth:sanctum, role:hr → CandidateImportController)
 ```
 
 **Fixed 2026-07-27**: an unauthenticated request to any `auth:sanctum` route
@@ -211,14 +217,19 @@ both cases; `php artisan test` still 6/6 passing.
 
 - `users.role` enum: `user` (client), `grafolog`, `administrator`,
   `supervisor` — expanded from just `user`/`grafolog` via
-  `database/migrations/2026_08_03_060730_expand_users_role_enum.php`. That
-  migration is **driver-aware**: raw `ALTER TABLE ... MODIFY COLUMN` for
+  `database/migrations/2026_08_03_060730_expand_users_role_enum.php`, then
+  `hr` added on top of that via
+  `database/migrations/2026_08_06_090915_add_hr_role_and_companies.php`
+  (Fase 06) — **all 5 roles from the original MGA plan now exist**. Both
+  migrations are **driver-aware**: raw `ALTER TABLE ... MODIFY COLUMN` for
   real MySQL (doctrine/dbal isn't installed, same reason as the `Project`
   migration), `Schema::table()->enum()->change()` for the sqlite test DB
   (Laravel's sqlite grammar rebuilds the table natively, no doctrine/dbal
-  needed there). If you ever add another role, update **both** branches.
-- `User::isAdministrator()` / `isSupervisor()` mirror the existing
-  `isGrafolog()`.
+  needed there). If you ever add another role, update **both** branches in
+  a new migration (don't edit the old ones).
+- `User::isAdministrator()` / `isSupervisor()` / `isHr()` mirror the
+  existing `isGrafolog()`. `User::company()` (`belongsTo Company`) is
+  `hr`-specific — `null` for every other role.
 - **New generic middleware** `App\Http\Middleware\EnsureUserHasRole`
   (aliased `role` in `bootstrap/app.php`) — `Route::middleware('role:administrator')`.
   This is the intended pattern for any *new* role-gated route going
@@ -231,11 +242,13 @@ both cases; `php artisan test` still 6/6 passing.
   which reads `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` from `.env` via
   `config/admin.php` and silently no-ops if the email/password aren't set —
   it will never create an account with a guessable default password. Every
-  subsequent administrator/supervisor/grafolog account is created by an
-  already-logged-in Administrator via `POST /api/admin/users`
+  subsequent administrator/supervisor/grafolog/**hr** account is created by
+  an already-logged-in Administrator via `POST /api/admin/users`
   (`AdminUserController`, `StoreStaffUserRequest`) — **not** by re-running
-  the seeder and **not** via public registration. `RegisterRequest` still
-  only accepts `role: user|grafolog`; this is enforced by a test
+  the seeder and **not** via public registration. `role: hr` additionally
+  **requires** `company_id` in that same request (the company must already
+  exist — `POST /api/admin/companies` first). `RegisterRequest` still only
+  accepts `role: user|grafolog`; this is enforced by a test
   (`test_register_rejects_administrator_and_supervisor_roles`) — if that
   test ever needs to change, it means the provisioning decision changed and
   root `ROADMAP.md` / memory need updating too.
@@ -244,6 +257,73 @@ both cases; `php artisan test` still 6/6 passing.
   That was explicitly deferred (see ROADMAP.md Fase 05 entry), not
   forgotten — don't build it speculatively without a product decision on
   what a supervisor actually reviews.
+
+## HR: Company, Candidate import, Assignment — added 2026-08-06 (MGA Fase 06)
+
+- **`Company`** (`app/Models/Company.php`): `name`, `created_by`. Created
+  by an Administrator via `POST /api/admin/companies`
+  (`Api\Admin\CompanyController`) — must exist before an `hr` user can be
+  created for it.
+- **"Candidate" is intentionally not a new table/model.** A candidate is a
+  regular `User` (`role: user`, `company_id` set to the importing HR's
+  company). This is a deliberate reuse decision — it means `Project`,
+  `HandwritingSample.user_id`, `ReportController`, `ReportView.vue`, PDF
+  export, everything downstream works completely unchanged for HR-sourced
+  candidates. Don't build a separate `Candidate` model; if a real need for
+  candidate-specific fields shows up later (resume, applied position, ...),
+  extend `users` or add a `candidate_profiles` table keyed to `user_id`,
+  don't fork the identity.
+- **`Api\Hr\CandidateImportController::import`** (`POST
+  /api/hr/candidates/import`, `role:hr`): accepts a CSV file upload
+  (`name,email` header, parsed with native `fgetcsv` — no CSV library
+  dependency added), creates **one** `Project` (`source: hr`) and **one**
+  `HandwritingSample` per valid row, all inside a DB transaction. Validates
+  every row before creating anything — one bad row fails the whole import
+  (422 with a `line`-numbered error list), nothing partial gets committed.
+  Existing-email handling: an email already belonging to a non-`user` role
+  is rejected (can't turn a staff account into a candidate); an email
+  belonging to a `user` in a *different* company is rejected; an email
+  belonging to an unaffiliated `user` (`company_id === null`, e.g. a
+  self-registered individual client) gets that `company_id` attached but
+  its name/password are never touched.
+- **`assignments` table / `App\Models\Assignment`**: one row per sample
+  (`sample_id` is `unique`), `grafolog_id`, `assigned_by`, `status`
+  (`assigned`/`completed`). This is the mechanism that decouples "who owns
+  the candidate relationship" (`handwriting_samples.created_by` — the HR
+  user for imported candidates) from "who actually scores it" (the
+  assigned grafolog, who is very likely a *different* user). Reassigning a
+  sample **updates** the existing row rather than adding a new one —
+  there's no assignment history, only current state.
+- **`Api\AssignmentController::store`** (`POST
+  /api/samples/{sample}/assignment`, `role:hr,administrator`): HR can only
+  assign samples they own (`created_by === $user->id`); Administrator can
+  assign any sample. Target must have `role: grafolog` (422 otherwise).
+- **Authorization extension is additive, not a rewrite.** Two new
+  `HandwritingSample` methods —
+  `isScorableBy(User $user)` (`created_by === user OR assignment->grafolog_id === user`)
+  and `isViewableBy(User $user)` (same, plus `user_id === user`) — are now
+  used by `ScoringController::preview/submit`, `SampleController::
+  show/index`, and `ReportController::index/authorizeAccess`, **replacing**
+  their old inline `created_by === user.id` checks with calls to these
+  helpers. The original behavior for the grafolog-direct flow is
+  unchanged; assignment-based access is a pure OR addition. When
+  `ScoringController::submit` completes a report, it also flips the
+  sample's `assignment->status` to `completed` if one exists
+  (`$sample->assignment?->update(...)` — the `?->` matters, most samples
+  have no assignment at all).
+- **`GET /api/grafologs`** (`role:hr,administrator`,
+  `UserLookupController::grafologs`): flat list of all grafolog accounts
+  (id/name/email only) — feeds the assignment dropdown in
+  `HrCandidatesView.vue`. Distinct from the older `GET /api/users/lookup`
+  (grafolog-only, exact-email match for finding a *client*) — don't
+  conflate the two.
+- **Deferred on purpose, not forgotten**: Billing/Subscription for company
+  plans — no pricing model has been decided for this, it's a business
+  decision, not a technical one, don't build a `Subscription` table
+  speculatively. Also deferred: an admin-facing "Master Data" editor and a
+  cross-project Reports view (mentioned in the original MGA plan's Fase 05
+  admin panel, still not built), and any bulk-reassignment or
+  assignment-history UI.
 
 ## Payment (DOKU) — added 2026-07-27
 
