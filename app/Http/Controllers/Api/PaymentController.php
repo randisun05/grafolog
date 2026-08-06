@@ -8,7 +8,9 @@ use App\Models\DiscountCode;
 use App\Models\HandwritingSample;
 use App\Models\Payment;
 use App\Models\PricingPlan;
+use App\Models\TokenPurchase;
 use App\Services\Payment\DokuService;
+use App\Services\TokenWalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +19,7 @@ use RuntimeException;
 
 class PaymentController extends Controller
 {
-    public function __construct(private DokuService $doku) {}
+    public function __construct(private DokuService $doku, private TokenWalletService $tokenWallet) {}
 
     /**
      * Mulai pembayaran DOKU untuk satu sample tier comprehensive/master.
@@ -60,7 +62,13 @@ class PaymentController extends Controller
         // (leak stack trace/nama env var kalau APP_DEBUG kelupaan aktif di
         // production). Detail asli tetap masuk log server untuk developer.
         try {
-            $checkout = $this->doku->createCheckout($payment, $user->name, $user->email);
+            $checkout = $this->doku->createCheckout(
+                $payment->invoice_number,
+                $payment->amount,
+                $payment->currency,
+                $user->name,
+                $user->email,
+            );
         } catch (RuntimeException $e) {
             Log::error('DOKU checkout gagal dibuat', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
 
@@ -91,6 +99,12 @@ class PaymentController extends Controller
      * sungguhan dari DOKU Sandbox. Kirim satu transaksi test dari Sandbox
      * dan bandingkan payload asli (cek `notification_payload` yang disimpan
      * di baris payments) sebelum mengandalkan ini di production.
+     *
+     * DOKU Back Office hanya punya SATU Notification URL, dipakai untuk
+     * semua jenis transaksi - jadi satu route ini menangani baik
+     * pembayaran sample klien (Payment) maupun pembelian token grafolog
+     * (TokenPurchase). Dibedakan lewat prefix invoice_number ('INV-' vs
+     * 'TOKEN-'), dicoba cari di Payment dulu baru TokenPurchase.
      */
     public function notification(Request $request): JsonResponse
     {
@@ -103,13 +117,25 @@ class PaymentController extends Controller
         $invoiceNumber = $request->input('order.invoice_number');
         $status = $request->input('transaction.status');
 
-        $payment = Payment::where('invoice_number', $invoiceNumber)->first();
-        if (! $payment) {
-            Log::warning('DOKU notification: unknown invoice_number', ['invoice_number' => $invoiceNumber]);
+        if ($payment = Payment::where('invoice_number', $invoiceNumber)->first()) {
+            $this->handleSamplePaymentNotification($payment, $status, $request);
 
-            return response()->json(['message' => 'Unknown invoice_number'], 404);
+            return response()->json(['message' => 'OK']);
         }
 
+        if ($purchase = TokenPurchase::where('invoice_number', $invoiceNumber)->first()) {
+            $this->handleTokenPurchaseNotification($purchase, $status, $request);
+
+            return response()->json(['message' => 'OK']);
+        }
+
+        Log::warning('DOKU notification: unknown invoice_number', ['invoice_number' => $invoiceNumber]);
+
+        return response()->json(['message' => 'Unknown invoice_number'], 404);
+    }
+
+    private function handleSamplePaymentNotification(Payment $payment, string $status, Request $request): void
+    {
         $wasAlreadyPaid = $payment->isPaid();
 
         $payment->update([
@@ -124,7 +150,23 @@ class PaymentController extends Controller
         if ($status === 'SUCCESS' && ! $wasAlreadyPaid) {
             $payment->discountCode?->incrementUsage();
         }
+    }
 
-        return response()->json(['message' => 'OK']);
+    private function handleTokenPurchaseNotification(TokenPurchase $purchase, string $status, Request $request): void
+    {
+        $wasAlreadyPaid = $purchase->isPaid();
+
+        $purchase->update([
+            'notification_payload' => $request->all(),
+            'status' => $status === 'SUCCESS' ? 'paid' : 'failed',
+            'paid_at' => $status === 'SUCCESS' ? now() : null,
+        ]);
+
+        // Sama seperti Payment: kuota diskon & saldo token baru bertambah
+        // saat SUKSES sungguhan, sekali saja, dijaga dari notifikasi dobel.
+        if ($status === 'SUCCESS' && ! $wasAlreadyPaid) {
+            $this->tokenWallet->credit($purchase->user, $purchase->quantity, ['token_purchase_id' => $purchase->id]);
+            $purchase->discountCode?->incrementUsage();
+        }
     }
 }

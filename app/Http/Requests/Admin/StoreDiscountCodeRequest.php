@@ -28,7 +28,7 @@ class StoreDiscountCodeRequest extends FormRequest
                 $this->input('type') === 'percentage' ? 'max:100' : 'max:1000000000',
             ],
             'applicable_tiers' => ['nullable', 'array'],
-            'applicable_tiers.*' => ['string', 'in:comprehensive,master'],
+            'applicable_tiers.*' => ['string', 'in:comprehensive,master,token'],
             'max_uses' => ['nullable', 'integer', 'min:1'],
             'valid_from' => ['nullable', 'date'],
             'valid_until' => ['nullable', 'date', 'after_or_equal:valid_from'],

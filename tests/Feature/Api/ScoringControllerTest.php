@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\HandwritingSample;
 use App\Models\Payment;
 use App\Models\Project;
+use App\Models\TokenCost;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsGrafologiKb;
@@ -315,5 +316,67 @@ class ScoringControllerTest extends TestCase
             ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
 
         $response->assertCreated();
+    }
+
+    public function test_no_token_gate_when_tier_not_configured(): void
+    {
+        // token_costs kosong sama sekali (default rilis) - TokenCost::activeTokensFor()
+        // mengembalikan null, diperlakukan sebagai 0, tidak ada gate sama sekali.
+        // Ini yang menjaga rilis fitur token TIDAK langsung memblokir grafolog lama.
+        $this->seedMinimalAspek(3);
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'token_balance' => 0]);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertCreated();
+    }
+
+    public function test_token_gate_blocks_submission_when_balance_insufficient(): void
+    {
+        $this->seedMinimalAspek(3);
+        TokenCost::create(['tier' => 'comprehensive', 'tokens_required' => 2, 'is_active' => true]);
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'token_balance' => 1]);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertStatus(402);
+        $this->assertDatabaseCount('personality_reports', 0);
+        $this->assertSame(1, $grafolog->fresh()->token_balance);
+    }
+
+    public function test_token_gate_allows_submission_and_deducts_balance_when_sufficient(): void
+    {
+        $this->seedMinimalAspek(3);
+        TokenCost::create(['tier' => 'comprehensive', 'tokens_required' => 2, 'is_active' => true]);
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'token_balance' => 5]);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertCreated();
+        $this->assertSame(3, $grafolog->fresh()->token_balance);
+        $this->assertDatabaseHas('token_ledger_entries', [
+            'user_id' => $grafolog->id, 'type' => 'consumption', 'delta' => -2, 'balance_after' => 3,
+        ]);
     }
 }

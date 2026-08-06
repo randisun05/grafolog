@@ -6,6 +6,7 @@ use App\Models\DiscountCode;
 use App\Models\HandwritingSample;
 use App\Models\Payment;
 use App\Models\PricingPlan;
+use App\Models\TokenPurchase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -280,5 +281,62 @@ class PaymentControllerTest extends TestCase
 
         $response->assertStatus(400);
         $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'pending']);
+    }
+
+    public function test_notification_credits_token_balance_on_successful_token_purchase(): void
+    {
+        // Satu Notification URL DOKU dipakai untuk Payment (sample klien) DAN
+        // TokenPurchase (token grafolog) - dibedakan lewat prefix invoice_number.
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'token_balance' => 2]);
+        $purchase = TokenPurchase::create([
+            'user_id' => $grafolog->id, 'quantity' => 10, 'unit_price' => 5000, 'base_amount' => 50000,
+            'amount' => 50000, 'status' => 'pending', 'invoice_number' => 'TOKEN-NOTIF-1',
+        ]);
+
+        $body = ['order' => ['invoice_number' => 'TOKEN-NOTIF-1', 'amount' => '50000'], 'transaction' => ['status' => 'SUCCESS']];
+        $rawBody = json_encode($body);
+        $requestId = 'req-token-notif-1';
+        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
+        $signature = $this->dokuSignature($requestId, $timestamp, '/api/payments/notification', $rawBody);
+
+        $response = $this->withHeaders([
+            'Client-Id' => self::CLIENT_ID,
+            'Request-Id' => $requestId,
+            'Request-Timestamp' => $timestamp,
+            'Signature' => $signature,
+        ])->postJson('/api/payments/notification', $body);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('token_purchases', ['id' => $purchase->id, 'status' => 'paid']);
+        $this->assertSame(12, $grafolog->fresh()->token_balance);
+        $this->assertDatabaseHas('token_ledger_entries', [
+            'user_id' => $grafolog->id, 'type' => 'purchase', 'delta' => 10,
+            'balance_after' => 12, 'token_purchase_id' => $purchase->id,
+        ]);
+    }
+
+    public function test_notification_does_not_double_credit_token_balance_on_retried_success(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'token_balance' => 0]);
+        $purchase = TokenPurchase::create([
+            'user_id' => $grafolog->id, 'quantity' => 5, 'unit_price' => 5000, 'base_amount' => 25000,
+            'amount' => 25000, 'status' => 'pending', 'invoice_number' => 'TOKEN-NOTIF-2',
+        ]);
+
+        $body = ['order' => ['invoice_number' => 'TOKEN-NOTIF-2', 'amount' => '25000'], 'transaction' => ['status' => 'SUCCESS']];
+        $rawBody = json_encode($body);
+        $requestId = 'req-token-notif-2';
+        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
+        $signature = $this->dokuSignature($requestId, $timestamp, '/api/payments/notification', $rawBody);
+        $headers = [
+            'Client-Id' => self::CLIENT_ID, 'Request-Id' => $requestId,
+            'Request-Timestamp' => $timestamp, 'Signature' => $signature,
+        ];
+
+        $this->withHeaders($headers)->postJson('/api/payments/notification', $body)->assertOk();
+        $this->withHeaders($headers)->postJson('/api/payments/notification', $body)->assertOk();
+
+        $this->assertSame(5, $grafolog->fresh()->token_balance);
+        $this->assertDatabaseCount('token_ledger_entries', 1);
     }
 }

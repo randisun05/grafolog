@@ -2,7 +2,6 @@
 
 namespace App\Services\Payment;
 
-use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -30,21 +29,31 @@ class DokuService
     }
 
     /**
-     * Buat sesi pembayaran DOKU Checkout untuk satu Payment, kembalikan
-     * ['url' => ..., 'token_id' => ..., 'expired_date' => ...].
+     * Buat sesi pembayaran DOKU Checkout, kembalikan
+     * ['url' => ..., 'token_id' => ..., 'expired_date' => ...]. Ambil
+     * amount/invoice_number/currency sebagai parameter primitif (bukan
+     * type-hint ke model Payment) supaya method ini bisa dipakai untuk
+     * sumber transaksi apa pun - Payment (checkout sample klien) maupun
+     * TokenPurchase (pembelian token grafolog) - tanpa DokuService perlu
+     * tahu bentuk model pemanggilnya.
      *
      * @throws RuntimeException kalau DOKU menolak request (kredensial belum
      *         diisi, invoice_number dobel, dsb) - pesan asli DOKU diteruskan.
      */
-    public function createCheckout(Payment $payment, string $customerName, string $customerEmail): array
-    {
+    public function createCheckout(
+        string $invoiceNumber,
+        int $amount,
+        string $currency,
+        string $customerName,
+        string $customerEmail,
+    ): array {
         $this->ensureConfigured();
 
         $body = [
             'order' => [
-                'amount' => $payment->amount,
-                'invoice_number' => $payment->invoice_number,
-                'currency' => $payment->currency,
+                'amount' => $amount,
+                'invoice_number' => $invoiceNumber,
+                'currency' => $currency,
                 'auto_redirect' => true,
                 'callback_url' => config('services.doku.callback_url', config('app.frontend_url')),
             ],

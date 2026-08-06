@@ -9,13 +9,18 @@ use App\Models\Aspek;
 use App\Models\HandwritingSample;
 use App\Models\PersonalityReport;
 use App\Models\ReportAspekScore;
+use App\Models\TokenCost;
 use App\Services\Scoring\ScoringEngineService;
+use App\Services\TokenWalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 class ScoringController extends Controller
 {
-    public function __construct(private ScoringEngineService $scoringEngine) {}
+    public function __construct(
+        private ScoringEngineService $scoringEngine,
+        private TokenWalletService $tokenWallet,
+    ) {}
 
     /**
      * Pratinjau live Assessment Workspace: hitung ulang ScoringEngineService
@@ -55,7 +60,14 @@ class ScoringController extends Controller
         abort_if($sample->status === 'completed', 422, 'Sample ini sudah memiliki laporan selesai, tidak bisa diisi ulang.');
         abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
-        $report = DB::transaction(function () use ($request, $sample) {
+        // Token grafolog (2026-08-07): TokenCost::activeTokensFor() null berarti
+        // admin belum mengonfigurasi biaya token tier ini - diperlakukan sebagai
+        // 0 (tidak ada gate), bukan error, supaya fitur ini tidak diam-diam
+        // memblokir grafolog sebelum admin sengaja mengaktifkannya.
+        $tokensRequired = TokenCost::activeTokensFor($sample->tier) ?? 0;
+        abort_if($tokensRequired > 0 && $user->token_balance < $tokensRequired, 402, 'Token Anda tidak cukup untuk membuat laporan ini. Silakan beli token terlebih dahulu.');
+
+        $report = DB::transaction(function () use ($request, $sample, $user, $tokensRequired) {
             $report = PersonalityReport::create([
                 'sample_id' => $sample->id,
                 'tier' => $sample->tier,
@@ -86,6 +98,10 @@ class ScoringController extends Controller
 
             $sample->update(['status' => 'completed']);
             $sample->assignment?->update(['status' => 'completed']);
+
+            if ($tokensRequired > 0) {
+                $this->tokenWallet->debit($user, $tokensRequired, ['report_id' => $report->id]);
+            }
 
             return $report;
         });

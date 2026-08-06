@@ -55,6 +55,11 @@ class DashboardController extends Controller
                     'label' => 'Rata-rata Durasi (hari)',
                     'value' => $this->avgTurnaroundDays($sampleIds),
                 ],
+                [
+                    'key' => 'token_balance',
+                    'label' => 'Sisa Token',
+                    'value' => $user->token_balance,
+                ],
             ],
             'activity' => $this->recentActivity($sampleIds),
         ];
