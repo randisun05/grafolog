@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\CompanyController;
+use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
@@ -33,6 +34,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::post('/pricing/preview', [PricingController::class, 'preview']);
 
     Route::get('/samples', [SampleController::class, 'index']);
     Route::post('/samples', [SampleController::class, 'store']);
@@ -57,6 +59,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/companies', [CompanyController::class, 'store']);
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
+        Route::get('/discount-codes', [DiscountCodeController::class, 'index']);
+        Route::post('/discount-codes', [DiscountCodeController::class, 'store']);
+        Route::patch('/discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {
