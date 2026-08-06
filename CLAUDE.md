@@ -18,7 +18,27 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - `src/views/`: `LandingView`, `LoginView`, `RegisterView`, `DashboardView`,
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
   `AdminPricingView`, `AdminDiscountsView`, `AdminContentView`,
-  `AssignedToMeView`, `HrCandidatesView`, `OrderView`, `NotFoundView`.
+  `AdminAnnouncementsView`, `AssignedToMeView`, `HrCandidatesView`,
+  `OrderView`, `NotFoundView`.
+  **`AdminAnnouncementsView` added 2026-08-06** (Commerce Fase F) —
+  `/admin/announcements`, `role: 'administrator'`. Create form (title,
+  body, optional target-role checkboxes from a local `roleOptions` array —
+  matches `Announcement`'s allowed role list on the backend, not derived
+  from it, keep both in sync if roles ever change — optional start/end
+  date) + a table with an activate/deactivate toggle
+  (`PUT /api/admin/announcements/{id}`, full-edit endpoint but this view
+  only ever sends `is_active`). Same admin-page pattern as
+  `AdminDiscountsView`/`AdminPricingView`. Nav link "Pengumuman" +
+  `CommandPalette.vue` entry. **`DashboardView.vue` changed 2026-08-06** —
+  fetches `GET /api/announcements` after its existing dashboard-summary
+  fetch (separate try/catch, non-fatal on failure — dashboard still
+  renders if this call fails, same fallback philosophy as `LandingView`'s
+  CMS fetch below). Visible announcements render as dismissible banners
+  above the KPI cards; dismissal is a local `dismissedIds` ref, not
+  persisted anywhere — the same announcement reappears next visit as long
+  as it's still active. Don't add persistence for this without an explicit
+  product decision; the admin UI's own copy states the current behavior on
+  purpose.
   **`AdminContentView` added 2026-08-06** (Commerce Fase E) —
   `/admin/content`, `role: 'administrator'`. One input/textarea per field
   in a local `fields` array that **must match** `ContentBlock::
