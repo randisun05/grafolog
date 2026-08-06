@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **125 tests as of 2026-08-06** (up from 6).
+- Tests: `php artisan test` — **129 tests as of 2026-08-06** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -332,12 +332,17 @@ both cases; `php artisan test` still 6/6 passing.
 ## Payment (DOKU) — added 2026-07-27
 
 - **Credentials go in `.env`**: `DOKU_CLIENT_ID`, `DOKU_SECRET_KEY`,
-  `DOKU_IS_PRODUCTION` (bool). Get them from DOKU Back Office — **sandbox and
-  production are separate accounts with separate credentials**, don't reuse
-  one for the other. Read via `config('services.doku.*')`
-  (`config/services.php`). Currently empty/placeholder — payment creation
-  will throw a clear `RuntimeException` until real sandbox credentials are
-  filled in (checked in `DokuService::ensureConfigured()`).
+  `DOKU_IS_PRODUCTION` (bool), and `DOKU_CALLBACK_URL` (**new 2026-08-06**,
+  optional — defaults to `{FRONTEND_URL}/dashboard`, where DOKU's
+  `auto_redirect` sends the client's browser after they pay). Get the
+  credentials from DOKU Back Office — **sandbox and production are separate
+  accounts with separate credentials**, don't reuse one for the other. Read
+  via `config('services.doku.*')` (`config/services.php`). Currently empty/
+  placeholder — payment creation throws `RuntimeException` internally
+  (`DokuService::ensureConfigured()`), which `PaymentController::store`
+  **catches** (2026-08-06 fix) and turns into a clean `503` with a generic
+  client-facing message — see the note below, don't let this exception
+  reach the client raw again.
 - **`App\Services\Payment\DokuService`**: `createCheckout(Payment, name,
   email)` POSTs to `{base_url}/checkout/v1/payment` (sandbox:
   `api-sandbox.doku.com`, production: `api.doku.com`) and returns
@@ -350,35 +355,53 @@ both cases; `php artisan test` still 6/6 passing.
   *owner* (`user_id`, i.e. the paying client) can trigger a payment — not the
   grafolog who may have created the sample on their behalf. Rejects `rapid`
   tier (free) and samples that already have a `paid` payment. Price comes
-  from `PricingPlan::activePriceFor($tier)` (**changed 2026-08-06**, was
-  `config('pricing.tiers.*')` — that config file is deleted, see "Pricing &
-  commerce" section below). `comprehensive` = 49000 matches the root
-  CLAUDE.md's "~Rp49rb"; **`master` = 149000 is still an unconfirmed
-  placeholder** — confirm the real price with the business before go-live,
-  it can now be changed via `PUT /api/admin/pricing/master` without a
-  deploy.
+  from `PricingPlan::activePriceFor($tier)` (was `config('pricing.tiers.*')`
+  — that config file is deleted, see "Pricing & commerce" below).
+  `comprehensive` matches the root CLAUDE.md's "~Rp49rb" as of writing;
+  **both tiers' real prices are admin-managed** now via `/admin/pricing`,
+  not hardcoded anywhere — check the DB, not this file, for the current
+  number. **Accepts an optional `discount_code`** (2026-08-06, Commerce
+  Fase D) — validated through `DiscountCode::isValidFor()`, same method the
+  Fase B preview endpoint uses. Stores `base_amount` (pre-discount) and
+  `discount_code_id` alongside `amount` (what's actually charged) so a
+  discounted invoice stays traceable.
+- **DOKU config errors are caught, not leaked** (2026-08-06 fix): if
+  `DokuService::createCheckout()` throws (unconfigured credentials, DOKU
+  rejects the request), `PaymentController::store` catches the
+  `RuntimeException`, logs the real message via `Log::error()`, and returns
+  a generic `503 {"message": "Pembayaran sedang tidak tersedia, coba lagi
+  nanti."}` to the client. Before this fix it was an uncaught 500 with a
+  full stack trace in the response body whenever `APP_DEBUG=true` — fine in
+  dev, a real information-leak risk if debug mode is ever left on in
+  production. `tests/Feature/Api/PaymentControllerTest.php::
+  test_unconfigured_doku_returns_clean_503_not_raw_500` locks this in —
+  don't remove the try/catch without understanding why that test exists.
 - **`::notification`** is DOKU's webhook (public route, no `auth:sanctum` —
   DOKU has no Sanctum token). Security depends entirely on
   `DokuService::verifyNotificationSignature()`; never relax or bypass it.
-  **Not fully verified against a real DOKU sandbox notification** — the body
-  field names used (`order.invoice_number`, `transaction.status`) are sourced
-  from DOKU's official docs but a literal example payload couldn't be
-  fetched. Send one real test transaction from DOKU Sandbox and compare
-  against what lands in `payments.notification_payload` before trusting this
-  in production.
+  On a `SUCCESS` status transition (checked via a `$wasAlreadyPaid` guard so
+  a duplicate webhook retry doesn't double-count), it also calls
+  `$payment->discountCode?->incrementUsage()` — usage quota is consumed at
+  actual payment success, never at preview or at payment creation.
+  **Still not fully verified against a real DOKU sandbox notification** —
+  the body field names used (`order.invoice_number`, `transaction.status`)
+  are sourced from DOKU's official docs but a literal example payload
+  couldn't be fetched. Send one real test transaction from DOKU Sandbox and
+  compare against what lands in `payments.notification_payload` before
+  trusting this in production (this is Commerce Fase C, not yet done).
 - **Migration**: `payments` table (`sample_id`, `invoice_number` unique,
-  `amount`, `status`: pending/paid/failed/expired, `doku_token_id`,
+  `amount`, `base_amount` nullable, `discount_code_id` nullable FK,
+  `status`: pending/paid/failed/expired, `doku_token_id`,
   `doku_payment_url`, `notification_payload` json, `paid_at`).
-- **Still no frontend checkout UI** (as of 2026-08-06, Commerce Fase A —
-  Fase D in root `ROADMAP.md`'s "Inisiatif — Commerce & CMS" will build
-  this). `PortalGrafologView` (grafolog creates the sample, client as
-  `user_id`) is still the only *practical* path — but note
-  `StoreSampleRequest` already lets a regular `user` call `POST /api/samples`
-  themselves too (this has existed since Fase 02, `Project.source =
-  'client'`), it's just never had a UI. **As of 2026-08-06 that path is
-  payment-gated** (see below) so it's no longer a free-scoring loophole,
-  but it's still not a real checkout flow — no price shown, no discount, no
-  "Bayar Sekarang" button anywhere.
+- **Frontend checkout UI now exists** (`OrderView.vue`, `/pesan`,
+  `role: 'user'` — added 2026-08-06, Commerce Fase D, see
+  `guratan-web/CLAUDE.md`). It orchestrates the two existing endpoints
+  (`POST /api/samples` then this controller's `store`) from the frontend —
+  no new combined "create order" endpoint was added, both pieces already
+  existed and just needed a UI pointing at them together. The real DOKU
+  redirect itself has **not** been tested end-to-end (no sandbox
+  credentials yet) — only verified up to the point of calling `store` and
+  handling its response/error correctly.
 - Tests: `tests/Feature/Api/PaymentControllerTest.php` — mocks DOKU's HTTP
   response via `Http::fake()`, covers authorization (only owner pays),
   rapid-tier rejection, already-paid rejection, and both valid/invalid
@@ -440,11 +463,11 @@ both cases; `php artisan test` still 6/6 passing.
   reimplement the checks inline** — the preview endpoint and the future
   Fase D checkout both need to agree on what "valid" means, and that only
   works if there's one method deciding it.
-- **`incrementUsage()` exists but is called nowhere yet.** It's meant to
-  fire once at the point a discount is actually *consumed* (a successful
-  payment in Fase D), not at preview time — calling it from
-  `PricingController::preview` would burn quota just from someone typing a
-  code to see what it does, before ever paying.
+- **`incrementUsage()` is called from `PaymentController::notification()`**
+  (wired 2026-08-06, Commerce Fase D) — only on a `SUCCESS` webhook, guarded
+  against double-counting a retried notification. **Not** called from
+  `PricingController::preview` — that would burn quota just from someone
+  typing a code to see what it does, before ever paying.
 - **Gotcha already fixed, don't reintroduce it**: `is_active`/`used_count`
   have DB-level defaults (`true`/`0`) but MySQL doesn't refetch those onto
   the in-memory model after Eloquent's `create()` — without the matching
