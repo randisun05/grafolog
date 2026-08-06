@@ -26,6 +26,7 @@ const commands = computed(() => {
   }
   if (auth.isAdministrator) {
     items.push({ label: 'Kelola Staf', to: { name: 'admin-users' } })
+    items.push({ label: 'Kelola Harga', to: { name: 'admin-pricing' } })
   }
   if (auth.isHr) {
     items.push({ label: 'Kandidat', to: { name: 'hr-candidates' } })
