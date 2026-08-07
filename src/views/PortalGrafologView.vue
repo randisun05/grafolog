@@ -32,6 +32,13 @@ const isFormComplete = computed(() => totalAspek.value > 0 && scoredCount.value 
 const lookupError = ref('')
 const lookupLoading = ref(false)
 const creatingSample = ref(false)
+
+const showRegisterForm = ref(false)
+const newClientName = ref('')
+const newClientPassword = ref('')
+const registering = ref(false)
+const registerError = ref('')
+const generatedPassword = ref('')
 const submitting = ref(false)
 const submitError = ref('')
 const submittedReport = ref(null)
@@ -112,6 +119,8 @@ async function fetchPreview() {
 async function lookupClient() {
   lookupError.value = ''
   client.value = null
+  showRegisterForm.value = false
+  generatedPassword.value = ''
   lookupLoading.value = true
   try {
     const { data } = await api.get('/users/lookup', { params: { email: clientEmail.value } })
@@ -120,6 +129,37 @@ async function lookupClient() {
     lookupError.value = e.response?.data?.message ?? 'Klien tidak ditemukan.'
   } finally {
     lookupLoading.value = false
+  }
+}
+
+function openRegisterForm() {
+  showRegisterForm.value = true
+  registerError.value = ''
+  newClientName.value = ''
+  newClientPassword.value = ''
+}
+
+// Klien walk-in yang belum pernah /register sendiri - grafolog daftarkan
+// langsung dari sini. Password opsional (kosongkan = sistem generate acak,
+// ditampilkan sekali lewat generatedPassword untuk disampaikan ke klien -
+// lihat catatan di UserLookupController::store kenapa bukan email undangan).
+async function registerClient() {
+  registerError.value = ''
+  registering.value = true
+  try {
+    const { data } = await api.post('/clients', {
+      name: newClientName.value,
+      email: clientEmail.value,
+      password: newClientPassword.value || undefined,
+    })
+    client.value = { id: data.id, name: data.name, email: data.email }
+    lookupError.value = ''
+    showRegisterForm.value = false
+    generatedPassword.value = data.generated_password ?? ''
+  } catch (e) {
+    registerError.value = e.response?.data?.message ?? 'Gagal mendaftarkan klien.'
+  } finally {
+    registering.value = false
   }
 }
 
@@ -175,6 +215,43 @@ function viewReport() {
         </button>
       </div>
       <p v-if="lookupError" class="error">{{ lookupError }}</p>
+
+      <div v-if="lookupError && !client" class="portal-grafolog__register-trigger">
+        <button v-if="!showRegisterForm" type="button" class="btn" @click="openRegisterForm">
+          Klien belum terdaftar? Daftarkan sekarang
+        </button>
+        <div v-else class="portal-grafolog__register">
+          <p class="portal-grafolog__register-note">
+            Mendaftarkan <strong>{{ clientEmail }}</strong> sebagai klien baru.
+          </p>
+          <label>
+            Nama Klien
+            <input v-model="newClientName" type="text" placeholder="Nama lengkap klien" />
+          </label>
+          <label>
+            Kata Sandi Awal (opsional)
+            <input v-model="newClientPassword" type="text" placeholder="Kosongkan untuk dibuatkan otomatis" />
+          </label>
+          <p v-if="registerError" class="error">{{ registerError }}</p>
+          <div class="portal-grafolog__register-actions">
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="!newClientName || registering"
+              @click="registerClient"
+            >
+              {{ registering ? 'Mendaftarkan...' : 'Daftarkan Klien' }}
+            </button>
+            <button type="button" class="btn" @click="showRegisterForm = false">Batal</button>
+          </div>
+        </div>
+      </div>
+
+      <p v-if="generatedPassword" class="portal-grafolog__generated-password">
+        Klien terdaftar. Kata sandi awal: <strong>{{ generatedPassword }}</strong> — sampaikan
+        langsung ke klien, mereka bisa menggantinya nanti.
+      </p>
+
       <p v-if="client" class="portal-grafolog__client-found">
         Klien ditemukan: <strong>{{ client.name }}</strong> ({{ client.email }})
       </p>
@@ -267,6 +344,42 @@ function viewReport() {
 .portal-grafolog__client-found {
   color: var(--color-success);
   margin-top: 8px;
+}
+.portal-grafolog__register-trigger {
+  margin-top: 10px;
+}
+.portal-grafolog__register {
+  margin-top: 8px;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  max-width: 380px;
+}
+.portal-grafolog__register-note {
+  font-size: 13px;
+  color: var(--color-text-soft);
+  margin-bottom: 12px;
+}
+.portal-grafolog__register label {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-soft);
+  margin-bottom: 10px;
+}
+.portal-grafolog__register-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.portal-grafolog__generated-password {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--color-sage-soft);
+  border: 1px solid var(--color-sage);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  font-size: 13.5px;
 }
 .portal-grafolog__tier {
   margin-top: 16px;
