@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **192 tests as of 2026-08-07** (up from 6).
+- Tests: `php artisan test` — **197 tests as of 2026-08-07** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -96,7 +96,7 @@ die silently between tool calls with no log output at all.
 - `LLM_PROVIDER=none` in `.env` → `NullLlmProvider` is active (pure
   passthrough, returns source text unchanged, no network call).
 
-## Routes (47 total, `routes/api.php`)
+## Routes (48 total, `routes/api.php`)
 
 ```
 POST /api/auth/register, /api/auth/login        (throttle:20,1, public)
@@ -115,6 +115,7 @@ GET  /api/reports, /api/reports/{report}         (auth:sanctum, +log.report_acce
 GET  /api/reports/{report}/pdf                   (auth:sanctum, +log.report_access)
 GET  /api/sindrom                                (auth:sanctum)
 GET  /api/users/lookup                           (auth:sanctum, throttle:15,1 — grafolog-only, exact-email lookup)
+POST /api/clients                                (auth:sanctum, grafolog-only → UserLookupController@store — register a walk-in client)
 GET  /api/grafologs                              (auth:sanctum, role:hr,administrator → UserLookupController@grafologs)
 GET/POST /api/admin/users                        (auth:sanctum, role:administrator → AdminUserController)
 GET/POST /api/admin/companies                    (auth:sanctum, role:administrator → CompanyController)
@@ -333,6 +334,22 @@ both cases; `php artisan test` still 6/6 passing.
   `HrCandidatesView.vue`. Distinct from the older `GET /api/users/lookup`
   (grafolog-only, exact-email match for finding a *client*) — don't
   conflate the two.
+- **`POST /api/clients`** (`UserLookupController::store`, gated inline via
+  `abort_unless($request->user()->isGrafolog())` — same style as `byEmail()`
+  in this controller, added 2026-08-07). Lets a grafolog register a
+  walk-in client who hasn't self-registered via `/auth/register` — before
+  this, `GET /api/users/lookup` returning 404 was a dead end. Only ever
+  creates `role: 'user'` accounts; grafolog can't create staff (that stays
+  `Admin\AdminUserController`, administrator-only). `password` is
+  optional — if omitted, `Str::password(10)` generates one, returned once
+  as `generated_password` in the response for the grafolog to relay
+  directly to the client (spoken/written), **not** emailed — `MAIL_MAILER`
+  is still `log` (no real SMTP), so an email-invite flow would silently
+  go nowhere right now. Doesn't reuse `AuthController::register` — that
+  issues a Sanctum token and would swap the calling grafolog's session for
+  the new client's, which is wrong here since the grafolog needs to stay
+  logged in as themselves. Every creation is
+  `AuditLog::record('daftarkan_klien', ...)`-ed.
 - **Deferred on purpose, not forgotten**: Billing/Subscription for company
   plans — no pricing model has been decided for this, it's a business
   decision, not a technical one, don't build a `Subscription` table
