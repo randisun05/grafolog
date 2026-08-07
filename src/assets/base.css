@@ -1,20 +1,25 @@
-/* Guratan design tokens */
+/* Guratan design tokens - arah "Kertas Berani" (2026-08-07, menggantikan
+   krem redup lama untuk menyasar audiens lebih muda: kontras & saturasi
+   lebih tinggi, bukan warna generik baru - masih dari keluarga ink/segel/
+   sage yang sama, cuma dicerahkan & dijenuhkan). */
 :root {
-  --color-ink: #1c2541;
-  --color-ink-soft: rgba(28, 37, 65, 0.66);
-  --color-ink-faint: rgba(28, 37, 65, 0.12);
-  --color-paper: #f8f3e7;
-  --color-paper-alt: #fffdf8;
-  --color-seal: #9e3b3b;
-  --color-seal-dark: #7e2f2f;
-  --color-seal-soft: rgba(158, 59, 59, 0.1);
-  --color-sage: #5f7a5e;
-  --color-sage-soft: rgba(95, 122, 94, 0.12);
+  --color-ink: #191330;
+  --color-ink-soft: rgba(25, 19, 48, 0.68);
+  --color-ink-faint: rgba(25, 19, 48, 0.12);
+  --color-paper: #fffcf7;
+  --color-paper-alt: #ffffff;
+  --color-seal: #e0483f;
+  --color-seal-dark: #b8362e;
+  --color-seal-soft: rgba(224, 72, 63, 0.12);
+  --color-sage: #2f9e63;
+  --color-sage-soft: rgba(47, 158, 99, 0.14);
+  --color-gold: #c99a35;
+  --color-gold-soft: rgba(201, 154, 53, 0.16);
 
   --color-background: var(--color-paper);
   --color-surface: var(--color-paper-alt);
   --color-border: var(--color-ink-faint);
-  --color-border-hover: rgba(28, 37, 65, 0.28);
+  --color-border-hover: rgba(25, 19, 48, 0.26);
   --color-heading: var(--color-ink);
   --color-text: var(--color-ink);
   --color-text-soft: var(--color-ink-soft);
@@ -30,7 +35,7 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --shadow-card: 0 2px 10px rgba(28, 37, 65, 0.08);
+  --shadow-card: 0 2px 10px rgba(25, 19, 48, 0.08);
 
   --section-gap: 160px;
 }
@@ -42,49 +47,55 @@
    correctly without per-component dark rules. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-ink: #ede6d6;
-    --color-ink-soft: rgba(237, 230, 214, 0.66);
-    --color-ink-faint: rgba(237, 230, 214, 0.14);
-    --color-paper: #1a1712;
-    --color-paper-alt: #242019;
-    --color-seal: #d9736f;
-    --color-seal-dark: #c25955;
-    --color-seal-soft: rgba(217, 115, 111, 0.16);
-    --color-sage: #8fae87;
-    --color-sage-soft: rgba(143, 174, 135, 0.16);
-    --color-border-hover: rgba(237, 230, 214, 0.28);
+    --color-ink: #f5efe0;
+    --color-ink-soft: rgba(245, 239, 224, 0.68);
+    --color-ink-faint: rgba(245, 239, 224, 0.14);
+    --color-paper: #17141f;
+    --color-paper-alt: #211c2c;
+    --color-seal: #ef7a68;
+    --color-seal-dark: #d35d4e;
+    --color-seal-soft: rgba(239, 122, 104, 0.16);
+    --color-sage: #5fd394;
+    --color-sage-soft: rgba(95, 211, 148, 0.16);
+    --color-gold: #e0b563;
+    --color-gold-soft: rgba(224, 181, 99, 0.18);
+    --color-border-hover: rgba(245, 239, 224, 0.28);
     --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.4);
   }
 }
 
 :root[data-theme='dark'] {
-  --color-ink: #ede6d6;
-  --color-ink-soft: rgba(237, 230, 214, 0.66);
-  --color-ink-faint: rgba(237, 230, 214, 0.14);
-  --color-paper: #1a1712;
-  --color-paper-alt: #242019;
-  --color-seal: #d9736f;
-  --color-seal-dark: #c25955;
-  --color-seal-soft: rgba(217, 115, 111, 0.16);
-  --color-sage: #8fae87;
-  --color-sage-soft: rgba(143, 174, 135, 0.16);
-  --color-border-hover: rgba(237, 230, 214, 0.28);
+  --color-ink: #f5efe0;
+  --color-ink-soft: rgba(245, 239, 224, 0.68);
+  --color-ink-faint: rgba(245, 239, 224, 0.14);
+  --color-paper: #17141f;
+  --color-paper-alt: #211c2c;
+  --color-seal: #ef7a68;
+  --color-seal-dark: #d35d4e;
+  --color-seal-soft: rgba(239, 122, 104, 0.16);
+  --color-sage: #5fd394;
+  --color-sage-soft: rgba(95, 211, 148, 0.16);
+  --color-gold: #e0b563;
+  --color-gold-soft: rgba(224, 181, 99, 0.18);
+  --color-border-hover: rgba(245, 239, 224, 0.28);
   --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
 :root[data-theme='light'] {
-  --color-ink: #1c2541;
-  --color-ink-soft: rgba(28, 37, 65, 0.66);
-  --color-ink-faint: rgba(28, 37, 65, 0.12);
-  --color-paper: #f8f3e7;
-  --color-paper-alt: #fffdf8;
-  --color-seal: #9e3b3b;
-  --color-seal-dark: #7e2f2f;
-  --color-seal-soft: rgba(158, 59, 59, 0.1);
-  --color-sage: #5f7a5e;
-  --color-sage-soft: rgba(95, 122, 94, 0.12);
-  --color-border-hover: rgba(28, 37, 65, 0.28);
-  --shadow-card: 0 2px 10px rgba(28, 37, 65, 0.08);
+  --color-ink: #191330;
+  --color-ink-soft: rgba(25, 19, 48, 0.68);
+  --color-ink-faint: rgba(25, 19, 48, 0.12);
+  --color-paper: #fffcf7;
+  --color-paper-alt: #ffffff;
+  --color-seal: #e0483f;
+  --color-seal-dark: #b8362e;
+  --color-seal-soft: rgba(224, 72, 63, 0.12);
+  --color-sage: #2f9e63;
+  --color-sage-soft: rgba(47, 158, 99, 0.14);
+  --color-gold: #c99a35;
+  --color-gold-soft: rgba(201, 154, 53, 0.16);
+  --color-border-hover: rgba(25, 19, 48, 0.26);
+  --shadow-card: 0 2px 10px rgba(25, 19, 48, 0.08);
 }
 
 *,
