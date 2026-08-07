@@ -196,6 +196,18 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
     is a recurring gap across every UI change in this project so far — no
     browser automation tool has been available in any session — not
     specific to this component.
+- **`PortalGrafologView`'s step 1 gained "daftarkan klien baru" 2026-08-07**:
+  when `GET /api/users/lookup` 404s (client doesn't exist yet — this used
+  to be a dead end), a button reveals an inline form (name + optional
+  password) that calls the new `POST /api/clients`. On success the
+  returned client is set directly into the existing `client` ref, so step
+  1's tier picker and "Buat Sample" button work exactly as if the lookup
+  had succeeded — no separate downstream code path. If no password was
+  given, the server-generated one comes back as `generated_password` and
+  is shown in a **persistent inline banner** (not a toast — a toast could
+  disappear before the grafolog copies the password down) telling them to
+  relay it to the client directly. See `guratan-api/CLAUDE.md`'s
+  `POST /api/clients` entry for why this doesn't email an invite.
 - **`PortalGrafologView`'s step 2 refactored 2026-08-03** (MGA pivot Fase
   04): "Isi Skor" is now a 3-column Assessment Workspace (client/sample info
   | `SindromAccordion` form, unchanged | `AutoCalculationPanel`, live).
