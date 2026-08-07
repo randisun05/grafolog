@@ -64,20 +64,40 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   as it's still active. Don't add persistence for this without an explicit
   product decision; the admin UI's own copy states the current behavior on
   purpose.
-  **`AdminContentView` added 2026-08-06** (Commerce Fase E) —
-  `/admin/content`, `role: 'administrator'`. One input/textarea per field
-  in a local `fields` array that **must match** `ContentBlock::
-  EDITABLE_KEYS` on the backend — they're not derived from each other, if
-  you add a field on one side add it on the other too. Save button per
-  field, not one combined form submit. **`LandingView.vue` changed
-  2026-08-06** — no longer static template text. On mount it fetches
-  `GET /api/content` and merges the result over a hardcoded defaults
-  object that's still in the component (not deleted) — if the API call
-  fails or is slow, the page silently keeps showing those defaults rather
-  than an empty hero. Don't remove the defaults object thinking it's now
-  dead code; it's the fallback path, and there's no loading spinner gating
-  the initial render specifically so the page is never blank while
-  waiting.
+  **`AdminContentView` added 2026-08-06** (Commerce Fase E), **expanded
+  2026-08-07** — `/admin/content`, `role: 'administrator'`. Local `fields`
+  array (now 21 entries) that **must match** `ContentBlock::EDITABLE_KEYS`
+  on the backend — they're not derived from each other, if you add a field
+  on one side add it on the other too. Each field has a `type`:
+  `'text'`/`'textarea'` render a plain input/textarea (original pattern,
+  save button per field); `'list-string'`/`'list-object'` (new) render a
+  small **fixed-count** list editor instead — plain strings for
+  `landing_compare_old`/`_new` (3 slots each), title+desc pairs for
+  `landing_steps` (4) and `landing_honesty_points` (3). These serialize to
+  JSON before `PUT` and deserialize on load (`JSON.parse` wrapped in
+  try/catch — a parse failure silently falls back to an empty-but-correct-
+  shaped array via `emptyListValue()`, never a crash). Matches
+  `ContentBlock::LIST_KEYS` on the backend — see `guratan-api/CLAUDE.md`.
+  **`LandingView.vue` rebuilt 2026-08-07** (from a single hero block into
+  a full company-profile page — hero, cara-lama/cara-Guratan comparison,
+  4-step "Cara Kerja", an interactive Sindrom/Aspek accordion explorer,
+  pricing cards fed by the real `GET /api/pricing`, a "Kejujuran Kami"
+  credibility section, 3-step signup flow, closing CTA band). Still
+  follows the original fetch-with-fallback pattern — `GET /api/content`
+  merged over a hardcoded defaults object kept in the component, list-type
+  keys additionally `JSON.parse`'d over hardcoded array defaults — so the
+  page is never blank or partially-shaped if the CMS is slow/down/returns
+  malformed JSON. The Sindrom explorer's category/aspect labels
+  (`sindromData`, e.g. "Ketegasan" for "Authoritarian") are **static data
+  in the component, deliberately not wired to the `sindrom`/`aspek`
+  tables** — they're softened public-marketing Indonesian copy, not a live
+  reflection of the KB, and the real technical terms are unchanged
+  everywhere else (grafolog scoring form, reports). Breaks out of the
+  app's normal 960px `.app-main` column via a scoped negative-margin
+  full-bleed technique (`margin: 0 calc(50% - 50vw)`) so its alternating
+  section backgrounds run edge-to-edge — this only affects `LandingView`,
+  every other route is still constrained by `.app-main` in `App.vue`.
+  Does **not** duplicate a nav bar — `AppNavbar` is already global.
   **`OrderView` added 2026-08-06** (Commerce Fase D) — `/pesan`,
   `role: 'user'` (the plain-client role only; `auth.isClient` in
   `stores/auth.js`, mirrors `isGrafolog`/`isHr`/etc). Tier cards from
@@ -206,9 +226,18 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `role: 'grafolog'`; same pattern gates `/admin/users` → `administrator`,
   `/hr/candidates` → `hr`, `/grafolog/ditugaskan` → `grafolog`).
 - `src/assets/base.css` + `main.css`: design tokens (`--color-ink`,
-  `--color-seal`, `--color-sage`, `--font-heading: Fraunces`, `--font-body:
-  Inter`, `--font-accent: Caveat`) plus shared `.btn`/`.error`/form-input
-  styles. Confirmed applied — this was a previously-reported bug, now fixed.
+  `--color-seal`, `--color-sage`, `--color-gold` (new 2026-08-07, Master-tier
+  accent), `--font-heading: Fraunces`, `--font-body: Inter`, `--font-accent:
+  Caveat`) plus shared `.btn`/`.error`/form-input styles. Confirmed
+  applied — this was a previously-reported bug, now fixed. **Palette
+  repainted 2026-08-07** ("Kertas Berani" direction — chosen over a dark
+  "night journal" alternative after comparing both in a throwaway mockup
+  artifact, to read less "aged/stiff" for a younger audience): crisper
+  off-white paper (`#fffcf7`/`#ffffff`, was a more yellowed cream), higher-
+  saturation seal red and sage green, same four-hue family as before
+  (ink/seal/sage/gold) just brightened — not a palette replacement. Dark
+  mode and both `[data-theme]` overrides were updated to match; still only
+  the base tokens are redefined per mode, no component-level dark CSS.
   **Dark mode added 2026-08-06** (MGA Fase 07): only the base color tokens
   are redefined for dark (`@media (prefers-color-scheme: dark)` for the OS
   default, `:root[data-theme='dark'/'light']` for an explicit override) —
