@@ -82,7 +82,7 @@ die silently between tool calls with no log output at all.
 - `composer run dev` also works (runs server + queue + pail + vite together),
   but defaults to port 8000, which will NOT match the frontend's expectation
   unless you override it.
-- Tests: `php artisan test` — **190 tests as of 2026-08-07** (up from 6).
+- Tests: `php artisan test` — **192 tests as of 2026-08-07** (up from 6).
   `tests/Feature/Api/`: `AuthControllerTest`, `SampleControllerTest`,
   `ScoringControllerTest`, `ReportControllerTest` (all real, cover
   authorization/IDOR checks, validation, rate limiting, audit logging, PDF
@@ -510,36 +510,57 @@ both cases; `php artisan test` still 6/6 passing.
   (admin CRUD + audit log), `tests/Feature/Api/PricingPreviewControllerTest.php`
   (the preview endpoint, including the invalid-code-doesn't-error case).
 
-## Homepage CMS — added 2026-08-06 (Commerce Fase E)
+## Homepage CMS — added 2026-08-06 (Commerce Fase E), expanded 2026-08-07
 
 - **`content_blocks` table / `App\Models\ContentBlock`**: a flat
   key-value store, deliberately **not** a page-builder (business decision
   2026-08-06). `ContentBlock::EDITABLE_KEYS` is the whitelist of keys an
-  admin can write (`landing_eyebrow`, `landing_tagline`,
-  `landing_cta_label` as of writing) — `Admin\ContentBlockController::update`
-  404s on anything else. **Adding a new editable field means updating
+  admin can write — **21 keys as of 2026-08-07** (grew from the original 3
+  when `LandingView.vue` was rebuilt from a single hero block into a full
+  company-profile page — one heading/subtext pair per section, plus the
+  list-type keys below) — `Admin\ContentBlockController::update` 404s on
+  anything else. **Adding a new editable field means updating
   `EDITABLE_KEYS` AND `database/seeders/ContentBlockSeeder.php`'s
   defaults, both — the seeder's defaults exist specifically so a fresh
   install (or one where an admin never touched a field) still shows
   sensible text, not a blank string.**
+- **`ContentBlock::LIST_KEYS`** (new 2026-08-07): the subset of
+  `EDITABLE_KEYS` whose `value` is a **JSON-encoded array**, not a plain
+  string — `landing_compare_old`/`landing_compare_new` (array of 3
+  strings), `landing_steps`/`landing_honesty_points` (array of
+  `{title, desc}`, 4 and 3 items respectively). The `content_blocks.value`
+  column is still plain `text` — this is purely an application-level
+  encoding convention, not a schema change. Each list key has a **fixed**
+  item count (still "fixed fields, not a page-builder" — an admin can't
+  add/remove items, only edit the text of each fixed slot).
+  `AdminContentView.vue` renders these as a small structured list editor
+  (title/desc input pairs), never a raw JSON textarea — don't let an admin
+  hand-edit JSON directly, a malformed value silently falls back to
+  `LandingView.vue`'s hardcoded defaults (`JSON.parse` wrapped in
+  try/catch there) rather than erroring, which would be confusing to
+  debug if someone bypassed the admin UI.
 - **`GET /api/content`** (public, no auth): returns a **flat** `{key:
   value}` object (`ContentBlock::pluck('value', 'key')`), not a paginated
   list — this is the shape `LandingView.vue` actually consumes directly,
   don't change it to a list-of-objects without updating the frontend to
-  match.
+  match. List-type values come through as their raw JSON **string**;
+  `LandingView.vue` does the `JSON.parse` itself.
 - **Admin CRUD**: `GET/PUT /api/admin/content[/{key}]`
   (`Admin\ContentBlockController`, `role:administrator`). `update()` uses
   `updateOrCreate` keyed on `key`, so calling it on a key with no existing
   row creates one — there's no separate "create" step the frontend needs
   to worry about. Every update is `AuditLog::record('ubah_konten', ...)`-ed,
-  same pattern as pricing/discount changes.
-- **Seeder values are the exact text that used to be hardcoded in
-  `LandingView.vue`** before this feature existed — migrating to the CMS
-  changed zero visible content until an admin actually edits a field
-  through `/admin/content`.
+  same pattern as pricing/discount changes. Validation is unchanged
+  (`value: string, max:2000`) — a JSON-encoded array of 3-4 short items
+  comfortably fits under that limit, no special-casing needed for
+  `LIST_KEYS` at the validation layer.
+- **Seeder values are the exact text that's hardcoded as `LandingView.vue`'s
+  fallback object** — migrating/expanding the CMS changed zero visible
+  content until an admin actually edits a field through `/admin/content`.
 - Tests: `tests/Feature/Api/ContentControllerTest.php` (public endpoint,
   flat shape), `tests/Feature/Api/Admin/ContentBlockControllerTest.php`
-  (admin CRUD, unknown-key rejection, audit log, update-not-duplicate).
+  (admin CRUD, unknown-key rejection, audit log, update-not-duplicate, a
+  new-simple-key update, and a `LIST_KEYS` JSON round-trip).
 
 ## Announcements — added 2026-08-06 (Commerce Fase F)
 
