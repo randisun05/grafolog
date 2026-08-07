@@ -62,6 +62,28 @@ class ContentBlockControllerTest extends TestCase
         $this->assertDatabaseHas('content_blocks', ['key' => 'landing_cta_label', 'value' => 'Baru']);
     }
 
+    public function test_administrator_can_update_new_landing_section_key(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson('/api/admin/content/landing_compare_heading', ['value' => 'Judul baru'])
+            ->assertOk()
+            ->assertJsonPath('value', 'Judul baru');
+    }
+
+    public function test_administrator_can_update_list_key_with_json_value(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $json = json_encode(['Item satu', 'Item dua', 'Item tiga']);
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->putJson('/api/admin/content/landing_compare_old', ['value' => $json]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('content_blocks', ['key' => 'landing_compare_old', 'value' => $json]);
+    }
+
     public function test_index_lists_all_blocks(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
