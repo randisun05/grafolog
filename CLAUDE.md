@@ -41,6 +41,20 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   entry. Browser-verified with Playwright (full create→edit→delete round
   trip on all 3 tabs, zero console/page errors, state confirmed back to
   baseline row counts after cleanup) — not just build/lint-checked.
+  **Gained a 4th tab, "Aspek", 2026-08-08 (KM-C)** — same page, same
+  create-minimal/edit-full pattern as the Variabel Ukur tab's nested
+  categories: the create form only takes `kode`/Sindrom/`nama` (a dropdown
+  of `sindromList`, already loaded for the Sindrom tab, reused here — no
+  second fetch), and clicking "Ubah" expands a full edit panel below the
+  row with `keterangan_umum` + the 4 narasi-level textareas
+  (`.admin-km__field`/`.admin-km__categories` classes, reused rather than
+  duplicated). Delete is guarded client-side too (toast if `indikator_count
+  > 0`, mirrors the backend's 422) before even attempting the request.
+  Browser-verified: created a throwaway Aspek, filled and saved all 5 text
+  fields, reloaded the page, **re-opened the edit panel and confirmed the
+  saved text was still there** (proves it round-tripped through the
+  backend, not just local state), then deleted it — zero console errors,
+  row count back to the real 40 Aspek afterward.
   **`AdminTokensView` + `TokenWalletView` added 2026-08-07** (grafolog
   token system, see root `ROADMAP.md`'s "Inisiatif — Token Grafolog").
   `AdminTokensView` (`/admin/tokens`, `role: 'administrator'`) has two

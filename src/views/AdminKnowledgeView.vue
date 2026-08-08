@@ -8,6 +8,7 @@ const toast = useToast()
 
 const tabs = [
   { key: 'sindrom', label: 'Sindrom' },
+  { key: 'aspek', label: 'Aspek' },
   { key: 'variabel', label: 'Variabel Ukur' },
   { key: 'band', label: 'Band Skor' },
 ]
@@ -73,6 +74,88 @@ async function deleteSindrom(s) {
 async function loadSindrom() {
   const { data } = await api.get('/admin/knowledge/sindrom')
   sindromList.value = data
+}
+
+// --- Aspek ---------------------------------------------------------------
+const emptyAspekForm = () => ({
+  kode: '',
+  sindrom_id: '',
+  nama: '',
+  keterangan_umum: '',
+  narasi_very_high: '',
+  narasi_high: '',
+  narasi_medium: '',
+  narasi_low: '',
+})
+const aspekList = ref([])
+const aspekForm = ref({ kode: '', sindrom_id: '', nama: '' })
+const aspekErrors = ref({})
+const aspekSubmitting = ref(false)
+const expandedAspekId = ref(null)
+const aspekEditForm = ref(emptyAspekForm())
+const aspekSaving = ref(false)
+
+function startEditAspek(a) {
+  expandedAspekId.value = a.id
+  aspekEditForm.value = {
+    kode: a.kode,
+    sindrom_id: a.sindrom_id,
+    nama: a.nama,
+    keterangan_umum: a.keterangan_umum ?? '',
+    narasi_very_high: a.narasi_very_high ?? '',
+    narasi_high: a.narasi_high ?? '',
+    narasi_medium: a.narasi_medium ?? '',
+    narasi_low: a.narasi_low ?? '',
+  }
+}
+function cancelEditAspek() {
+  expandedAspekId.value = null
+}
+async function createAspek() {
+  aspekSubmitting.value = true
+  aspekErrors.value = {}
+  try {
+    await api.post('/admin/knowledge/aspek', aspekForm.value)
+    toast.push('Aspek berhasil dibuat.', 'success')
+    aspekForm.value = { kode: '', sindrom_id: '', nama: '' }
+    await loadAspek()
+  } catch (e) {
+    aspekErrors.value = e.response?.data?.errors ?? {}
+    toast.push(e.response?.data?.message ?? 'Gagal membuat Aspek.')
+  } finally {
+    aspekSubmitting.value = false
+  }
+}
+async function saveAspek(id) {
+  aspekSaving.value = true
+  try {
+    await api.put(`/admin/knowledge/aspek/${id}`, aspekEditForm.value)
+    toast.push('Aspek berhasil diubah.', 'success')
+    expandedAspekId.value = null
+    await loadAspek()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah Aspek.')
+  } finally {
+    aspekSaving.value = false
+  }
+}
+async function deleteAspek(a) {
+  if (a.indikator_count > 0) {
+    toast.push(`Tidak bisa menghapus - masih punya ${a.indikator_count} Indikator terkait.`)
+    return
+  }
+  if (!confirm(`Hapus Aspek "${a.nama}"?`)) return
+  try {
+    await api.delete(`/admin/knowledge/aspek/${a.id}`)
+    toast.push('Aspek dihapus.', 'success')
+    await loadAspek()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menghapus Aspek.')
+  }
+}
+async function loadAspek() {
+  const { data } = await api.get('/admin/knowledge/aspek')
+  aspekList.value = data
 }
 
 // --- Measurement Variable + Category ------------------------------------
@@ -237,7 +320,7 @@ onMounted(async () => {
   loading.value = true
   loadError.value = ''
   try {
-    await Promise.all([loadSindrom(), loadVariables(), loadBands()])
+    await Promise.all([loadSindrom(), loadAspek(), loadVariables(), loadBands()])
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat knowledge base.'
   } finally {
@@ -250,8 +333,9 @@ onMounted(async () => {
   <div class="admin-km">
     <h1>Kelola Knowledge Base</h1>
     <p class="admin-km__note">
-      Fondasi metodologi penilaian (KM-B) — Sindrom, Variabel Ukur + kategorinya, dan Band Skor.
-      Aspek, Indikator, dan aturan operator belum punya panel di sini (fase KM lanjutan).
+      Fondasi metodologi penilaian (KM-B/C) — Sindrom, Aspek + 4 level narasi, Variabel Ukur +
+      kategorinya, dan Band Skor. Indikator dan aturan operator belum punya panel di sini (fase KM
+      lanjutan).
     </p>
 
     <div class="admin-km__tabs">
@@ -345,6 +429,95 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
+      </section>
+
+      <!-- ASPEK -->
+      <section v-if="activeTab === 'aspek'" class="admin-km__panel">
+        <form class="admin-km__form" @submit.prevent="createAspek">
+          <div class="admin-km__row">
+            <label>
+              Kode
+              <input v-model="aspekForm.kode" type="text" maxlength="10" placeholder="41" required />
+            </label>
+            <label>
+              Sindrom
+              <select v-model="aspekForm.sindrom_id" required>
+                <option value="" disabled>Pilih Sindrom</option>
+                <option v-for="s in sindromList" :key="s.id" :value="s.id">{{ s.kode_romawi }} — {{ s.nama }}</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Nama
+            <input v-model="aspekForm.nama" type="text" maxlength="150" required />
+          </label>
+          <p v-if="aspekErrors.kode" class="error">{{ aspekErrors.kode[0] }}</p>
+          <p v-if="aspekErrors.sindrom_id" class="error">{{ aspekErrors.sindrom_id[0] }}</p>
+          <p class="admin-km__hint">Keterangan umum &amp; 4 level narasi diisi setelah dibuat, lewat "Ubah".</p>
+          <button type="submit" class="btn btn--primary" :disabled="aspekSubmitting">
+            {{ aspekSubmitting ? 'Membuat...' : 'Tambah Aspek' }}
+          </button>
+        </form>
+
+        <div v-for="a in aspekList" :key="a.id" class="admin-km__variable">
+          <div class="admin-km__variable-head" @click="expandedAspekId === a.id ? cancelEditAspek() : startEditAspek(a)">
+            <span class="admin-km__variable-kode">{{ a.kode }}</span>
+            <span class="admin-km__variable-nama">{{ a.nama }}</span>
+            <span class="admin-km__variable-axis">{{ a.sindrom.kode_romawi }} — {{ a.sindrom.nama }}</span>
+            <span class="admin-km__variable-count">{{ a.indikator_count }} indikator</span>
+            <span class="admin-km__actions" @click.stop>
+              <button type="button" class="btn" @click="expandedAspekId === a.id ? cancelEditAspek() : startEditAspek(a)">
+                {{ expandedAspekId === a.id ? 'Tutup' : 'Ubah' }}
+              </button>
+              <button type="button" class="btn btn--danger" @click="deleteAspek(a)">Hapus</button>
+            </span>
+          </div>
+
+          <div v-if="expandedAspekId === a.id" class="admin-km__categories">
+            <div class="admin-km__row">
+              <label>
+                Kode
+                <input v-model="aspekEditForm.kode" type="text" maxlength="10" />
+              </label>
+              <label>
+                Sindrom
+                <select v-model="aspekEditForm.sindrom_id">
+                  <option v-for="s in sindromList" :key="s.id" :value="s.id">{{ s.kode_romawi }} — {{ s.nama }}</option>
+                </select>
+              </label>
+            </div>
+            <label class="admin-km__field">
+              Nama
+              <input v-model="aspekEditForm.nama" type="text" maxlength="150" />
+            </label>
+            <label class="admin-km__field">
+              Keterangan Umum
+              <textarea v-model="aspekEditForm.keterangan_umum" rows="2"></textarea>
+            </label>
+            <label class="admin-km__field">
+              Narasi — Very High
+              <textarea v-model="aspekEditForm.narasi_very_high" rows="3"></textarea>
+            </label>
+            <label class="admin-km__field">
+              Narasi — High
+              <textarea v-model="aspekEditForm.narasi_high" rows="3"></textarea>
+            </label>
+            <label class="admin-km__field">
+              Narasi — Medium
+              <textarea v-model="aspekEditForm.narasi_medium" rows="3"></textarea>
+            </label>
+            <label class="admin-km__field">
+              Narasi — Low
+              <textarea v-model="aspekEditForm.narasi_low" rows="3"></textarea>
+            </label>
+            <div class="admin-km__actions">
+              <button type="button" class="btn btn--primary" :disabled="aspekSaving" @click="saveAspek(a.id)">
+                {{ aspekSaving ? 'Menyimpan...' : 'Simpan' }}
+              </button>
+              <button type="button" class="btn" @click="cancelEditAspek">Batal</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- MEASUREMENT VARIABLE -->
@@ -567,6 +740,20 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+.admin-km__hint {
+  font-size: 12px;
+  color: var(--color-text-soft);
+  margin: -6px 0 12px;
+}
+.admin-km__field {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--color-text-soft);
+}
+.admin-km__field textarea {
+  width: 100%;
 }
 .admin-km__table {
   width: 100%;
