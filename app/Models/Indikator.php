@@ -10,7 +10,7 @@ class Indikator extends Model
 {
     protected $table = 'indikator';
 
-    protected $fillable = ['kode', 'aspek_id', 'nama', 'keterangan'];
+    protected $fillable = ['kode', 'posisi', 'varian', 'aspek_id', 'nama', 'keterangan'];
 
     public function aspek(): BelongsTo
     {

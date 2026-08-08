@@ -154,7 +154,8 @@ both cases; `php artisan test` still 6/6 passing.
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
   `PricingPlan`, `DiscountCode`, `ContentBlock`, `Announcement`, `Company`,
   `Assignment`, `AuditLog`, `TokenPrice`, `TokenCost`, `TokenPurchase`,
-  `TokenLedgerEntry`.
+  `TokenLedgerEntry`, `MetodologiPenilaian` (2026-08-08, see "Knowledge
+  Management System" below).
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone
@@ -689,6 +690,62 @@ both cases; `php artisan test` still 6/6 passing.
   data was cleaned up and `token_prices`/`token_costs` reset back to
   inactive afterward, so the gate stays off for other dev accounts until
   an admin deliberately configures it for real.
+
+## Knowledge Management System (KM) — Fase KM-A added 2026-08-08
+
+Full plan (KM-A through KM-H): see the "Rencana Knowledge Management System —
+Guratan" artifact from the planning session (not in this repo). **KM-A
+(foundational infra) is done** — the rest (KM-B onward: CRUD panels, rule
+builder, worksheet, cascade activation, concept map) is **not built yet**.
+
+- **`metodologi_penilaian` table / `App\Models\MetodologiPenilaian`**: labels
+  *how* a measurement gets its number (mis. "Master" = manual grafolog with
+  calipers). Seeded with exactly one row (`kode: 'master'`) — both a
+  migration (`2026_08_08_100000_...`) and `GrafologiKnowledgeSeeder` insert
+  it via `updateOrInsert`, so it exists whether you run migrations alone or
+  reseed later. **Deliberately not attached to `Sindrom`/`Aspek`/`Indikator`**
+  — those are psychological content, identical across any future methodology
+  (CV, a revised Master, etc.); only `measurement_variable.metodologi_id`
+  carries the label. `measurement_category` was deliberately **not** given
+  its own `metodologi_id` — it's always owned by exactly one `variable_id`,
+  so its methodology is transitive through the variable; a second column
+  would just risk drifting out of sync with its parent.
+- **`Indikator.posisi` / `Indikator.varian`** (new columns, both nullable at
+  the DB level, following the same pattern as `handwriting_samples.
+  project_id`): every Indikator's position (1-10) within its Aspek and
+  optional lettered sub-variant (a/b/c/...), previously only inferable by
+  parsing the `kode` string. Backfilled for all 704 existing rows via
+  `App\Support\IndikatorKode::parse()` — reused by both the one-time backfill
+  migration and `GrafologiKnowledgeSeeder` going forward, so a reseed doesn't
+  need two copies of the same regex to stay in sync. Handles the source
+  data's inconsistent kode formats (apostrophe-suffixed `"01-1'"`,
+  space-separated `"31 5b"`, single-digit aspek `"4-10"`, `"-dupN"` suffixes
+  that mark a duplicate row at the *same* posisi/varian, not a new one). All
+  704 parse successfully; only Aspek 24 is missing position 9 in the source
+  data (a genuine data gap, not a parsing bug).
+- **`GrafologiKnowledgeSeeder` is now idempotent** (previously used blind
+  `DB::table()->insert()`/`insertGetId()` — re-running it on non-empty tables
+  either duplicated rows or hit unique-constraint errors). Now uses
+  `updateOrInsert` keyed on each table's natural unique column
+  (`sindrom.kode_romawi` — **newly made unique** via migration
+  `2026_08_08_100100_...`, `aspek.kode`, `indikator.kode`,
+  `measurement_variable.kode`, `deskriptif_lookup.kode`). Tables with no
+  natural key of their own (`measurement_category` — replaced wholesale per
+  `variable_id` on every run; `scoring_rule_band`, `indikator_cross_reference`
+  — both fully truncated and reinserted every run) have no per-row identity
+  worth preserving *yet*. **`indikator_cross_reference`'s truncate-and-
+  reinsert must be revisited before KM-F** (admin-editable cross-reference
+  cascade) ships — it would silently wipe any admin-set "aktif" flag on
+  reseed. The whole `run()` is wrapped in one `DB::transaction()`. Verified
+  by running it twice against the real dev DB: identical row counts and
+  identical primary-key IDs (e.g. `sindrom` "I" stayed id 1) both times —
+  safe for existing FKs (`ReportAspekScore`, etc.) that point at these IDs.
+- **Test fixture change**: `Tests\Concerns\SeedsGrafologiKb::seedMinimalAspek()`
+  now uses `Sindrom::firstOrCreate(['kode_romawi' => 'I'], ...)` instead of
+  `Sindrom::create()` — required once `kode_romawi` became unique, since
+  several tests call this helper twice per test (once per fixture user) and
+  need to share the same underlying Sindrom row rather than collide on the
+  new constraint.
 
 ## Hard constraints (user-stated, still in force)
 

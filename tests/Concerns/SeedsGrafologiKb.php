@@ -15,11 +15,14 @@ trait SeedsGrafologiKb
      */
     protected function seedMinimalAspek(int $count = 3): Sindrom
     {
-        $sindrom = Sindrom::create([
-            'kode_romawi' => 'I',
-            'nama' => 'Driving Forces',
-            'polaritas_inferred' => 'HIJAU',
-        ]);
+        // firstOrCreate, bukan create: kode_romawi sekarang unik (KM-A,
+        // 2026-08-08) - beberapa panggilan di 1 test (mis. fixture untuk 2
+        // user berbeda) harus berbagi baris Sindrom yang sama, bukan
+        // tabrakan constraint unik.
+        $sindrom = Sindrom::firstOrCreate(
+            ['kode_romawi' => 'I'],
+            ['nama' => 'Driving Forces', 'polaritas_inferred' => 'HIJAU']
+        );
 
         if (ScoringRuleBand::count() === 0) {
             foreach ([

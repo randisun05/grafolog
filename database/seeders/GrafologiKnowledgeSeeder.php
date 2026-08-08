@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\IndikatorKode;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -15,27 +16,51 @@ class GrafologiKnowledgeSeeder extends Seeder
      * (yang di JSON masih merujuk via kode lama), kita WAJIB bangun peta
      * kode -> id baru dulu sebelum insert - itulah kenapa urutan & struktur
      * method di bawah agak berbeda dari versi sebelumnya.
+     *
+     * Idempoten sejak 2026-08-08 (KM-A): setiap method pakai `updateOrCreate`
+     * keyed ke kolom unik alaminya (kode / kode_romawi), bukan `insert` buta
+     * - menjalankan ulang seeder ini di atas data yang sudah ada memperbarui
+     * baris yang cocok, bukan dobel atau gagal kena constraint unik.
+     * Tabel tanpa kunci alami sendiri (scoring_rule_band,
+     * indikator_cross_reference) tidak punya konsep "update per baris" yang
+     * masuk akal - untuk itu, isi lama dibuang lalu ditulis ulang penuh dari
+     * JSON di setiap run, dibungkus 1 transaksi supaya tidak pernah dalam
+     * keadaan kosong-sebagian jika seeding gagal di tengah jalan.
      */
     public function run(): void
     {
         $path = database_path('seeders/data/grafologi_knowledge_base.json');
         if (! file_exists($path)) {
             $this->command->error("File data tidak ditemukan: $path");
+
             return;
         }
 
         $data = json_decode(file_get_contents($path), true);
         $now = now();
 
-        $sindromMap = $this->seedSindrom($data['sindrom'], $now);
-        $aspekMap = $this->seedAspek($data['aspek'], $sindromMap, $now);
-        $indikatorMap = $this->seedIndikator($data['indikator'], $aspekMap, $now);
-        $variableMap = $this->seedMeasurementVariable($data['measurement_variables'], $now);
-        $this->seedScoringRuleBand($data['scoring_rules'], $now);
-        $this->seedDeskriptifLookup($data['deskriptif_lookup'], $now);
-        $this->seedCrossReference($data['indikator_cross_reference'], $indikatorMap, $now);
+        DB::transaction(function () use ($data, $now) {
+            DB::table('metodologi_penilaian')->updateOrInsert(
+                ['kode' => 'master'],
+                [
+                    'nama' => 'Master — Penilaian Manual Grafolog Bersertifikat',
+                    'keterangan' => 'Measurement worksheet fisik diukur manual oleh grafolog bersertifikat, dicocokkan ke Indikator lewat aturan operator.',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]
+            );
+            $metodologiMasterId = DB::table('metodologi_penilaian')->where('kode', 'master')->value('id');
 
-        $this->command->info('Knowledge base grafologi berhasil di-seed (skema id auto-increment).');
+            $sindromMap = $this->seedSindrom($data['sindrom'], $now);
+            $aspekMap = $this->seedAspek($data['aspek'], $sindromMap, $now);
+            $indikatorMap = $this->seedIndikator($data['indikator'], $aspekMap, $now);
+            $this->seedMeasurementVariable($data['measurement_variables'], $metodologiMasterId, $now);
+            $this->seedScoringRuleBand($data['scoring_rules'], $now);
+            $this->seedDeskriptifLookup($data['deskriptif_lookup'], $now);
+            $this->seedCrossReference($data['indikator_cross_reference'], $indikatorMap, $now);
+        });
+
+        $this->command->info('Knowledge base grafologi berhasil di-seed (idempoten, aman dijalankan ulang).');
     }
 
     /** @return array<int,int>  kode_lama(1-8) => id_baru */
@@ -43,17 +68,20 @@ class GrafologiKnowledgeSeeder extends Seeder
     {
         $map = [];
         foreach ($rows as $r) {
-            $id = DB::table('sindrom')->insertGetId([
-                'kode_romawi' => $r['kode_romawi'],
-                'nama' => $r['nama'],
-                'polaritas_inferred' => $r['polaritas_inferred'],
-                'catatan_polaritas' => $r['catatan_polaritas'] ?? null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-            $map[$r['id']] = $id; // $r['id'] = kode lama (1-8) dari JSON
+            DB::table('sindrom')->updateOrInsert(
+                ['kode_romawi' => $r['kode_romawi']],
+                [
+                    'nama' => $r['nama'],
+                    'polaritas_inferred' => $r['polaritas_inferred'],
+                    'catatan_polaritas' => $r['catatan_polaritas'] ?? null,
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+            $map[$r['id']] = DB::table('sindrom')->where('kode_romawi', $r['kode_romawi'])->value('id');
         }
-        $this->command->info(count($rows) . ' sindrom di-seed.');
+        $this->command->info(count($rows).' sindrom di-seed.');
+
         return $map;
     }
 
@@ -62,21 +90,24 @@ class GrafologiKnowledgeSeeder extends Seeder
     {
         $map = [];
         foreach ($rows as $r) {
-            $id = DB::table('aspek')->insertGetId([
-                'kode' => $r['id'],
-                'sindrom_id' => $sindromMap[$r['sindrom_id']],
-                'nama' => $r['nama'],
-                'keterangan_umum' => $r['keterangan_umum'] ?? null,
-                'narasi_very_high' => $r['narasi']['very_high'] ?? null,
-                'narasi_high' => $r['narasi']['high'] ?? null,
-                'narasi_medium' => $r['narasi']['medium'] ?? null,
-                'narasi_low' => $r['narasi']['low'] ?? null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-            $map[$r['id']] = $id;
+            DB::table('aspek')->updateOrInsert(
+                ['kode' => $r['id']],
+                [
+                    'sindrom_id' => $sindromMap[$r['sindrom_id']],
+                    'nama' => $r['nama'],
+                    'keterangan_umum' => $r['keterangan_umum'] ?? null,
+                    'narasi_very_high' => $r['narasi']['very_high'] ?? null,
+                    'narasi_high' => $r['narasi']['high'] ?? null,
+                    'narasi_medium' => $r['narasi']['medium'] ?? null,
+                    'narasi_low' => $r['narasi']['low'] ?? null,
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+            $map[$r['id']] = DB::table('aspek')->where('kode', $r['id'])->value('id');
         }
-        $this->command->info(count($rows) . ' aspek di-seed.');
+        $this->command->info(count($rows).' aspek di-seed.');
+
         return $map;
     }
 
@@ -88,39 +119,51 @@ class GrafologiKnowledgeSeeder extends Seeder
         foreach ($rows as $r) {
             if (! isset($aspekMap[$r['aspek_id']])) {
                 $skipped++;
+
                 continue; // aspek_id tidak ditemukan - seharusnya tidak terjadi, tapi jangan sampai fatal
             }
-            $id = DB::table('indikator')->insertGetId([
-                'kode' => $r['id'],
-                'aspek_id' => $aspekMap[$r['aspek_id']],
-                'nama' => Str::limit($r['nama'] ?? '', 250, ''),
-                'keterangan' => $r['keterangan'] ?? null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-            $map[$r['id']] = $id;
+            $parsed = IndikatorKode::parse($r['id']);
+            DB::table('indikator')->updateOrInsert(
+                ['kode' => $r['id']],
+                [
+                    'aspek_id' => $aspekMap[$r['aspek_id']],
+                    'posisi' => $parsed['posisi'],
+                    'varian' => $parsed['varian'],
+                    'nama' => Str::limit($r['nama'] ?? '', 250, ''),
+                    'keterangan' => $r['keterangan'] ?? null,
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+            $map[$r['id']] = DB::table('indikator')->where('kode', $r['id'])->value('id');
         }
-        $this->command->info(count($map) . ' indikator di-seed' . ($skipped ? " ($skipped dilewati - aspek tidak ditemukan)." : '.'));
+        $this->command->info(count($map).' indikator di-seed'.($skipped ? " ($skipped dilewati - aspek tidak ditemukan)." : '.'));
+
         return $map;
     }
 
-    /** @return array<string,int>  kode_lama('1','15 & 20 (d-stem)') => id_baru */
-    private function seedMeasurementVariable(array $rows, $now): array
+    private function seedMeasurementVariable(array $rows, int $metodologiMasterId, $now): void
     {
-        $map = [];
         foreach ($rows as $r) {
-            $id = DB::table('measurement_variable')->insertGetId([
-                'kode' => $r['id'],
-                'axis' => $r['axis'],
-                'nama' => $r['nama'],
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-            $map[$r['id']] = $id;
+            DB::table('measurement_variable')->updateOrInsert(
+                ['kode' => $r['id']],
+                [
+                    'metodologi_id' => $metodologiMasterId,
+                    'axis' => $r['axis'],
+                    'nama' => $r['nama'],
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
+            $variableId = DB::table('measurement_variable')->where('kode', $r['id'])->value('id');
 
+            // Kategori selalu milik penuh 1 variable_id, tidak punya kunci
+            // alami sendiri - ganti seluruh set kategorinya per re-run,
+            // bukan updateOrCreate per baris.
+            DB::table('measurement_category')->where('variable_id', $variableId)->delete();
             foreach ($r['kategori_range'] as $i => $c) {
                 DB::table('measurement_category')->insert([
-                    'variable_id' => $id,
+                    'variable_id' => $variableId,
                     'kategori' => $c['kategori'],
                     'rentang' => $c['rentang'],
                     'unit' => $c['unit'],
@@ -130,12 +173,14 @@ class GrafologiKnowledgeSeeder extends Seeder
                 ]);
             }
         }
-        $this->command->info(count($rows) . ' measurement_variable + kategori di-seed.');
-        return $map;
+        $this->command->info(count($rows).' measurement_variable + kategori di-seed.');
     }
 
     private function seedScoringRuleBand(array $scoringRules, $now): void
     {
+        // Tanpa kunci alami (polaritas+label bukan unik dijamin di sumber) -
+        // 6 baris kecil, aman ditulis ulang penuh setiap re-run.
+        DB::table('scoring_rule_band')->delete();
         $map = ['HIJAU' => 'HIJAU_sindrom_positif', 'MERAH' => 'MERAH_sindrom_negatif'];
         $count = 0;
         foreach ($map as $polaritas => $key) {
@@ -156,20 +201,28 @@ class GrafologiKnowledgeSeeder extends Seeder
     private function seedDeskriptifLookup(array $rows, $now): void
     {
         foreach ($rows as $r) {
-            DB::table('deskriptif_lookup')->insert([
-                'kode' => (string) $r['id'],
-                'keterangan' => $r['keterangan'],
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
+            DB::table('deskriptif_lookup')->updateOrInsert(
+                ['kode' => (string) $r['id']],
+                [
+                    'keterangan' => $r['keterangan'],
+                    'updated_at' => $now,
+                    'created_at' => $now,
+                ]
+            );
         }
-        $this->command->info(count($rows) . ' deskriptif_lookup di-seed.');
+        $this->command->info(count($rows).' deskriptif_lookup di-seed.');
     }
 
     /**
      * Cross-reference: sama seperti versi sebelumnya, cocokkan via "loose key"
      * (buang karakter non-alfanumerik + lowercase), tapi sekarang resolusinya
      * ke id integer (bukan kode string) untuk indikator_sumber_id.
+     *
+     * Tanpa kunci alami sendiri - ditulis ulang penuh setiap re-run, sama
+     * seperti scoring_rule_band. CATATAN untuk KM-F: begitu tabel ini dapat
+     * kolom status "aktif" yang bisa diedit administrator (lihat §3.3/§4
+     * rencana KM), logika ini WAJIB diubah supaya tidak menimpa perubahan
+     * admin - jangan biarkan delete-lalu-insert ini tetap ada tanpa revisi.
      */
     private function seedCrossReference(array $rows, array $indikatorMap, $now): void
     {
@@ -187,7 +240,9 @@ class GrafologiKnowledgeSeeder extends Seeder
             foreach ($r['mereferensikan_ke'] as $target) {
                 $targetMatch = $looseMap[$this->looseKey($target)] ?? null;
                 $status = ($sumberMatch && $targetMatch) ? 'matched' : 'unmatched';
-                if ($status === 'matched') $matchedCount++;
+                if ($status === 'matched') {
+                    $matchedCount++;
+                }
 
                 $insertRows[] = [
                     'indikator_sumber_raw' => Str::limit($r['indikator_sumber_raw'], 250, ''),
@@ -199,9 +254,10 @@ class GrafologiKnowledgeSeeder extends Seeder
                 ];
             }
         }
+        DB::table('indikator_cross_reference')->delete();
         DB::table('indikator_cross_reference')->insert($insertRows);
         $total = count($insertRows);
-        $this->command->info("$total baris cross_reference di-seed ($matchedCount matched, " . ($total - $matchedCount) . ' unmatched - wajar, lihat catatan konversi).');
+        $this->command->info("$total baris cross_reference di-seed ($matchedCount matched, ".($total - $matchedCount).' unmatched - wajar, lihat catatan konversi).');
     }
 
     private function looseKey(string $code): string

@@ -3,17 +3,23 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MeasurementVariable extends Model
 {
     protected $table = 'measurement_variable';
 
-    protected $fillable = ['kode', 'axis', 'nama'];
+    protected $fillable = ['kode', 'axis', 'nama', 'metodologi_id'];
 
     public function kategori(): HasMany
     {
         return $this->hasMany(MeasurementCategory::class, 'variable_id')->orderBy('urutan');
+    }
+
+    public function metodologi(): BelongsTo
+    {
+        return $this->belongsTo(MetodologiPenilaian::class, 'metodologi_id');
     }
 
     public static function findByKode(string $kode): ?self
@@ -27,7 +33,10 @@ class MeasurementVariable extends Model
             $rentang = str_replace(' ', '', $cat->rentang ?? '');
             if (str_ends_with($rentang, '+')) {
                 $min = (float) rtrim($rentang, '+');
-                if ($nilai >= $min) return $cat;
+                if ($nilai >= $min) {
+                    return $cat;
+                }
+
                 continue;
             }
             $parts = preg_split('/–|-/u', $rentang);
@@ -35,6 +44,7 @@ class MeasurementVariable extends Model
                 return $cat;
             }
         }
+
         return null;
     }
 }
