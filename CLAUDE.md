@@ -856,13 +856,51 @@ auto-check rule.
   `hapus_aturan_indikator`.
 - 16 new tests (`tests/Feature/Api/Admin/IndikatorRuleControllerTest.php`)
   — 276 total.
-- **Still not built**: KM-F (activating `indikator_cross_reference` as a
-  cascade-trigger UI, per the plan's §3.3), KM-G (the actual Measurement
-  Worksheet form + wiring `ScoringController` to auto-check Indikator via
-  these rules instead of manual 1-10 input), KM-H (visual knowledge concept
-  map). **Rules exist and can be authored, but nothing yet EVALUATES
-  them** — `ScoringController::submit` is completely unchanged, still takes
-  manual `skorPerAspek` input. That's KM-G's job.
+- **Still not built**: KM-G (the actual Measurement Worksheet form + wiring
+  `ScoringController` to auto-check Indikator via these rules instead of
+  manual 1-10 input), KM-H (visual knowledge concept map). **Rules exist
+  and can be authored, but nothing yet EVALUATES them** —
+  `ScoringController::submit` is completely unchanged, still takes manual
+  `skorPerAspek` input. That's KM-G's job.
+
+**KM-F (`indikator_cross_reference` management) added 2026-08-08** —
+activates a table that was dormant since the original JSON→DB conversion
+(257 matched / 280 total rows), per the KM plan's §3.3.
+
+- **`indikator_cross_reference.aktif`** (new boolean column, default
+  `true`): the admin-editable "is this cascade relationship live" flag.
+  **This is NOT the cascade-trigger UI itself** — checking Indikator A
+  auto-suggesting Indikator B only makes sense once a real
+  grafolog-facing Indikator checklist form exists, which is KM-G's job.
+  This phase is purely the data-management layer underneath that future
+  UI: view/search/toggle-active/fix/delete the 280 cross-reference rows.
+- **`GrafologiKnowledgeSeeder::seedCrossReference()` rewritten to be
+  idempotent** (previously the one remaining delete-then-reinsert method,
+  flagged as a known gap since KM-A) — `updateOrInsert` keyed on the
+  composite pair `(indikator_sumber_raw, mereferensikan_ke_kode)`,
+  confirmed unique across all 280 rows before relying on it. **`aktif` is
+  deliberately excluded from the update payload** — re-seeding an admin-
+  deactivated row must not silently flip it back to `true`. Verified with
+  a real deactivate → reseed → still-deactivated round trip, both in the
+  sqlite test suite and against the real dev DB.
+- **`Api\Admin\IndikatorCrossReferenceController`**: full CRUD +
+  pagination/search (`?search=` matches `indikator_sumber_raw` or
+  `mereferensikan_ke_kode`, `?aktif=`/`?match_status=` filter). `match_status`
+  is **computed server-side** on every write (`matched` only if BOTH
+  `indikator_sumber_id` resolves to a real Indikator AND
+  `mereferensikan_ke_kode` matches a real Indikator's `kode`) — never
+  accepted as raw input, so an admin can't create a row that claims
+  "matched" while the underlying data doesn't actually resolve.
+- **`IndikatorController::options()`** (new,
+  `GET /admin/knowledge/indikator-options`): a lightweight unpaginated
+  `{id, kode, nama}` list of all 704 Indikator, added specifically to
+  populate the cross-reference form's "pilih Indikator sumber" dropdown —
+  the existing `index()` is paginated and unsuitable for that.
+- Audit log: `buat_referensi_silang`/`ubah_referensi_silang`/
+  `hapus_referensi_silang`.
+- 10 new tests (9 in `IndikatorCrossReferenceControllerTest` + 1 new seeder
+  test, `test_reseeding_preserves_admin_deactivated_cross_reference`) — 286
+  total.
 
 ## Hard constraints (user-stated, still in force)
 

@@ -34,6 +34,19 @@ class IndikatorController extends Controller
         return response()->json($query->paginate(25)->withQueryString());
     }
 
+    /**
+     * Daftar ringkas SEMUA 704 Indikator (id/kode/nama saja, tanpa
+     * paginasi) - dipakai sebagai sumber dropdown pencarian di panel lain
+     * (mis. Referensi Silang KM-F), yang butuh pilih 1 Indikator tanpa
+     * mesti mengarungi paginasi index() di atas.
+     */
+    public function options(): JsonResponse
+    {
+        return response()->json(
+            Indikator::orderBy('aspek_id')->orderBy('posisi')->orderBy('varian')->get(['id', 'kode', 'nama'])
+        );
+    }
+
     public function store(StoreIndikatorRequest $request): JsonResponse
     {
         $indikator = Indikator::create($request->validated());

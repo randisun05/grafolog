@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\Indikator;
+use App\Models\IndikatorCrossReference;
 use App\Models\MeasurementCategory;
 use App\Models\MeasurementVariable;
 use App\Models\MetodologiPenilaian;
@@ -74,5 +75,21 @@ class GrafologiKnowledgeSeederTest extends TestCase
 
         $orphaned = MeasurementCategory::whereDoesntHave('variable')->count();
         $this->assertSame(0, $orphaned);
+    }
+
+    /**
+     * KM-F (2026-08-08): `aktif` adalah status yang dikelola administrator,
+     * bukan data sumber JSON - re-seed WAJIB tidak menimpanya balik ke
+     * default true (lihat catatan di GrafologiKnowledgeSeeder::seedCrossReference()).
+     */
+    public function test_reseeding_preserves_admin_deactivated_cross_reference(): void
+    {
+        $this->seed(GrafologiKnowledgeSeeder::class);
+        $row = IndikatorCrossReference::where('match_status', 'matched')->firstOrFail();
+        $row->update(['aktif' => false]);
+
+        $this->seed(GrafologiKnowledgeSeeder::class);
+
+        $this->assertFalse($row->fresh()->aktif);
     }
 }

@@ -11,7 +11,15 @@ class IndikatorCrossReference extends Model
 
     protected $fillable = [
         'indikator_sumber_raw', 'indikator_sumber_id',
-        'mereferensikan_ke_kode', 'match_status',
+        'mereferensikan_ke_kode', 'match_status', 'aktif',
+    ];
+
+    protected $attributes = [
+        'aktif' => true,
+    ];
+
+    protected $casts = [
+        'aktif' => 'boolean',
     ];
 
     public function indikatorSumber(): BelongsTo

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
+use App\Http\Controllers\Api\Admin\IndikatorCrossReferenceController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController;
@@ -122,12 +123,18 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::delete('/knowledge/aspek/{aspek}', [AdminAspekController::class, 'destroy']);
 
         Route::get('/knowledge/indikator', [AdminIndikatorController::class, 'index']);
+        Route::get('/knowledge/indikator-options', [AdminIndikatorController::class, 'options']);
         Route::post('/knowledge/indikator', [AdminIndikatorController::class, 'store']);
         Route::put('/knowledge/indikator/{indikator}', [AdminIndikatorController::class, 'update']);
         Route::delete('/knowledge/indikator/{indikator}', [AdminIndikatorController::class, 'destroy']);
         Route::post('/knowledge/indikator/{indikator}/rules', [IndikatorRuleController::class, 'store']);
         Route::put('/knowledge/indikator-rules/{indikatorRule}', [IndikatorRuleController::class, 'update']);
         Route::delete('/knowledge/indikator-rules/{indikatorRule}', [IndikatorRuleController::class, 'destroy']);
+
+        Route::get('/knowledge/cross-references', [IndikatorCrossReferenceController::class, 'index']);
+        Route::post('/knowledge/cross-references', [IndikatorCrossReferenceController::class, 'store']);
+        Route::put('/knowledge/cross-references/{indikatorCrossReference}', [IndikatorCrossReferenceController::class, 'update']);
+        Route::delete('/knowledge/cross-references/{indikatorCrossReference}', [IndikatorCrossReferenceController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

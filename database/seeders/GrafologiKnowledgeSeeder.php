@@ -17,15 +17,18 @@ class GrafologiKnowledgeSeeder extends Seeder
      * kode -> id baru dulu sebelum insert - itulah kenapa urutan & struktur
      * method di bawah agak berbeda dari versi sebelumnya.
      *
-     * Idempoten sejak 2026-08-08 (KM-A): setiap method pakai `updateOrCreate`
-     * keyed ke kolom unik alaminya (kode / kode_romawi), bukan `insert` buta
-     * - menjalankan ulang seeder ini di atas data yang sudah ada memperbarui
-     * baris yang cocok, bukan dobel atau gagal kena constraint unik.
-     * Tabel tanpa kunci alami sendiri (scoring_rule_band,
-     * indikator_cross_reference) tidak punya konsep "update per baris" yang
-     * masuk akal - untuk itu, isi lama dibuang lalu ditulis ulang penuh dari
-     * JSON di setiap run, dibungkus 1 transaksi supaya tidak pernah dalam
-     * keadaan kosong-sebagian jika seeding gagal di tengah jalan.
+     * Idempoten sejak 2026-08-08 (KM-A, diperluas KM-F): setiap method pakai
+     * `updateOrInsert`/`updateOrCreate` keyed ke kolom unik alaminya (kode /
+     * kode_romawi / pasangan indikator_sumber_raw+mereferensikan_ke_kode),
+     * bukan `insert` buta - menjalankan ulang seeder ini di atas data yang
+     * sudah ada memperbarui baris yang cocok, bukan dobel atau gagal kena
+     * constraint unik. Hanya `scoring_rule_band` yang masih ditulis ulang
+     * penuh (delete-lalu-insert) - 6 baris kecil tanpa kunci alami dan
+     * tanpa status admin-editable apa pun yang perlu dijaga, beda dari
+     * `indikator_cross_reference` yang sejak KM-F punya kolom `aktif` yang
+     * WAJIB tidak tertimpa. Semuanya dibungkus 1 transaksi supaya tidak
+     * pernah dalam keadaan kosong-sebagian jika seeding gagal di tengah
+     * jalan.
      */
     public function run(): void
     {
@@ -218,11 +221,11 @@ class GrafologiKnowledgeSeeder extends Seeder
      * (buang karakter non-alfanumerik + lowercase), tapi sekarang resolusinya
      * ke id integer (bukan kode string) untuk indikator_sumber_id.
      *
-     * Tanpa kunci alami sendiri - ditulis ulang penuh setiap re-run, sama
-     * seperti scoring_rule_band. CATATAN untuk KM-F: begitu tabel ini dapat
-     * kolom status "aktif" yang bisa diedit administrator (lihat §3.3/§4
-     * rencana KM), logika ini WAJIB diubah supaya tidak menimpa perubahan
-     * admin - jangan biarkan delete-lalu-insert ini tetap ada tanpa revisi.
+     * Idempoten sejak KM-F (2026-08-08): `updateOrInsert` keyed ke
+     * (indikator_sumber_raw, mereferensikan_ke_kode) - pasangan ini sudah
+     * dipastikan unik di 280 baris data sumber. Kolom `aktif` SENGAJA tidak
+     * ikut ditulis di sini - itu status yang dikelola administrator lewat
+     * panel KM-F, re-seed tidak boleh menimpanya balik ke default true.
      */
     private function seedCrossReference(array $rows, array $indikatorMap, $now): void
     {
@@ -231,11 +234,12 @@ class GrafologiKnowledgeSeeder extends Seeder
             $looseMap[$this->looseKey($kode)] = ['id' => $id, 'kode' => $kode];
         }
 
-        $insertRows = [];
+        $total = 0;
         $matchedCount = 0;
         foreach ($rows as $r) {
             $sumberKey = $r['indikator_sumber_kode_estimasi'] ?? null;
             $sumberMatch = $sumberKey ? ($looseMap[$this->looseKey($sumberKey)] ?? null) : null;
+            $sumberRaw = Str::limit($r['indikator_sumber_raw'], 250, '');
 
             foreach ($r['mereferensikan_ke'] as $target) {
                 $targetMatch = $looseMap[$this->looseKey($target)] ?? null;
@@ -243,20 +247,20 @@ class GrafologiKnowledgeSeeder extends Seeder
                 if ($status === 'matched') {
                     $matchedCount++;
                 }
+                $targetKode = $targetMatch['kode'] ?? $target;
 
-                $insertRows[] = [
-                    'indikator_sumber_raw' => Str::limit($r['indikator_sumber_raw'], 250, ''),
-                    'indikator_sumber_id' => $sumberMatch['id'] ?? null,
-                    'mereferensikan_ke_kode' => $targetMatch['kode'] ?? $target,
-                    'match_status' => $status,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
+                DB::table('indikator_cross_reference')->updateOrInsert(
+                    ['indikator_sumber_raw' => $sumberRaw, 'mereferensikan_ke_kode' => $targetKode],
+                    [
+                        'indikator_sumber_id' => $sumberMatch['id'] ?? null,
+                        'match_status' => $status,
+                        'updated_at' => $now,
+                        'created_at' => $now,
+                    ]
+                );
+                $total++;
             }
         }
-        DB::table('indikator_cross_reference')->delete();
-        DB::table('indikator_cross_reference')->insert($insertRows);
-        $total = count($insertRows);
         $this->command->info("$total baris cross_reference di-seed ($matchedCount matched, ".($total - $matchedCount).' unmatched - wajar, lihat catatan konversi).');
     }
 
