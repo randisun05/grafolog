@@ -5,7 +5,11 @@ use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementCo
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
+use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
+use App\Http\Controllers\Api\Admin\MeasurementVariableController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
+use App\Http\Controllers\Api\Admin\ScoringRuleBandController;
+use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
 use App\Http\Controllers\Api\AnnouncementController;
@@ -89,6 +93,25 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/announcements', [AdminAnnouncementController::class, 'index']);
         Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
         Route::put('/announcements/{announcement}', [AdminAnnouncementController::class, 'update']);
+
+        // Knowledge Management System (KM-B, 2026-08-08) - lihat CLAUDE.md
+        Route::get('/knowledge/sindrom', [AdminSindromController::class, 'index']);
+        Route::post('/knowledge/sindrom', [AdminSindromController::class, 'store']);
+        Route::put('/knowledge/sindrom/{sindrom}', [AdminSindromController::class, 'update']);
+        Route::delete('/knowledge/sindrom/{sindrom}', [AdminSindromController::class, 'destroy']);
+
+        Route::get('/knowledge/measurement-variables', [MeasurementVariableController::class, 'index']);
+        Route::post('/knowledge/measurement-variables', [MeasurementVariableController::class, 'store']);
+        Route::put('/knowledge/measurement-variables/{measurementVariable}', [MeasurementVariableController::class, 'update']);
+        Route::delete('/knowledge/measurement-variables/{measurementVariable}', [MeasurementVariableController::class, 'destroy']);
+        Route::post('/knowledge/measurement-variables/{measurementVariable}/categories', [MeasurementCategoryController::class, 'store']);
+        Route::put('/knowledge/measurement-categories/{measurementCategory}', [MeasurementCategoryController::class, 'update']);
+        Route::delete('/knowledge/measurement-categories/{measurementCategory}', [MeasurementCategoryController::class, 'destroy']);
+
+        Route::get('/knowledge/scoring-rule-bands', [ScoringRuleBandController::class, 'index']);
+        Route::post('/knowledge/scoring-rule-bands', [ScoringRuleBandController::class, 'store']);
+        Route::put('/knowledge/scoring-rule-bands/{scoringRuleBand}', [ScoringRuleBandController::class, 'update']);
+        Route::delete('/knowledge/scoring-rule-bands/{scoringRuleBand}', [ScoringRuleBandController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

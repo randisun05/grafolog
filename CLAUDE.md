@@ -747,6 +747,43 @@ builder, worksheet, cascade activation, concept map) is **not built yet**.
   need to share the same underlying Sindrom row rather than collide on the
   new constraint.
 
+**KM-B (admin CRUD panels) added 2026-08-08**, all `role:administrator`,
+namespace `App\Http\Controllers\Api\Admin\`:
+
+- **`SindromController`** (`/admin/knowledge/sindrom`): full CRUD.
+  `destroy()` **guards against `aspek.sindrom_id`'s `cascadeOnDelete`** —
+  `abort_if($sindrom->aspek()->exists(), 422, ...)` — without this, deleting
+  1 Sindrom would silently cascade-delete every Aspek (and their Indikator,
+  cascading again) underneath it. `index()` returns `withCount('aspek')` so
+  the frontend can show/enforce this before even trying to delete.
+- **`MeasurementVariableController`** (`/admin/knowledge/measurement-
+  variables`): full CRUD. `store()` defaults `metodologi_id` to the
+  `"master"` row (`MetodologiPenilaian::findByKode('master')?->id`) when the
+  request omits it — there's only one methodology today, no reason to force
+  the admin to pick it every time. `destroy()` has **no** dependency guard
+  (unlike Sindrom) — `measurement_category.variable_id`'s cascadeOnDelete is
+  intentional here, categories are wholly owned by their variable (see KM-A's
+  §3.0 rationale in the KM plan for why `measurement_category` never got its
+  own `metodologi_id`).
+- **`MeasurementCategoryController`** (nested,
+  `/admin/knowledge/measurement-variables/{id}/categories` for `store()`,
+  `/admin/knowledge/measurement-categories/{id}` for `update`/`destroy`): no
+  standalone `index()` — categories come back already eager-loaded on
+  `MeasurementVariableController::index()`.
+- **`ScoringRuleBandController`** (`/admin/knowledge/scoring-rule-bands`):
+  full CRUD, no dependency guard needed —
+  `ScoringRuleBand::labelUntukSkor()` looks bands up dynamically by
+  `polaritas`/`rentang_skor` at report-generation time, nothing stores an FK
+  to a specific band row.
+- All 4 write audit log entries (`buat_sindrom`/`ubah_sindrom`/
+  `hapus_sindrom`, `buat_variabel_ukur`/..., `buat_kategori_ukur`/...,
+  `buat_band_skor`/...), same pattern as every other admin controller.
+- **Aspek (with its 4 narasi levels), Indikator, and the operator/rule
+  system are NOT built yet** — that's KM-C/D/E. This phase only covers the
+  4 "simple" entities from the KM plan's roadmap table.
+- 30 new tests (`tests/Feature/Api/Admin/{Sindrom,MeasurementVariable,
+  MeasurementCategory,ScoringRuleBand}ControllerTest.php`) — 242 total.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.
