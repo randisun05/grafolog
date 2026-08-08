@@ -5,6 +5,8 @@ import api from '@/lib/api'
 import SindromAccordion from '@/components/scoring/SindromAccordion.vue'
 import ProgressTracker from '@/components/shared/ProgressTracker.vue'
 import AutoCalculationPanel from '@/components/scoring/AutoCalculationPanel.vue'
+import MeasurementWorksheet from '@/components/scoring/MeasurementWorksheet.vue'
+import IndikatorChecklist from '@/components/scoring/IndikatorChecklist.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -23,6 +25,13 @@ const client = ref(null)
 const tier = ref('comprehensive')
 const sample = ref(null)
 
+// KM-G: cara mengisi skor - 'manual' (form dropdown 1-10, alur asli) atau
+// 'worksheet' (measurement worksheet + checklist Indikator, dihitung
+// otomatis dari indikator_rules). Keduanya cuma mengisi `scores` di bawah
+// dengan bentuk yang sama persis ({skor}) - preview/submit tidak tahu dan
+// tidak perlu tahu cara skor itu didapat. 'manual' tetap default supaya
+// alur lama tidak berubah untuk grafolog yang belum pakai worksheet.
+const scoringMode = ref('manual')
 const scores = ref({}) // { [kode]: { skor, catatan_grafolog } }
 const scoredCount = computed(
   () => Object.values(scores.value).filter((s) => Number.isInteger(s?.skor)).length,
@@ -114,6 +123,14 @@ async function fetchPreview() {
   } finally {
     previewLoading.value = false
   }
+}
+
+// Jembatan satu arah: hasil tally checklist ditaruh ke `scores` persis
+// seperti kalau grafolog memilih skornya sendiri lewat dropdown manual -
+// sengaja butuh klik eksplisit (bukan auto-sync tiap toggle) supaya form
+// tidak "lengkap" begitu saja sebelum grafolog benar-benar meninjau checklist.
+function applyChecklistTally(skorPerAspek) {
+  scores.value = { ...scores.value, ...skorPerAspek }
 }
 
 async function lookupClient() {
@@ -277,6 +294,18 @@ function viewReport() {
         isian skor akan hilang.
       </p>
 
+      <div class="portal-grafolog__mode">
+        <span>Cara isi skor:</span>
+        <label>
+          <input v-model="scoringMode" type="radio" value="manual" />
+          Manual (1-10)
+        </label>
+        <label>
+          <input v-model="scoringMode" type="radio" value="worksheet" />
+          Measurement Worksheet
+        </label>
+      </div>
+
       <div class="assessment-workspace">
         <aside class="assessment-workspace__col assessment-workspace__col--info">
           <div class="assessment-workspace__card">
@@ -292,13 +321,19 @@ function viewReport() {
         </aside>
 
         <div class="assessment-workspace__col assessment-workspace__col--form">
-          <SindromAccordion
-            v-for="sindrom in sindromList"
-            :key="sindrom.id"
-            :sindrom="sindrom"
-            :scores="scores"
-            @update:scores="(v) => (scores = v)"
-          />
+          <template v-if="scoringMode === 'manual'">
+            <SindromAccordion
+              v-for="sindrom in sindromList"
+              :key="sindrom.id"
+              :sindrom="sindrom"
+              :scores="scores"
+              @update:scores="(v) => (scores = v)"
+            />
+          </template>
+          <template v-else>
+            <MeasurementWorksheet :sample-id="sample.id" />
+            <IndikatorChecklist :sample-id="sample.id" @apply="applyChecklistTally" />
+          </template>
         </div>
 
         <aside class="assessment-workspace__col assessment-workspace__col--calc">
@@ -400,6 +435,22 @@ function viewReport() {
   padding: 8px 12px;
   font-size: 13px;
   margin-bottom: 16px;
+}
+
+.portal-grafolog__mode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--color-text-soft);
+}
+.portal-grafolog__mode label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-ink);
 }
 
 .assessment-workspace {

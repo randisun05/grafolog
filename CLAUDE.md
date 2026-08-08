@@ -258,7 +258,9 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - `src/components/report/`: `TraitBar`, `ReportDocument`.
 - `src/components/scoring/`: `AspekRow`, `ScoreSelector`, `SindromAccordion`
   (all unchanged since 2026-07-26 — reused as-is, only repositioned),
-  `AutoCalculationPanel` (added 2026-08-03, MGA Fase 04).
+  `AutoCalculationPanel` (added 2026-08-03, MGA Fase 04),
+  **`MeasurementWorksheet` + `IndikatorChecklist` (added 2026-08-08, KM-G)**
+  — see `PortalGrafologView`'s entry below for how they plug in.
 - **Built 2026-07-27** (were missing as of 2026-07-26, now done):
   - `components/layout/AppNavbar.vue` — extracted verbatim from `App.vue`'s
     inline header (no behavior change), mounted there via `<AppNavbar />`.
@@ -296,6 +298,39 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   disappear before the grafolog copies the password down) telling them to
   relay it to the client directly. See `guratan-api/CLAUDE.md`'s
   `POST /api/clients` entry for why this doesn't email an invite.
+- **`PortalGrafologView`'s step 2 gained a "cara isi skor" mode toggle,
+  2026-08-08 (KM-G)**: a `scoringMode` ref (`'manual'` default |
+  `'worksheet'`) two radio buttons above the workspace. `'manual'` renders
+  exactly what was already there (`SindromAccordion`, completely
+  untouched). `'worksheet'` swaps the middle column for
+  `MeasurementWorksheet` (input grid for the ~34 measurement variables,
+  posts to `POST /api/samples/{id}/measurements`) stacked above
+  `IndikatorChecklist` (fetches `GET /api/samples/{id}/checklist`,
+  Sindrom→Aspek accordions of checkboxes; each checked-by-rule/cascade
+  Indikator shows an "Auto"/"Terkait" badge plus the trigger's
+  `keterangan_pemicu` text inline in italic — this is the KM plan's
+  explicit "grafolog must see WHY" requirement). **Both modes write into
+  the exact same `scores` ref** that already fed
+  `AutoCalculationPanel`/preview/submit — `IndikatorChecklist` never talks
+  to those directly, it only emits an `apply` event (from its own
+  "Terapkan Skor Checklist ke Form" button) that `PortalGrafologView`
+  merges into `scores`, at which point the pre-existing debounced preview
+  watcher and the submit button behave identically to manual mode with
+  zero new code path. **That button click is a deliberate, one-time
+  hand-off, not a live sync** — `tallyPerAspek` on the backend returns a
+  skor for every Aspek unconditionally (clamped to a floor of 1), so
+  auto-applying it continuously would make the submit button look
+  "complete" the instant the checklist loads, before the grafolog has
+  actually gone through it. Checkbox clicks call
+  `POST /api/samples/{id}/checklist/toggle`; when the backend responds
+  with `requires_confirmation` (unchecking something that cascaded to
+  still-checked targets), the component shows a plain `window.confirm()`
+  listing the affected Indikator — no modal component exists in this
+  codebase (same convention as every other KM view), and a yes/no with a
+  short list didn't justify inventing one. Browser-verified end-to-end
+  against real KB data — see `guratan-api/CLAUDE.md`'s KM-G section for
+  the full scenario (real category rule, real cross-reference cascade,
+  submitted through the unchanged scoring endpoint to a completed report).
 - **`PortalGrafologView`'s step 2 refactored 2026-08-03** (MGA pivot Fase
   04): "Isi Skor" is now a 3-column Assessment Workspace (client/sample info
   | `SindromAccordion` form, unchanged | `AutoCalculationPanel`, live).
