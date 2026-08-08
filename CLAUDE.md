@@ -120,7 +120,12 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   real KB data — see `guratan-api/CLAUDE.md`'s KM-H section for the full
   scenario (real rule + 3 real outgoing cross-references on `02-8a`,
   jump-via-chip confirmed, 2 connector lines rendered, zero console
-  errors).
+  errors). **Fixed post-review, 2026-08-08**: `selectAspek()` didn't clear
+  the previous Aspek's `aspekDetail` before awaiting the new fetch, so the
+  prior Aspek's Indikator buttons stayed visible and clickable during the
+  loading window, producing a Relasi panel inconsistent with the
+  visibly-selected column. Fixed by clearing `aspekDetail` synchronously
+  before the request starts.
   **Gained a 6th tab, "Referensi Silang", 2026-08-08 (KM-F)** — same
   paginated-search pattern as the Indikator tab (280 rows). Table columns:
   Sumber (raw text + resolved source Indikator kode if known), Tujuan
@@ -348,20 +353,48 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   merges into `scores`, at which point the pre-existing debounced preview
   watcher and the submit button behave identically to manual mode with
   zero new code path. **That button click is a deliberate, one-time
-  hand-off, not a live sync** — `tallyPerAspek` on the backend returns a
-  skor for every Aspek unconditionally (clamped to a floor of 1), so
-  auto-applying it continuously would make the submit button look
-  "complete" the instant the checklist loads, before the grafolog has
-  actually gone through it. Checkbox clicks call
-  `POST /api/samples/{id}/checklist/toggle`; when the backend responds
-  with `requires_confirmation` (unchecking something that cascaded to
-  still-checked targets), the component shows a plain `window.confirm()`
-  listing the affected Indikator — no modal component exists in this
-  codebase (same convention as every other KM view), and a yes/no with a
-  short list didn't justify inventing one. Browser-verified end-to-end
-  against real KB data — see `guratan-api/CLAUDE.md`'s KM-G section for
-  the full scenario (real category rule, real cross-reference cascade,
-  submitted through the unchanged scoring endpoint to a completed report).
+  hand-off, not a live sync**, and — since a 2026-08-08 post-review fix,
+  see below — it's also **disabled until every Sindrom has been opened at
+  least once** (`reviewedSindrom`, distinct from `expandedSindrom`'s
+  open/close toggle state so collapsing a section again doesn't lose
+  credit). Checkbox clicks call `POST /api/samples/{id}/checklist/toggle`;
+  when the backend responds with `requires_confirmation` (unchecking
+  something that cascaded to still-checked targets), the component shows
+  a plain `window.confirm()` listing the affected Indikator — no modal
+  component exists in this codebase (same convention as every other KM
+  view), and a yes/no with a short list didn't justify inventing one.
+  Browser-verified end-to-end against real KB data — see
+  `guratan-api/CLAUDE.md`'s KM-G section for the full scenario (real
+  category rule, real cross-reference cascade, submitted through the
+  unchanged scoring endpoint to a completed report).
+- **Fixed post-review, 2026-08-08** — a review of the freshly-built KM-G/
+  KM-H work found 2 frontend bugs (verified individually before fixing,
+  alongside 5 backend ones documented in `guratan-api/CLAUDE.md`):
+  - **`applyTally()` used to write a skor for all 40 Aspek unconditionally**
+    (`tallyPerAspek` floors an untouched Aspek to skor 1, not 0) — so one
+    click of "Terapkan Skor Checklist ke Form" made the submit button
+    look complete even if the grafolog had reviewed only 2 of 40 Aspek. Fixed
+    by only including Aspek belonging to a `reviewedSindrom` (see above) —
+    the apply button is disabled with a "Buka & tinjau semua Sindrom dulu
+    (X/8)" hint until every section has been opened at least once. Not a
+    perfect guarantee the grafolog actually read every row, but a real
+    gate where there was none before.
+  - **Declining the cascade-uncheck confirm dialog was silently broken** —
+    `postToggle()`'s `also_uncheck_cascaded: []` looked identical whether
+    the grafolog had declined or hadn't been asked yet (both are an empty
+    array, and an empty array is truthy in JS so it was always sent),
+    so clicking Cancel just re-triggered the same prompt and the checkbox
+    snapped back to checked. Fixed by always sending an explicit
+    `confirmed: true` on the follow-up call (see
+    `guratan-api/CLAUDE.md`'s matching backend fix) regardless of the
+    grafolog's answer — an empty cascade list now unambiguously means
+    "confirmed, nothing to cascade," not "undecided."
+  Both browser-verified with Playwright against real KB data: confirmed
+  the apply button stays disabled after opening only 1 of 8 Sindrom with
+  the correct "1/8" hint, and confirmed declining the cascade prompt
+  (auto-dismissed dialog = Cancel) leaves the source Indikator unchecked
+  while the cascaded target stays checked — the exact scenario that used
+  to fail.
 - **`PortalGrafologView`'s step 2 refactored 2026-08-03** (MGA pivot Fase
   04): "Isi Skor" is now a 3-column Assessment Workspace (client/sample info
   | `SindromAccordion` form, unchanged | `AutoCalculationPanel`, live).

@@ -10,9 +10,23 @@ const emit = defineEmits(['apply'])
 const sindromList = ref([]) // GET /checklist response shape
 const loading = ref(true)
 const refreshing = ref(false)
-const openSindrom = ref({}) // { [sindromId]: boolean }
+const expandedSindrom = ref({}) // { [sindromId]: boolean } - open/close UI state, toggles freely
+// Gerbang "sudah ditinjau" - terpisah dari expandedSindrom di atas karena
+// itu boleh ditutup lagi setelah dibaca tanpa kehilangan progres. Bukan
+// bukti sempurna grafolog benar-benar membaca tiap Indikator, tapi jauh
+// lebih kuat daripada tidak ada gerbang sama sekali (bug ditemukan lewat
+// review 2026-08-08: applyTally() dulu menulis skor floor=1 untuk SEMUA 40
+// Aspek sekaligus tanpa syarat, jadi tombol submit bisa aktif walau
+// grafolog baru buka 2 dari 8 Sindrom).
+const reviewedSindrom = ref({}) // { [sindromId]: true } - set once, never unset
 
-const totalAspek = computed(() => sindromList.value.reduce((n, s) => n + s.aspek.length, 0))
+function toggleExpand(sindromId) {
+  expandedSindrom.value[sindromId] = !expandedSindrom.value[sindromId]
+  if (expandedSindrom.value[sindromId]) reviewedSindrom.value[sindromId] = true
+}
+
+const reviewedSindromCount = computed(() => Object.values(reviewedSindrom.value).filter(Boolean).length)
+const allSindromReviewed = computed(() => sindromList.value.length > 0 && reviewedSindromCount.value >= sindromList.value.length)
 
 async function load() {
   refreshing.value = true
@@ -36,16 +50,22 @@ async function toggleIndikator(indikator, checked) {
     const ikutUncheck = window.confirm(
       `Indikator ini sebelumnya memicu ikut tercentangnya:\n\n${daftar}\n\nUncheck juga yang terkait?`,
     )
-    await postToggle(indikator.id, checked, ikutUncheck ? result.cascade_candidates.map((c) => c.id) : [])
+    // `confirmed: true` di sini WAJIB, terlepas dari ikutUncheck ya/tidak -
+    // itu satu-satunya cara backend membedakan "grafolog sudah menjawab
+    // dialognya" dari "belum pernah ditanya sama sekali" (bug ditemukan
+    // lewat review 2026-08-08: sebelum ada flag ini, menolak cascade selalu
+    // memicu ulang prompt yang sama karena keduanya sama-sama array kosong).
+    await postToggle(indikator.id, checked, ikutUncheck ? result.cascade_candidates.map((c) => c.id) : [], true)
   }
   await load()
 }
 
-async function postToggle(indikatorId, checked, alsoUncheckCascaded = undefined) {
+async function postToggle(indikatorId, checked, alsoUncheckCascaded = undefined, confirmed = false) {
   const { data } = await api.post(`/samples/${props.sampleId}/checklist/toggle`, {
     indikator_id: indikatorId,
     checked,
     ...(alsoUncheckCascaded ? { also_uncheck_cascaded: alsoUncheckCascaded } : {}),
+    ...(confirmed ? { confirmed: true } : {}),
   })
   return data
 }
@@ -53,6 +73,7 @@ async function postToggle(indikatorId, checked, alsoUncheckCascaded = undefined)
 function applyTally() {
   const skor = {}
   for (const sindrom of sindromList.value) {
+    if (!reviewedSindrom.value[sindrom.id]) continue
     for (const aspek of sindrom.aspek) {
       skor[aspek.kode] = { skor: aspek.skor }
     }
@@ -81,11 +102,12 @@ function applyTally() {
         <button
           type="button"
           class="indikator-checklist__toggle"
-          @click="openSindrom[sindrom.id] = !openSindrom[sindrom.id]"
+          @click="toggleExpand(sindrom.id)"
         >
           <span>{{ sindrom.kode_romawi }}. {{ sindrom.nama }}</span>
+          <span v-if="reviewedSindrom[sindrom.id]" class="indikator-checklist__reviewed">✓ ditinjau</span>
         </button>
-        <div v-show="openSindrom[sindrom.id]" class="indikator-checklist__body">
+        <div v-show="expandedSindrom[sindrom.id]" class="indikator-checklist__body">
           <div v-for="aspek in sindrom.aspek" :key="aspek.id" class="indikator-checklist__aspek">
             <div class="indikator-checklist__aspek-head">
               <span>{{ aspek.kode }} - {{ aspek.nama }}</span>
@@ -117,9 +139,12 @@ function applyTally() {
       </div>
 
       <div class="indikator-checklist__actions">
-        <button type="button" class="btn btn--primary" :disabled="totalAspek === 0" @click="applyTally">
+        <button type="button" class="btn btn--primary" :disabled="!allSindromReviewed" @click="applyTally">
           Terapkan Skor Checklist ke Form
         </button>
+        <span v-if="!allSindromReviewed" class="indikator-checklist__actions-hint">
+          Buka & tinjau semua Sindrom dulu ({{ reviewedSindromCount }}/{{ sindromList.length }}) sebelum menerapkan skor.
+        </span>
       </div>
     </template>
   </div>
@@ -158,6 +183,10 @@ function applyTally() {
 }
 .indikator-checklist__toggle {
   width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
   padding: 10px 14px;
   background: var(--color-paper);
   border: none;
@@ -166,6 +195,12 @@ function applyTally() {
   font-family: var(--font-heading);
   color: var(--color-ink);
   text-align: left;
+}
+.indikator-checklist__reviewed {
+  font-size: 11px;
+  font-weight: normal;
+  font-family: var(--font-body);
+  color: var(--color-success);
 }
 .indikator-checklist__body {
   padding: 6px 14px 10px;
@@ -224,5 +259,13 @@ function applyTally() {
 }
 .indikator-checklist__actions {
   margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.indikator-checklist__actions-hint {
+  font-size: 12px;
+  color: var(--color-text-soft);
 }
 </style>

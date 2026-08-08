@@ -30,10 +30,16 @@ onMounted(async () => {
 })
 
 async function save() {
-  const pengukuran = Object.entries(nilai.value)
-    .filter(([, v]) => v !== '' && v !== null && v !== undefined)
-    .map(([variable_id, v]) => ({ variable_id: Number(variable_id), nilai: Number(v) }))
+  // Kirim SEMUA variabel, bukan cuma yang terisi - field yang dikosongkan
+  // grafolog harus terkirim sebagai nilai:null supaya backend menghapus
+  // hasil ukur lamanya, bukan diam-diam dibiarkan basi (bug ditemukan
+  // lewat review 2026-08-08: sebelumnya field kosong difilter keluar dari
+  // payload sama sekali, jadi "Tersimpan" tapi nilai lama tidak terhapus).
+  const pengukuran = variables.value.map((v) => {
+    const raw = nilai.value[v.id]
 
+    return { variable_id: v.id, nilai: raw === '' || raw === null || raw === undefined ? null : Number(raw) }
+  })
   if (pengukuran.length === 0) return
 
   saving.value = true

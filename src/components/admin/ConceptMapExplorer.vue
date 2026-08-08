@@ -55,6 +55,10 @@ async function selectAspek(id) {
   selectedAspekId.value = id
   selectedIndikatorId.value = null
   indikatorDetail.value = null
+  // Clear sebelum fetch (bukan sesudah) - bug ditemukan lewat review
+  // 2026-08-08: kalau dibiarkan, daftar Indikator Aspek SEBELUMNYA masih
+  // tampil & bisa diklik selama request untuk Aspek baru berjalan.
+  aspekDetail.value = null
   aspekLoading.value = true
   try {
     const { data } = await api.get(`/admin/knowledge/concept-map/aspek/${id}`)
