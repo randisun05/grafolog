@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
 
 const props = defineProps({
@@ -7,26 +7,18 @@ const props = defineProps({
 })
 const emit = defineEmits(['apply'])
 
-const sindromList = ref([]) // GET /checklist response shape
+const sindromList = ref([]) // GET /checklist response shape - semua Sindrom/Aspek/Indikator langsung tampil, tanpa accordion
 const loading = ref(true)
 const refreshing = ref(false)
-const expandedSindrom = ref({}) // { [sindromId]: boolean } - open/close UI state, toggles freely
-// Gerbang "sudah ditinjau" - terpisah dari expandedSindrom di atas karena
-// itu boleh ditutup lagi setelah dibaca tanpa kehilangan progres. Bukan
+// Gerbang "sudah ditinjau" sebelum skor bisa diterapkan - satu pengakuan
+// eksplisit, bukan per-Sindrom (accordion dihapus per permintaan user
+// 2026-08-08: "tidak perlu drawdown, langsung saja keluar semua"). Bukan
 // bukti sempurna grafolog benar-benar membaca tiap Indikator, tapi jauh
 // lebih kuat daripada tidak ada gerbang sama sekali (bug ditemukan lewat
 // review 2026-08-08: applyTally() dulu menulis skor floor=1 untuk SEMUA 40
-// Aspek sekaligus tanpa syarat, jadi tombol submit bisa aktif walau
-// grafolog baru buka 2 dari 8 Sindrom).
-const reviewedSindrom = ref({}) // { [sindromId]: true } - set once, never unset
-
-function toggleExpand(sindromId) {
-  expandedSindrom.value[sindromId] = !expandedSindrom.value[sindromId]
-  if (expandedSindrom.value[sindromId]) reviewedSindrom.value[sindromId] = true
-}
-
-const reviewedSindromCount = computed(() => Object.values(reviewedSindrom.value).filter(Boolean).length)
-const allSindromReviewed = computed(() => sindromList.value.length > 0 && reviewedSindromCount.value >= sindromList.value.length)
+// Aspek sekaligus tanpa syarat, jadi tombol submit bisa aktif tanpa
+// grafolog benar-benar meninjau apa pun).
+const reviewedAcknowledged = ref(false)
 
 async function load() {
   refreshing.value = true
@@ -39,6 +31,7 @@ async function load() {
   }
 }
 
+defineExpose({ load })
 onMounted(load)
 
 const sumberLabel = { auto: 'Auto', cascade: 'Terkait', manual: 'Manual' }
@@ -73,7 +66,6 @@ async function postToggle(indikatorId, checked, alsoUncheckCascaded = undefined,
 function applyTally() {
   const skor = {}
   for (const sindrom of sindromList.value) {
-    if (!reviewedSindrom.value[sindrom.id]) continue
     for (const aspek of sindrom.aspek) {
       skor[aspek.kode] = { skor: aspek.skor }
     }
@@ -99,15 +91,10 @@ function applyTally() {
     <p v-if="loading" class="indikator-checklist__note">Memuat checklist...</p>
     <template v-else>
       <div v-for="sindrom in sindromList" :key="sindrom.id" class="indikator-checklist__sindrom">
-        <button
-          type="button"
-          class="indikator-checklist__toggle"
-          @click="toggleExpand(sindrom.id)"
-        >
-          <span>{{ sindrom.kode_romawi }}. {{ sindrom.nama }}</span>
-          <span v-if="reviewedSindrom[sindrom.id]" class="indikator-checklist__reviewed">✓ ditinjau</span>
-        </button>
-        <div v-show="expandedSindrom[sindrom.id]" class="indikator-checklist__body">
+        <div class="indikator-checklist__sindrom-head">
+          {{ sindrom.kode_romawi }}. {{ sindrom.nama }}
+        </div>
+        <div class="indikator-checklist__body">
           <div v-for="aspek in sindrom.aspek" :key="aspek.id" class="indikator-checklist__aspek">
             <div class="indikator-checklist__aspek-head">
               <span>{{ aspek.kode }} - {{ aspek.nama }}</span>
@@ -139,12 +126,13 @@ function applyTally() {
       </div>
 
       <div class="indikator-checklist__actions">
-        <button type="button" class="btn btn--primary" :disabled="!allSindromReviewed" @click="applyTally">
+        <label class="indikator-checklist__acknowledge">
+          <input v-model="reviewedAcknowledged" type="checkbox" />
+          Saya sudah meninjau seluruh checklist di atas
+        </label>
+        <button type="button" class="btn btn--primary" :disabled="!reviewedAcknowledged" @click="applyTally">
           Terapkan Skor Checklist ke Form
         </button>
-        <span v-if="!allSindromReviewed" class="indikator-checklist__actions-hint">
-          Buka & tinjau semua Sindrom dulu ({{ reviewedSindromCount }}/{{ sindromList.length }}) sebelum menerapkan skor.
-        </span>
       </div>
     </template>
   </div>
@@ -181,26 +169,12 @@ function applyTally() {
   margin-bottom: 8px;
   overflow: hidden;
 }
-.indikator-checklist__toggle {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+.indikator-checklist__sindrom-head {
   padding: 10px 14px;
   background: var(--color-paper);
-  border: none;
-  cursor: pointer;
   font-weight: 600;
   font-family: var(--font-heading);
   color: var(--color-ink);
-  text-align: left;
-}
-.indikator-checklist__reviewed {
-  font-size: 11px;
-  font-weight: normal;
-  font-family: var(--font-body);
-  color: var(--color-success);
 }
 .indikator-checklist__body {
   padding: 6px 14px 10px;
@@ -261,11 +235,14 @@ function applyTally() {
   margin-top: 14px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   flex-wrap: wrap;
 }
-.indikator-checklist__actions-hint {
-  font-size: 12px;
-  color: var(--color-text-soft);
+.indikator-checklist__acknowledge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-ink);
 }
 </style>

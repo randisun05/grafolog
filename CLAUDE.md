@@ -341,9 +341,10 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   untouched). `'worksheet'` swaps the middle column for
   `MeasurementWorksheet` (input grid for the ~34 measurement variables,
   posts to `POST /api/samples/{id}/measurements`) stacked above
-  `IndikatorChecklist` (fetches `GET /api/samples/{id}/checklist`,
-  Sindrom→Aspek accordions of checkboxes; each checked-by-rule/cascade
-  Indikator shows an "Auto"/"Terkait" badge plus the trigger's
+  `IndikatorChecklist` (fetches `GET /api/samples/{id}/checklist`, ALL
+  Sindrom→Aspek→Indikator rendered flat/expanded — **no accordion**, see
+  the 2026-08-08 UX-feedback note below for why; each checked-by-rule/
+  cascade Indikator shows an "Auto"/"Terkait" badge plus the trigger's
   `keterangan_pemicu` text inline in italic — this is the KM plan's
   explicit "grafolog must see WHY" requirement). **Both modes write into
   the exact same `scores` ref** that already fed
@@ -354,31 +355,57 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   watcher and the submit button behave identically to manual mode with
   zero new code path. **That button click is a deliberate, one-time
   hand-off, not a live sync**, and — since a 2026-08-08 post-review fix,
-  see below — it's also **disabled until every Sindrom has been opened at
-  least once** (`reviewedSindrom`, distinct from `expandedSindrom`'s
-  open/close toggle state so collapsing a section again doesn't lose
-  credit). Checkbox clicks call `POST /api/samples/{id}/checklist/toggle`;
-  when the backend responds with `requires_confirmation` (unchecking
-  something that cascaded to still-checked targets), the component shows
-  a plain `window.confirm()` listing the affected Indikator — no modal
-  component exists in this codebase (same convention as every other KM
-  view), and a yes/no with a short list didn't justify inventing one.
-  Browser-verified end-to-end against real KB data — see
-  `guratan-api/CLAUDE.md`'s KM-G section for the full scenario (real
-  category rule, real cross-reference cascade, submitted through the
-  unchanged scoring endpoint to a completed report).
+  see below — it's also **disabled until a single "Saya sudah meninjau
+  seluruh checklist di atas" checkbox is ticked** (`reviewedAcknowledged`).
+  Checkbox clicks call `POST /api/samples/{id}/checklist/toggle`; when the
+  backend responds with `requires_confirmation` (unchecking something
+  that cascaded to still-checked targets), the component shows a plain
+  `window.confirm()` listing the affected Indikator — no modal component
+  exists in this codebase (same convention as every other KM view), and a
+  yes/no with a short list didn't justify inventing one.
+  `IndikatorChecklist` exposes its `load()` method via `defineExpose()`;
+  `PortalGrafologView` holds a template ref to it and calls `.load()`
+  whenever `MeasurementWorksheet` emits `saved` — so a newly-saved
+  measurement's auto-checks appear immediately, no manual "Muat Ulang"
+  click needed (see the 2026-08-08 UX-feedback note below). Browser-
+  verified end-to-end against real KB data — see `guratan-api/CLAUDE.md`'s
+  KM-G section for the full scenario (real category rule, real
+  cross-reference cascade, submitted through the unchanged scoring
+  endpoint to a completed report).
+- **UX feedback, 2026-08-08** — user tested the worksheet flow and
+  reported two things: entering a measurement didn't seem to auto-check
+  anything (investigated live against their real sample - the checklist
+  engine itself worked correctly, the actual cause was `indikator_rules`
+  being empty in the dev DB, i.e. no administrator had authored any rules
+  yet through the KM-E rule builder, not a code bug), and the
+  per-Sindrom accordion added friction ("tidak perlu drawdown, langsung
+  saja keluar semua"). Two changes followed: `IndikatorChecklist`'s
+  accordion (`expandedSindrom`/`toggleExpand`) was removed entirely — all
+  Sindrom now render as plain section headers with their Aspek/Indikator
+  always visible, no click-to-expand — and the review-gate from the
+  post-review fix above was simplified from "opened every Sindrom
+  section" (which depended on the now-removed accordion) to the single
+  acknowledgment checkbox described above. Separately,
+  `MeasurementWorksheet`'s `saved` event (previously emitted but nothing
+  listened to it) was wired up so the checklist auto-refreshes right
+  after saving, addressing the "doesn't seem to auto-check" confusion
+  even once rules do exist. Browser-verified: confirmed zero accordion
+  toggle buttons render, and confirmed a real rule-matching measurement
+  auto-checked its Indikator (with the correct "Auto" badge) immediately
+  after clicking "Simpan Hasil Ukur", with no manual reload step.
 - **Fixed post-review, 2026-08-08** — a review of the freshly-built KM-G/
   KM-H work found 2 frontend bugs (verified individually before fixing,
   alongside 5 backend ones documented in `guratan-api/CLAUDE.md`):
   - **`applyTally()` used to write a skor for all 40 Aspek unconditionally**
     (`tallyPerAspek` floors an untouched Aspek to skor 1, not 0) — so one
     click of "Terapkan Skor Checklist ke Form" made the submit button
-    look complete even if the grafolog had reviewed only 2 of 40 Aspek. Fixed
-    by only including Aspek belonging to a `reviewedSindrom` (see above) —
-    the apply button is disabled with a "Buka & tinjau semua Sindrom dulu
-    (X/8)" hint until every section has been opened at least once. Not a
-    perfect guarantee the grafolog actually read every row, but a real
-    gate where there was none before.
+    look complete even if the grafolog had reviewed only 2 of 40 Aspek.
+    Originally fixed by requiring every Sindrom's accordion to have been
+    opened at least once before the apply button enabled; that mechanism
+    was replaced by the single `reviewedAcknowledged` checkbox once the
+    accordion itself was removed (see the UX-feedback note above) — same
+    intent (a real gate where there was none before, not a perfect
+    guarantee the grafolog read every row), simpler mechanism.
   - **Declining the cascade-uncheck confirm dialog was silently broken** —
     `postToggle()`'s `also_uncheck_cascaded: []` looked identical whether
     the grafolog had declined or hadn't been asked yet (both are an empty

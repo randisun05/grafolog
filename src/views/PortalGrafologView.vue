@@ -32,6 +32,7 @@ const sample = ref(null)
 // tidak perlu tahu cara skor itu didapat. 'manual' tetap default supaya
 // alur lama tidak berubah untuk grafolog yang belum pakai worksheet.
 const scoringMode = ref('manual')
+const indikatorChecklistRef = ref(null)
 const scores = ref({}) // { [kode]: { skor, catatan_grafolog } }
 const scoredCount = computed(
   () => Object.values(scores.value).filter((s) => Number.isInteger(s?.skor)).length,
@@ -131,6 +132,13 @@ async function fetchPreview() {
 // tidak "lengkap" begitu saja sebelum grafolog benar-benar meninjau checklist.
 function applyChecklistTally(skorPerAspek) {
   scores.value = { ...scores.value, ...skorPerAspek }
+}
+
+// Begitu measurement worksheet tersimpan, checklist di bawahnya harus
+// otomatis reload supaya Indikator yang baru cocok aturan langsung
+// tercentang - sebelumnya grafolog harus klik "Muat Ulang" manual dulu.
+function onMeasurementsSaved() {
+  indikatorChecklistRef.value?.load()
 }
 
 async function lookupClient() {
@@ -331,8 +339,8 @@ function viewReport() {
             />
           </template>
           <template v-else>
-            <MeasurementWorksheet :sample-id="sample.id" />
-            <IndikatorChecklist :sample-id="sample.id" @apply="applyChecklistTally" />
+            <MeasurementWorksheet :sample-id="sample.id" @saved="onMeasurementsSaved" />
+            <IndikatorChecklist ref="indikatorChecklistRef" :sample-id="sample.id" @apply="applyChecklistTally" />
           </template>
         </div>
 
