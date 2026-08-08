@@ -797,7 +797,24 @@ namespace `App\Http\Controllers\Api\Admin\`:
 - Audit log: `buat_aspek`/`ubah_aspek`/`hapus_aspek`.
 - 9 new tests (`tests/Feature/Api/Admin/AspekControllerTest.php`) — 251
   total.
-- **Indikator and the operator/rule system are still not built** — KM-D/E.
+
+**KM-D (Indikator CRUD) added 2026-08-08**, same `Api\Admin\` namespace:
+
+- **`IndikatorController`** (`/admin/knowledge/indikator`): full CRUD, but
+  **`index()` is paginated + searchable/filterable** — unlike the other 3 KM
+  controllers, this one can't just return everything (704 rows). `?search=`
+  matches `kode` or `nama` (`LIKE`), `?aspek_id=` filters to one Aspek,
+  `?page=` via `paginate(25)`. `posisi`/`varian` (added in KM-A) are now real
+  editable fields, not just backfilled data. **No delete guard needed**
+  (unlike Sindrom/Aspek) — `indikator_cross_reference.indikator_sumber_id`
+  is `nullOnDelete`, not `cascadeOnDelete`, so deleting an Indikator at most
+  nulls out a cross-reference row, never cascades further deletes.
+- Audit log: `buat_indikator`/`ubah_indikator`/`hapus_indikator`.
+- 9 new tests (`tests/Feature/Api/Admin/IndikatorControllerTest.php`) — 260
+  total.
+- **The operator/rule system (`indikator_rules`, KM-E) is still not
+  built** — Indikator can now be freely created/edited/deleted, but nothing
+  yet connects one to a measurement-based auto-check rule.
 
 ## Hard constraints (user-stated, still in force)
 

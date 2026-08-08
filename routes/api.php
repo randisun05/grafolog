@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
+use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
@@ -118,6 +119,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/knowledge/aspek', [AdminAspekController::class, 'store']);
         Route::put('/knowledge/aspek/{aspek}', [AdminAspekController::class, 'update']);
         Route::delete('/knowledge/aspek/{aspek}', [AdminAspekController::class, 'destroy']);
+
+        Route::get('/knowledge/indikator', [AdminIndikatorController::class, 'index']);
+        Route::post('/knowledge/indikator', [AdminIndikatorController::class, 'store']);
+        Route::put('/knowledge/indikator/{indikator}', [AdminIndikatorController::class, 'update']);
+        Route::delete('/knowledge/indikator/{indikator}', [AdminIndikatorController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {
