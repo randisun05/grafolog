@@ -90,6 +90,37 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   backend's own test suite, not re-proven through a UI click in this
   session) that deleting a Measurement Variable still referenced by a rule
   is blocked.
+  **Gained a 7th tab, "Peta Konsep", 2026-08-08 (KM-H)** — the final KM
+  phase, purely read-only exploration (no create/edit/delete anywhere on
+  this tab; that's still the other 6 tabs' job). Renders a new
+  `src/components/admin/ConceptMapExplorer.vue`: 3 side-by-side columns
+  (Sindrom → Aspek → Indikator, each level fetched only once its parent is
+  clicked — `GET /admin/knowledge/concept-map`, then `.../aspek/{id}`,
+  then `.../indikator/{id}`) plus a 4th "Relasi" detail panel. Indikator
+  nodes show small badges ("N aturan", "N referensi") from `rules_count`/
+  `cross_ref_count` so which ones are worth clicking is visible before
+  drilling in. The detail panel lists the selected Indikator's operator
+  rules (reads like `formatRule()` in the Indikator tab, duplicated
+  locally rather than shared since this is a read-only display string, not
+  form state) and its cross-references in **both directions** — "Referensi
+  Silang Keluar" (this one triggers) and "Direreferensikan Oleh" (who
+  triggers this one), the latter not shown anywhere else in the app.
+  Clicking a relation chip calls `jumpToIndikator()`, which drives the
+  SAME column selection state the user clicking through the columns would
+  — the map genuinely navigates via its own cross-links, not just static
+  text. **SVG connector lines between the selected node in each column**
+  (a `<path>` per adjacent-column pair, quadratic Bezier computed from
+  `getBoundingClientRect()` of template refs relative to the container,
+  recomputed on every selection change and on window resize) are what
+  make this read as an actual map rather than 3 unrelated list boxes —
+  this is the one place in the app doing manual DOM-rect layout math,
+  everything else here is plain CSS. No graph library was added; the
+  layout is simple enough (max 3 edges visible at once) that pulling in
+  d3/cytoscape/vis-network wasn't justified. Browser-verified against
+  real KB data — see `guratan-api/CLAUDE.md`'s KM-H section for the full
+  scenario (real rule + 3 real outgoing cross-references on `02-8a`,
+  jump-via-chip confirmed, 2 connector lines rendered, zero console
+  errors).
   **Gained a 6th tab, "Referensi Silang", 2026-08-08 (KM-F)** — same
   paginated-search pattern as the Indikator tab (280 rows). Table columns:
   Sumber (raw text + resolved source Indikator kode if known), Tujuan

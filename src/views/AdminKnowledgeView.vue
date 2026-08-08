@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import ConceptMapExplorer from '@/components/admin/ConceptMapExplorer.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -13,6 +14,7 @@ const tabs = [
   { key: 'variabel', label: 'Variabel Ukur' },
   { key: 'band', label: 'Band Skor' },
   { key: 'referensi', label: 'Referensi Silang' },
+  { key: 'peta', label: 'Peta Konsep' },
 ]
 const activeTab = ref('sindrom')
 
@@ -616,9 +618,10 @@ onMounted(async () => {
   <div class="admin-km">
     <h1>Kelola Knowledge Base</h1>
     <p class="admin-km__note">
-      Fondasi metodologi penilaian (KM-B s/d F) — Sindrom, Aspek + 4 level narasi, Indikator + aturan
-      operator, Variabel Ukur + kategorinya, Band Skor, dan Referensi Silang antar-Indikator. Belum
-      ada measurement worksheet sungguhan atau perhitungan skor otomatis dari sini (KM-G).
+      Fondasi metodologi penilaian (KM-B s/d H) — Sindrom, Aspek + 4 level narasi, Indikator + aturan
+      operator, Variabel Ukur + kategorinya, Band Skor, Referensi Silang antar-Indikator, dan Peta
+      Konsep untuk menjelajahi semuanya. Measurement worksheet sungguhan (KM-G) ada di Portal
+      Grafolog, bukan di sini — halaman ini tetap murni kelola data.
     </p>
 
     <div class="admin-km__tabs">
@@ -1197,8 +1200,8 @@ onMounted(async () => {
         <p class="admin-km__hint">
           Mengaktifkan `indikator_cross_reference` yang sudah ada sebagai data terkelola (KM-F).
           Panel ini murni mengelola baris referensinya (aktif/nonaktif, perbaiki target, tambah/hapus)
-          — cascade "centang A memicu saran centang B" baru berarti begitu form Indikator sungguhan
-          (measurement worksheet, KM-G) ada.
+          — cascade "centang A memicu saran centang B" sungguhan ada di checklist Indikator Portal
+          Grafolog (KM-G), memakai baris `aktif` dari sini.
         </p>
         <form class="admin-km__form" @submit.prevent="createCrossRef">
           <label class="admin-km__field">
@@ -1308,6 +1311,11 @@ onMounted(async () => {
             </button>
           </div>
         </template>
+      </section>
+
+      <!-- PETA KONSEP -->
+      <section v-if="activeTab === 'peta'" class="admin-km__panel">
+        <ConceptMapExplorer />
       </section>
     </template>
   </div>
