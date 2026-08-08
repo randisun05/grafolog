@@ -1006,11 +1006,20 @@ scoring pipeline. **Deliberately does NOT modify `ScoringController`,
 - **What KM-G deliberately does NOT do**: no "mode" flag was added to
   `SubmitScoresRequest`/`ScoringController` - there was never a need to,
   since the checklist path produces the identical payload shape the
-  manual path always produced. "Review-state" (which Sindrom the grafolog
-  has actually opened, see `guratan-web/CLAUDE.md`'s
-  `IndikatorChecklist.vue` note) is still frontend-only, not a
-  `sample_indikator_checks` column - it's a UI gate on the hand-off
-  button, not something the backend needs to know or enforce.
+  manual path always produced. "Review-acknowledged" (see
+  `guratan-web/CLAUDE.md`'s `IndikatorChecklist.vue` note) is still
+  frontend-only, not a `sample_indikator_checks` column - it's a UI gate
+  on the hand-off button, not something the backend needs to know or
+  enforce.
+- **`indikator_rules` starts EMPTY, same pattern as `TokenCost`/`TokenPrice`
+  (see "Token system" below) - auto-check is silently a no-op until an
+  administrator authors at least one rule** through the KM-E rule builder
+  (`/admin/knowledge` → Indikator tab → "Aturan Operator"). Confirmed
+  2026-08-08 when a user reported "auto-ceklis tidak bekerja" after
+  testing - the engine itself was live-verified working correctly against
+  their real sample the moment a rule existed; the count was just 0. If
+  this comes up again, check `IndikatorRule::count()` before assuming a
+  code bug.
 
 **KM-G fixed post-review, 2026-08-08** - a code review of the freshly-built
 KM-G/KM-H work found and fixed 7 real bugs (verified individually, not
