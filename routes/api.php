@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
@@ -112,6 +113,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/knowledge/scoring-rule-bands', [ScoringRuleBandController::class, 'store']);
         Route::put('/knowledge/scoring-rule-bands/{scoringRuleBand}', [ScoringRuleBandController::class, 'update']);
         Route::delete('/knowledge/scoring-rule-bands/{scoringRuleBand}', [ScoringRuleBandController::class, 'destroy']);
+
+        Route::get('/knowledge/aspek', [AdminAspekController::class, 'index']);
+        Route::post('/knowledge/aspek', [AdminAspekController::class, 'store']);
+        Route::put('/knowledge/aspek/{aspek}', [AdminAspekController::class, 'update']);
+        Route::delete('/knowledge/aspek/{aspek}', [AdminAspekController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

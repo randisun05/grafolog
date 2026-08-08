@@ -784,6 +784,21 @@ namespace `App\Http\Controllers\Api\Admin\`:
 - 30 new tests (`tests/Feature/Api/Admin/{Sindrom,MeasurementVariable,
   MeasurementCategory,ScoringRuleBand}ControllerTest.php`) — 242 total.
 
+**KM-C (Aspek CRUD) added 2026-08-08**, same `Api\Admin\` namespace:
+
+- **`AspekController`** (`/admin/knowledge/aspek`): full CRUD, including the
+  4 narasi levels (`narasi_very_high`/`_high`/`_medium`/`_low`) +
+  `keterangan_umum`. `destroy()` guards against `indikator.aspek_id`'s
+  `cascadeOnDelete` the same way `SindromController::destroy()` guards
+  against `aspek.sindrom_id` — `abort_if($aspek->indikator()->exists(), 422,
+  ...)`. `index()` returns `with('sindrom:id,kode_romawi,nama')->
+  withCount('indikator')` so the admin UI can show/enforce the delete guard
+  without a second request.
+- Audit log: `buat_aspek`/`ubah_aspek`/`hapus_aspek`.
+- 9 new tests (`tests/Feature/Api/Admin/AspekControllerTest.php`) — 251
+  total.
+- **Indikator and the operator/rule system are still not built** — KM-D/E.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.
