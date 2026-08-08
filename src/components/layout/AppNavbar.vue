@@ -38,6 +38,7 @@ async function handleLogout() {
         <RouterLink v-if="auth.isAdministrator" to="/admin/content">Kelola Konten</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/announcements">Pengumuman</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/tokens">Kelola Token</RouterLink>
+        <RouterLink v-if="auth.isAdministrator" to="/admin/knowledge">Knowledge Base</RouterLink>
         <RouterLink v-if="auth.isHr" to="/hr/candidates">Kandidat</RouterLink>
         <span class="app-navbar__user">{{ auth.user?.name }}</span>
         <span class="app-navbar__cmdk-hint" title="Buka command palette">Ctrl/&#8984;+K</span>

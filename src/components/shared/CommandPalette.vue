@@ -35,6 +35,7 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })
     items.push({ label: 'Pengumuman', to: { name: 'admin-announcements' } })
     items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })
+    items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
   }
   if (auth.isHr) {
     items.push({ label: 'Kandidat', to: { name: 'hr-candidates' } })

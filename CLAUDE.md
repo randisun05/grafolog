@@ -19,7 +19,28 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `RiwayatView`, `ReportView`, `PortalGrafologView`, `AdminUsersView`,
   `AdminPricingView`, `AdminDiscountsView`, `AdminContentView`,
   `AdminAnnouncementsView`, `AdminTokensView`, `TokenWalletView`,
-  `AssignedToMeView`, `HrCandidatesView`, `OrderView`, `NotFoundView`.
+  `AdminKnowledgeView`, `AssignedToMeView`, `HrCandidatesView`, `OrderView`,
+  `NotFoundView`.
+  **`AdminKnowledgeView` added 2026-08-08** (Knowledge Management System
+  KM-B, see root `ROADMAP.md`'s "Inisiatif — Knowledge Management System")
+  — `/admin/knowledge`, `role: 'administrator'`. One page, 3 tabs (local
+  `activeTab` ref, not 3 routes — same "several small entities, one screen"
+  call as `AdminTokensView`): **Sindrom** (create/inline-edit/delete, table
+  with `# Aspek` count from the backend's `withCount`, delete blocked
+  client-side too if that count is >0 — mirrors the backend's 422 guard so
+  the user gets an inline toast instead of always round-tripping to find
+  out), **Variabel Ukur** (create/inline-edit/delete; each row expands to a
+  nested category table + its own small create form — categories are only
+  ever managed in the context of their parent variable, no separate view),
+  **Band Skor** (create/inline-edit/delete). No modal component exists in
+  this codebase — edit is an inline per-row state toggle
+  (`editingId`/`editForm` refs per entity), same convention as everywhere
+  else here. **Aspek, Indikator, and the operator/rule system have no panel
+  yet** — this view's own intro text says so; don't assume this page is a
+  complete KB editor. Nav link "Knowledge Base" + `CommandPalette.vue`
+  entry. Browser-verified with Playwright (full create→edit→delete round
+  trip on all 3 tabs, zero console/page errors, state confirmed back to
+  baseline row counts after cleanup) — not just build/lint-checked.
   **`AdminTokensView` + `TokenWalletView` added 2026-08-07** (grafolog
   token system, see root `ROADMAP.md`'s "Inisiatif — Token Grafolog").
   `AdminTokensView` (`/admin/tokens`, `role: 'administrator'`) has two
