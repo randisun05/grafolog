@@ -1010,8 +1010,49 @@ scoring pipeline. **Deliberately does NOT modify `ScoringController`,
   added to `sample_indikator_checks` either - the frontend's "Terapkan
   Skor Checklist ke Form" button is the deliberate hand-off moment (see
   `guratan-web/CLAUDE.md`), not a server-side concept.
-- **KM-H (visual knowledge concept map for administrators) is still not
-  built** - the only remaining phase in the original KM-A..H plan.
+**KM-H (visual concept map for administrators) added 2026-08-08** - the
+final phase of the KM plan, purely read-only, no risk to any of the
+CRUD/scoring surfaces above.
+
+- **`Api\Admin\ConceptMapController`** (`role:administrator`, no
+  store/update/destroy - editing still happens through the 6 existing
+  KM-B..F tabs): 3 progressively-loaded endpoints instead of one endpoint
+  dumping all 704 Indikator + every relation at once, which would be both
+  slow and unreadable as a "map."
+  - `overview()` (`GET /admin/knowledge/concept-map`): all 8 Sindrom with
+    nested Aspek + `indikator_count` (via `withCount`) - the whole first
+    two rings of the map in one small, cheap request.
+  - `aspek(Aspek $aspek)` (`GET .../concept-map/aspek/{aspek}`): that
+    Aspek's Indikator list with `rules_count` (`withCount('rules')`) and a
+    separately-computed `cross_ref_count` (grouped count query over
+    `indikator_cross_reference` keyed by `indikator_sumber_id`, merged in
+    PHP) - lets the frontend badge which Indikator have relations worth
+    exploring without loading the relations themselves yet.
+  - `indikator(Indikator $indikator)` (`GET .../concept-map/indikator/
+    {indikator}`): full detail for one Indikator - its `rules` (with
+    `variableA`/`variableB` names eager-loaded), **outgoing** cross-
+    references (`referensiKeluar()`, `aktif=true`+`matched` only) resolved
+    to their target Indikator via `kode`, AND **incoming** ones (queried by
+    `mereferensikan_ke_kode = $indikator->kode`, same aktif+matched filter)
+    resolved via `indikatorSumber`. Showing both directions is the point -
+    the existing Referensi Silang admin tab (KM-F) only shows the outgoing
+    row you're editing, never "who points at me."
+- Frontend: 7th tab "Peta Konsep" in `AdminKnowledgeView.vue` (see
+  `guratan-web/CLAUDE.md` for the `ConceptMapExplorer.vue` UI detail).
+- Browser-verified against real KB data (2026-08-08, same throwaway rules
+  as the KM-G verification, cleaned up after): selected Sindrom I -> Aspek
+  "02 - Ego Needs" (19 Indikator) -> Indikator "02-8a", confirmed its rule
+  text and 3 real outgoing cross-reference chips rendered, clicked one
+  (`04-5a`) and confirmed the map jumped to it (new Sindrom/Aspek/
+  Indikator selection + a fresh detail fetch), confirmed 2 SVG connector
+  lines rendered through the selected path. Zero console errors. 5 new
+  tests (`tests/Feature/Api/Admin/ConceptMapControllerTest.php`), 320
+  backend tests total (up from 315).
+- **This closes the entire KM-A through KM-H plan** - every knowledge
+  entity has admin CRUD, the operator/rule system is both authorable
+  (KM-E) and live-evaluated (KM-G), cross-references are both managed
+  (KM-F) and both cascade-active and browsable in both directions (KM-G,
+  KM-H). Nothing from the original plan is outstanding.
 
 ## Hard constraints (user-stated, still in force)
 

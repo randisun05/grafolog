@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\CompanyController;
+use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
@@ -148,6 +149,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/knowledge/cross-references', [IndikatorCrossReferenceController::class, 'store']);
         Route::put('/knowledge/cross-references/{indikatorCrossReference}', [IndikatorCrossReferenceController::class, 'update']);
         Route::delete('/knowledge/cross-references/{indikatorCrossReference}', [IndikatorCrossReferenceController::class, 'destroy']);
+
+        // KM-H (2026-08-08): peta konsep, murni baca - lihat CLAUDE.md.
+        Route::get('/knowledge/concept-map', [ConceptMapController::class, 'overview']);
+        Route::get('/knowledge/concept-map/aspek/{aspek}', [ConceptMapController::class, 'aspek']);
+        Route::get('/knowledge/concept-map/indikator/{indikator}', [ConceptMapController::class, 'indikator']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {
