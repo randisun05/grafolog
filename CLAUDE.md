@@ -902,6 +902,117 @@ activates a table that was dormant since the original JSON→DB conversion
   test, `test_reseeding_preserves_admin_deactivated_cross_reference`) — 286
   total.
 
+**KM-G (measurement worksheet -> checklist -> scoring) added 2026-08-08** —
+the phase the whole KM plan was building toward, and the one flagged as
+"paling sensitif" since it's the first KM phase that touches the live
+scoring pipeline. **Deliberately does NOT modify `ScoringController`,
+`SubmitScoresRequest`, or `ScoringEngineService` at all** — the old manual
+1-10 form (`SindromAccordion`) is untouched and stays the default. Instead:
+
+- **`measurement_readings`** (new table/model): 1 row per
+  `(sample_id, variable_id)`, the grafolog's raw caliper measurements for
+  that sample. Upserted via `POST /api/samples/{sample}/measurements`
+  (`MeasurementController`, same authorization guards as
+  `ScoringController::preview` - grafolog + `isScorableBy` + not-`rapid` +
+  not-`completed` + payment gate). `GET /api/measurement-variables`
+  (`MeasurementVariableController`, new, NOT the admin one) is a
+  read-only list for any authenticated user, mirroring `SindromController`
+  vs `Api\Admin\SindromController`'s split.
+- **`sample_indikator_checks`** (new table/model): the single source of
+  truth for "is this Indikator checked for this sample right now."
+  **`checked` is a boolean column, not row-presence** - unchecking
+  something does NOT delete the row, it sets `checked=false` and keeps it.
+  This was a deliberate fix after the first implementation used
+  delete-on-uncheck and a unit test caught the bug it causes: without a
+  persisted "already decided" marker, re-running rule evaluation after a
+  later measurement addition would silently re-tick something the grafolog
+  had explicitly rejected. `sumber` distinguishes `auto` (matched an
+  `indikator_rules` row), `cascade` (via `indikator_cross_reference`), or
+  `manual`. `rule_id`/`cross_reference_id`/`keterangan_pemicu` record WHY,
+  for on-screen display - the KM plan explicitly required this ("Form
+  Indikator wajib tampilkan nilai/referensi measurement yang memicu
+  centang otomatis... supaya grafolog tahu KENAPA sesuatu tercentang").
+- **`App\Services\Scoring\ChecklistEngineService`** is the whole engine,
+  pure PHP, fully unit-tested (`tests/Unit/Services/
+  ChecklistEngineServiceTest.php`, 15 tests):
+  - `evaluateSample()`: reads `measurement_readings`, runs every
+    Indikator's `indikator_rules` (category: resolves
+    `MeasurementVariable::kategoriUntukNilai()` and string-compares the
+    label; comparison: `variable_a [operator] (koefisien × variable_b OR
+    compare_value)`), combines multiple rules per Indikator via
+    `rule_group_logic` (AND requires all non-null-true, short-circuits
+    false the moment ANY rule is definitively false even if others are
+    unresolved; OR is true the moment ANY rule is true). A rule whose
+    referenced variable has no reading yet evaluates to `null`
+    (unresolved, not false) - an Indikator stays un-auto-checked, not
+    "wrongly checked," when data is incomplete. **Only ever creates a row
+    for an Indikator that has NO existing row at all** (any `checked`
+    value) - this is what makes re-evaluation safe to call repeatedly
+    (idempotent) without ever overwriting a grafolog's prior decision.
+  - Cascade (`applyCascadeFrom`): **single-hop only, not recursive** - a
+    newly-checked Indikator's own `indikator_cross_reference` rows
+    (`aktif=true`, `match_status='matched'`) get auto-checked too (if not
+    already decided), but a cascade-checked Indikator's own outgoing
+    references are NOT chased further. This is a scoping decision (not in
+    the original plan text) made to keep behavior bounded and match the
+    "flat, not deeply nested" design philosophy already used for
+    `rule_group_logic` - revisit only if a real multi-hop case shows up.
+  - `toggle()`: manual check/uncheck. Checking always sets
+    `sumber='manual'` + reruns the cascade pass. Unchecking something that
+    had cascaded to still-checked targets does **NOT** auto-uncheck them
+    (per the KM plan's §3.3 spec - cascade is one-directional, one-time) -
+    it returns `{ok: false, requires_confirmation: true,
+    cascade_candidates: [...]}` without changing anything, and only acts
+    once the caller resubmits with `also_uncheck_cascaded: [ids]`.
+  - `tallyPerAspek()`: skor per Aspek = **count of distinct `posisi` (not
+    Indikator rows) that have >=1 checked Indikator** - lettered variants
+    (a/b/c) at the same posisi are OR'd together, matching the KM plan's
+    §3.2 "varian a/b/c dalam 1 posisi di-OR-kan." Clamped to `max(1,
+    min(10, count))` because `ScoringEngineService::generate()` rejects a
+    skor of 0 - **this means 0-checked and 1-checked both read as skor 1**,
+    a deliberate, documented floor-collision rather than a bug; revisit
+    only with an explicit product decision to widen the scale.
+  - `checklistFor()`: the full Sindrom -> Aspek -> Indikator grouped view
+    (incl. tally) the frontend renders, calling `evaluateSample()` first
+    so it's always fresh against the latest measurements.
+- **`Api\ChecklistController`**: `GET /api/samples/{sample}/checklist`,
+  `POST /api/samples/{sample}/checklist/toggle`
+  (`ToggleIndikatorCheckRequest`). Same authorization pattern as
+  `ScoringController`. Every successful toggle is
+  `AuditLog::record('ubah_centang_indikator', ...)`-ed; every measurement
+  save is `AuditLog::record('isi_pengukuran', ...)`-ed.
+- **The bridge back to the untouched scoring endpoint is 100% frontend-side
+  and byte-for-byte identical to manual mode**: the frontend reads
+  `aspek.skor` off the checklist response and writes it into the exact
+  same `scores` ref `SindromAccordion` would have populated, then POSTs to
+  the pre-existing `POST /api/samples/{sample}/scores`. Proven by
+  `tests/Feature/Api/ChecklistScoringIntegrationTest.php`, which drives
+  the real HTTP sequence (measure -> checklist -> manual toggle -> read
+  tally -> submit through the unmodified endpoint) and asserts the
+  resulting `report_aspek_scores` row matches the tally exactly.
+- Browser-verified against real KB data (2026-08-08): created a real
+  `indikator_rules` row on Indikator `02-8a` ("Middle zone height large",
+  category rule against the real "Middle zone height" variable/bands),
+  entered `3.5` (falls in the real "large" 3.26-4.5 band) into the
+  worksheet, confirmed the checklist auto-checked it with an "AUTO" badge
+  and the reason text "Middle zone height: 3.5 → large" rendered inline
+  (screenshot-verified), confirmed a real `indikator_cross_reference` row
+  (`02-8a` -> `04-5a`) cascaded a second Indikator in a DIFFERENT Aspek,
+  applied the tally to the form, and submitted through the real
+  `POST /scores` endpoint to a completed report (201, correct
+  `report_aspek_scores`). All throwaway rules/users/samples/tokens were
+  cleaned up afterward - dev DB confirmed back to baseline row counts. 315
+  backend tests passing (up from 286), `pint --test` clean on touched files.
+- **What KM-G deliberately does NOT do**: no "mode" flag was added to
+  `SubmitScoresRequest`/`ScoringController` - there was never a need to,
+  since the checklist path produces the identical payload shape the
+  manual path always produced. No completeness/review-state tracking was
+  added to `sample_indikator_checks` either - the frontend's "Terapkan
+  Skor Checklist ke Form" button is the deliberate hand-off moment (see
+  `guratan-web/CLAUDE.md`), not a server-side concept.
+- **KM-H (visual knowledge concept map for administrators) is still not
+  built** - the only remaining phase in the original KM-A..H plan.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

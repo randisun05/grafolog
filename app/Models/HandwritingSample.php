@@ -43,6 +43,16 @@ class HandwritingSample extends Model
         return $this->hasOne(Assignment::class, 'sample_id');
     }
 
+    public function measurementReadings(): HasMany
+    {
+        return $this->hasMany(MeasurementReading::class, 'sample_id');
+    }
+
+    public function indikatorChecks(): HasMany
+    {
+        return $this->hasMany(SampleIndikatorCheck::class, 'sample_id');
+    }
+
     /**
      * MGA Fase 06: a sample can be scored either by the grafolog who
      * created it directly (the original flow) OR by whoever an HR/admin

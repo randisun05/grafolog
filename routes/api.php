@@ -10,7 +10,7 @@ use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorControll
 use App\Http\Controllers\Api\Admin\IndikatorCrossReferenceController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
-use App\Http\Controllers\Api\Admin\MeasurementVariableController;
+use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
 use App\Http\Controllers\Api\Admin\ScoringRuleBandController;
 use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
@@ -19,9 +19,12 @@ use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceContro
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ChecklistController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
+use App\Http\Controllers\Api\MeasurementController;
+use App\Http\Controllers\Api\MeasurementVariableController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\ReportController;
@@ -67,6 +70,16 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/samples/{sample}/scores/preview', [ScoringController::class, 'preview']);
     Route::post('/samples/{sample}/scores', [ScoringController::class, 'submit']);
     Route::post('/samples/{sample}/payment', [PaymentController::class, 'store']);
+
+    // KM-G: measurement worksheet + checklist Indikator - lihat CLAUDE.md.
+    // Tidak mengubah ScoringController::submit di atas sama sekali - hasil
+    // checklist ini diubah frontend jadi payload `skor` yang sama persis,
+    // lalu POST ke endpoint yang sudah ada.
+    Route::get('/measurement-variables', [MeasurementVariableController::class, 'index']);
+    Route::get('/samples/{sample}/measurements', [MeasurementController::class, 'index']);
+    Route::post('/samples/{sample}/measurements', [MeasurementController::class, 'store']);
+    Route::get('/samples/{sample}/checklist', [ChecklistController::class, 'index']);
+    Route::post('/samples/{sample}/checklist/toggle', [ChecklistController::class, 'toggle']);
     Route::middleware('role:hr,administrator')->post('/samples/{sample}/assignment', [AssignmentController::class, 'store']);
 
     Route::get('/reports', [ReportController::class, 'index']);
@@ -104,10 +117,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::put('/knowledge/sindrom/{sindrom}', [AdminSindromController::class, 'update']);
         Route::delete('/knowledge/sindrom/{sindrom}', [AdminSindromController::class, 'destroy']);
 
-        Route::get('/knowledge/measurement-variables', [MeasurementVariableController::class, 'index']);
-        Route::post('/knowledge/measurement-variables', [MeasurementVariableController::class, 'store']);
-        Route::put('/knowledge/measurement-variables/{measurementVariable}', [MeasurementVariableController::class, 'update']);
-        Route::delete('/knowledge/measurement-variables/{measurementVariable}', [MeasurementVariableController::class, 'destroy']);
+        Route::get('/knowledge/measurement-variables', [AdminMeasurementVariableController::class, 'index']);
+        Route::post('/knowledge/measurement-variables', [AdminMeasurementVariableController::class, 'store']);
+        Route::put('/knowledge/measurement-variables/{measurementVariable}', [AdminMeasurementVariableController::class, 'update']);
+        Route::delete('/knowledge/measurement-variables/{measurementVariable}', [AdminMeasurementVariableController::class, 'destroy']);
         Route::post('/knowledge/measurement-variables/{measurementVariable}/categories', [MeasurementCategoryController::class, 'store']);
         Route::put('/knowledge/measurement-categories/{measurementCategory}', [MeasurementCategoryController::class, 'update']);
         Route::delete('/knowledge/measurement-categories/{measurementCategory}', [MeasurementCategoryController::class, 'destroy']);
