@@ -15,7 +15,10 @@ class StoreMeasurementReadingsRequest extends FormRequest
     /**
      * Boleh sebagian (measurement worksheet biasanya diisi bertahap, bukan
      * 37 variabel sekaligus) - beda dari SubmitScoresRequest yang wajib
-     * lengkap, karena ini cuma input mentah, belum jadi laporan.
+     * lengkap, karena ini cuma input mentah, belum jadi laporan. `nilai`
+     * boleh null - itu sinyal "hapus hasil ukur ini" (dipakai saat grafolog
+     * mengosongkan field yang sudah pernah tersimpan), bukan berarti wajib
+     * diisi terus - lihat MeasurementController::store().
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -24,7 +27,7 @@ class StoreMeasurementReadingsRequest extends FormRequest
         return [
             'pengukuran' => ['required', 'array', 'min:1'],
             'pengukuran.*.variable_id' => ['required', 'integer', 'distinct', 'exists:measurement_variable,id'],
-            'pengukuran.*.nilai' => ['required', 'numeric'],
+            'pengukuran.*.nilai' => ['nullable', 'numeric'],
         ];
     }
 }

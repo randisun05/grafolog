@@ -53,6 +53,30 @@ class MeasurementControllerTest extends TestCase
         $read->assertOk()->assertJsonCount(1);
     }
 
+    public function test_submitting_null_nilai_deletes_an_existing_reading(): void
+    {
+        // Regression test for a bug found in review (2026-08-08): the
+        // frontend used to filter cleared fields out of the payload
+        // entirely, so a grafolog clearing a mistaken value and re-saving
+        // never actually removed the stale reading server-side.
+        $this->seedMinimalAspek(1);
+        $variable = MeasurementVariable::create(['kode' => 'v1', 'axis' => 'vertical', 'nama' => 'Middle zone height']);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = $this->sample($grafolog);
+
+        $this->actingAs($grafolog, 'sanctum')->postJson("/api/samples/{$sample->id}/measurements", [
+            'pengukuran' => [['variable_id' => $variable->id, 'nilai' => 5.2]],
+        ])->assertOk();
+        $this->assertDatabaseCount('measurement_readings', 1);
+
+        $response = $this->actingAs($grafolog, 'sanctum')->postJson("/api/samples/{$sample->id}/measurements", [
+            'pengukuran' => [['variable_id' => $variable->id, 'nilai' => null]],
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseCount('measurement_readings', 0);
+    }
+
     public function test_resubmitting_a_variable_updates_instead_of_duplicating(): void
     {
         $this->seedMinimalAspek(1);

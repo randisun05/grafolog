@@ -35,6 +35,15 @@ class MeasurementController extends Controller
         abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
         foreach ($request->validated('pengukuran') as $entry) {
+            if ($entry['nilai'] === null) {
+                // Grafolog mengosongkan field yang sudah pernah tersimpan -
+                // hapus baris lama, bukan diam-diam dibiarkan basi (bug
+                // ditemukan lewat review 2026-08-08).
+                $sample->measurementReadings()->where('variable_id', $entry['variable_id'])->delete();
+
+                continue;
+            }
+
             $sample->measurementReadings()->updateOrCreate(
                 ['variable_id' => $entry['variable_id']],
                 ['nilai' => $entry['nilai']],

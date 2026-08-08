@@ -16,17 +16,21 @@ use Illuminate\Support\Facades\DB;
  * untuk auto-centang Indikator (measurement worksheet -> checklist), lalu
  * menghitung skor per Aspek dari jumlah posisi tercentang. Sumber kebenaran
  * status "tercentang" adalah tabel sample_indikator_checks - lihat migrasi
- * & CLAUDE.md untuk kenapa auto/cascade tidak pernah menimpa baris yang
- * sudah ada (keputusan manual grafolog harus tahan re-evaluasi).
+ * & CLAUDE.md. Baris `sumber=manual`/`cascade` beku begitu diputuskan
+ * (keputusan grafolog harus tahan re-evaluasi); baris `sumber=auto`
+ * SENGAJA terus direkonsiliasi ulang setiap evaluateSample() dipanggil,
+ * supaya koreksi hasil ukur tidak meninggalkan centang/alasan yang basi
+ * (bug ditemukan lewat review 2026-08-08 - versi awal melewati baris auto
+ * yang sudah ada juga, bukan cuma yang manual).
  */
 class ChecklistEngineService
 {
     /**
-     * Jalankan aturan operator utk semua Indikator yang belum punya baris
-     * check tersimpan untuk sample ini, lalu terapkan cascade referensi
-     * silang (satu hop) dari yang baru tercentang. Aman dipanggil berkali-
-     * kali (idempoten) - re-run setelah menambah 1 hasil ukur baru hanya
-     * mengisi yang masih kosong.
+     * Jalankan aturan operator utk semua Indikator, buat/perbarui baris
+     * `sumber=auto` sesuai hasil terbaru, lalu terapkan cascade referensi
+     * silang (satu hop) dari yang baru transisi ke tercentang. Baris
+     * `manual`/`cascade` tidak pernah disentuh. Aman dipanggil berkali-kali
+     * (idempoten - re-run tanpa perubahan data ukur tidak menulis apa pun).
      */
     public function evaluateSample(HandwritingSample $sample): void
     {
@@ -40,25 +44,40 @@ class ChecklistEngineService
 
         $newlyCheckedIds = [];
         foreach ($indikatorList as $indikator) {
-            if ($existing->has($indikator->id)) {
-                continue;
+            $row = $existing->get($indikator->id);
+            if ($row && $row->sumber !== 'auto') {
+                continue; // keputusan manual/cascade beku, tidak pernah ditimpa
             }
 
             $eval = $this->evaluateIndikator($indikator, $values);
-            if ($eval['result'] !== true) {
+            if ($eval['result'] === null) {
+                continue; // data belum cukup - biarkan state terakhir apa adanya
+            }
+
+            $nowChecked = $eval['result'] === true;
+            $wasChecked = $row?->checked ?? false;
+            $unchanged = $row
+                && $row->checked === $nowChecked
+                && $row->rule_id === $eval['rule_id']
+                && $row->keterangan_pemicu === $eval['reason'];
+            if ($unchanged) {
                 continue;
             }
 
-            $check = SampleIndikatorCheck::create([
-                'sample_id' => $sample->id,
-                'indikator_id' => $indikator->id,
-                'checked' => true,
-                'sumber' => 'auto',
-                'rule_id' => $eval['rule_id'],
-                'keterangan_pemicu' => $eval['reason'],
-            ]);
+            $check = SampleIndikatorCheck::updateOrCreate(
+                ['sample_id' => $sample->id, 'indikator_id' => $indikator->id],
+                [
+                    'checked' => $nowChecked,
+                    'sumber' => 'auto',
+                    'rule_id' => $nowChecked ? $eval['rule_id'] : null,
+                    'keterangan_pemicu' => $nowChecked ? $eval['reason'] : null,
+                ],
+            );
             $existing->put($indikator->id, $check);
-            $newlyCheckedIds[] = $indikator->id;
+
+            if (! $wasChecked && $nowChecked) {
+                $newlyCheckedIds[] = $indikator->id;
+            }
         }
 
         foreach ($newlyCheckedIds as $indikatorId) {
@@ -112,8 +131,13 @@ class ChecklistEngineService
             ...$this->evaluateRule($rule, $values),
         ]);
 
-        $trueOnes = $results->where('result', true);
-        $falseOnes = $results->where('result', false);
+        // Filter dengan closure (strict ===), BUKAN Collection::where('result', ...)
+        // - where() membandingkan longgar (==), dan di PHP null == false bernilai
+        // true, sehingga aturan yang belum bisa dievaluasi (result: null, data
+        // ukur belum lengkap) ikut kehitung sebagai "pasti salah". Bug ditemukan
+        // lewat review 2026-08-08.
+        $trueOnes = $results->filter(fn ($r) => $r['result'] === true);
+        $falseOnes = $results->filter(fn ($r) => $r['result'] === false);
 
         if ($indikator->rule_group_logic === 'AND') {
             if ($falseOnes->isNotEmpty()) {
@@ -293,13 +317,18 @@ class ChecklistEngineService
      * mencentangnya lagi otomatis. Kalau baris ini dulu memicu cascade ke
      * Indikator lain yang masih tercentang, TIDAK otomatis ikut di-uncheck
      * (sesuai rencana KM §3.3) - dikembalikan sebagai cascade_candidates
-     * supaya frontend bisa menawarkan pilihan eksplisit, kecuali
-     * $alsoUncheckCascaded sudah diisi dengan id yang mau ikut di-uncheck.
+     * supaya frontend bisa menawarkan pilihan eksplisit. $confirmed HARUS
+     * true untuk melanjutkan setelah prompt itu ditampilkan - $alsoUncheckCascaded
+     * yang kosong TIDAK cukup sebagai sinyal "sudah dijawab, tolak" karena
+     * itu juga nilai default sebelum grafolog sempat menjawab sama sekali
+     * (bug ditemukan lewat review 2026-08-08: sebelum ada $confirmed,
+     * menolak cascade selalu memicu ulang prompt yang sama, tidak pernah
+     * benar-benar meng-uncheck sumbernya).
      *
      * @param  int[]  $alsoUncheckCascaded
      * @return array{ok:bool, requires_confirmation?:bool, cascade_candidates?:array}
      */
-    public function toggle(HandwritingSample $sample, int $indikatorId, bool $checked, array $alsoUncheckCascaded = []): array
+    public function toggle(HandwritingSample $sample, int $indikatorId, bool $checked, array $alsoUncheckCascaded = [], bool $confirmed = false): array
     {
         $indikator = Indikator::findOrFail($indikatorId);
 
@@ -322,7 +351,7 @@ class ChecklistEngineService
             ->with('indikator')
             ->get();
 
-        if ($cascadeCandidates->isNotEmpty() && $alsoUncheckCascaded === []) {
+        if ($cascadeCandidates->isNotEmpty() && ! $confirmed) {
             return [
                 'ok' => false,
                 'requires_confirmation' => true,

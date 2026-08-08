@@ -28,6 +28,7 @@ class ChecklistController extends Controller
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat melihat checklist Indikator.');
         abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan checklist Indikator.');
+        abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
         return response()->json($this->engine->checklistFor($sample));
     }
@@ -39,12 +40,14 @@ class ChecklistController extends Controller
         abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan checklist Indikator.');
         abort_if($sample->status === 'completed', 422, 'Sample ini sudah memiliki laporan selesai, tidak bisa diubah lagi.');
+        abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
         $result = $this->engine->toggle(
             $sample,
             (int) $request->validated('indikator_id'),
             (bool) $request->validated('checked'),
             $request->validated('also_uncheck_cascaded', []),
+            (bool) $request->validated('confirmed', false),
         );
 
         if ($result['ok']) {

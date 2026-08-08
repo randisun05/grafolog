@@ -1006,10 +1006,56 @@ scoring pipeline. **Deliberately does NOT modify `ScoringController`,
 - **What KM-G deliberately does NOT do**: no "mode" flag was added to
   `SubmitScoresRequest`/`ScoringController` - there was never a need to,
   since the checklist path produces the identical payload shape the
-  manual path always produced. No completeness/review-state tracking was
-  added to `sample_indikator_checks` either - the frontend's "Terapkan
-  Skor Checklist ke Form" button is the deliberate hand-off moment (see
-  `guratan-web/CLAUDE.md`), not a server-side concept.
+  manual path always produced. "Review-state" (which Sindrom the grafolog
+  has actually opened, see `guratan-web/CLAUDE.md`'s
+  `IndikatorChecklist.vue` note) is still frontend-only, not a
+  `sample_indikator_checks` column - it's a UI gate on the hand-off
+  button, not something the backend needs to know or enforce.
+
+**KM-G fixed post-review, 2026-08-08** - a code review of the freshly-built
+KM-G/KM-H work found and fixed 7 real bugs (verified individually, not
+taken on faith from the review output) before treating this as
+production-ready. The 5 backend-touching ones:
+  1. `ChecklistController::index`/`toggle` were missing the
+     `requiresPayment()`/`isPaid()` 402 gate that `MeasurementController`
+     and `ScoringController` both enforce - an unpaid client-sourced
+     sample's checklist was fully viewable/editable. Added, matching the
+     existing pattern exactly.
+  2. `ChecklistEngineService::toggle()` couldn't distinguish "declined the
+     cascade-uncheck prompt" from "hasn't been asked yet" - both were
+     represented as an empty `$alsoUncheckCascaded` array, so declining
+     just re-triggered the same prompt forever and the source Indikator
+     could never actually be unchecked alone. Fixed by adding an explicit
+     `bool $confirmed` parameter (also threaded through
+     `ToggleIndikatorCheckRequest`/`ChecklistController`) - the frontend
+     now always sends `confirmed: true` on the follow-up call regardless
+     of the grafolog's answer, so an empty cascade list unambiguously
+     means "confirmed, but nothing to cascade."
+  3. `evaluateSample()` used to skip ANY Indikator with an existing check
+     row, including `sumber=auto` ones - correcting a measurement
+     afterward left a stale auto-check (and an inaccurate
+     `keterangan_pemicu`) on screen forever. Fixed: only `manual`/`cascade`
+     rows are frozen now; `auto` rows are live-reconciled against current
+     measurements on every `evaluateSample()` call (and only touched when
+     the live result is definitive - `null`/unresolved leaves the last
+     known state alone, so a mid-edit blank field doesn't erase anything).
+     A **definitive false result is now also persisted** (`checked=false,
+     sumber=auto`), not just true - this is what makes a later false→true
+     correction detectable as a real transition worth cascading from.
+  4. `evaluateIndikator()`'s AND/OR combination used
+     `Collection::where('result', false)`, which compares loosely - PHP
+     treats `null == false` as true, so an unresolved rule (missing
+     measurement) was silently counted as "definitively false" instead of
+     "not enough data yet." Fixed by switching to `->filter(fn ($r) =>
+     $r['result'] === true/false)` (strict comparison).
+  5. `StoreMeasurementReadingsRequest`/`MeasurementController::store` now
+     accept `nilai: null` as an explicit "delete this reading" signal
+     (previously `nilai` was `required`, so there was no way to remove a
+     bad measurement through the API at all - see
+     `guratan-web/CLAUDE.md` for the frontend half of this fix).
+  12 new/updated backend tests, 327 total (up from 320). Full detail incl.
+  the 2 frontend-only fixes is in `guratan-web/CLAUDE.md`.
+
 **KM-H (visual concept map for administrators) added 2026-08-08** - the
 final phase of the KM plan, purely read-only, no risk to any of the
 CRUD/scoring surfaces above.

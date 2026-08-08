@@ -7,6 +7,7 @@ use App\Models\HandwritingSample;
 use App\Models\Indikator;
 use App\Models\IndikatorCrossReference;
 use App\Models\MeasurementVariable;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsGrafologiKb;
@@ -45,6 +46,30 @@ class ChecklistControllerTest extends TestCase
         $response = $this->actingAs($grafolog, 'sanctum')->getJson("/api/samples/{$sample->id}/checklist");
 
         $response->assertOk()->assertJsonPath('sindrom.0.aspek.0.kode', $aspek->kode);
+    }
+
+    public function test_unpaid_client_sourced_sample_blocks_checklist_view_and_toggle(): void
+    {
+        // Regression test for a bug found in review (2026-08-08):
+        // ChecklistController was missing the requiresPayment()/isPaid()
+        // gate that MeasurementController and ScoringController both
+        // enforce for Project.source==='client' samples.
+        $sindrom = $this->seedMinimalAspek(1);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
+        $indikator = $this->indikatorFor($aspek);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $client = User::factory()->create();
+        $project = Project::create(['source' => 'client', 'created_by' => $client->id]);
+        $sample = HandwritingSample::create([
+            'project_id' => $project->id, 'user_id' => $client->id,
+            'created_by' => $grafolog->id, 'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($grafolog, 'sanctum')->getJson("/api/samples/{$sample->id}/checklist")->assertStatus(402);
+        $this->actingAs($grafolog, 'sanctum')->postJson("/api/samples/{$sample->id}/checklist/toggle", [
+            'indikator_id' => $indikator->id, 'checked' => true,
+        ])->assertStatus(402);
+        $this->assertDatabaseCount('sample_indikator_checks', 0);
     }
 
     public function test_non_owner_grafolog_cannot_view_checklist(): void

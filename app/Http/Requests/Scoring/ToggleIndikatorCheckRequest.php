@@ -22,6 +22,7 @@ class ToggleIndikatorCheckRequest extends FormRequest
             'checked' => ['required', 'boolean'],
             'also_uncheck_cascaded' => ['sometimes', 'array'],
             'also_uncheck_cascaded.*' => ['integer', 'exists:indikator,id'],
+            'confirmed' => ['sometimes', 'boolean'],
         ];
     }
 }

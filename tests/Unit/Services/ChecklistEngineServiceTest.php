@@ -98,7 +98,13 @@ class ChecklistEngineServiceTest extends TestCase
 
         $this->engine->evaluateSample($sample);
 
-        $this->assertDatabaseCount('sample_indikator_checks', 0);
+        // A definitive non-match IS persisted (checked=false, sumber=auto) -
+        // distinct from "never evaluated" (no row at all, see the
+        // unresolved-data test below) - this is what lets evaluateSample()
+        // detect a later false->true transition and re-cascade correctly.
+        $this->assertDatabaseHas('sample_indikator_checks', [
+            'sample_id' => $sample->id, 'indikator_id' => $indikator->id, 'checked' => 0, 'sumber' => 'auto',
+        ]);
     }
 
     public function test_indikator_without_measurement_data_stays_unresolved(): void
@@ -182,7 +188,7 @@ class ChecklistEngineServiceTest extends TestCase
         $sample->measurementReadings()->create(['variable_id' => $varB->id, 'nilai' => 1]); // fails > 10
 
         $this->engine->evaluateSample($sample);
-        $this->assertDatabaseCount('sample_indikator_checks', 0);
+        $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $indikator->id, 'checked' => 0]);
 
         SampleIndikatorCheck::query()->delete();
         $sample->measurementReadings()->where('variable_id', $varB->id)->update(['nilai' => 20]);
@@ -305,13 +311,13 @@ class ChecklistEngineServiceTest extends TestCase
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $source->id, 'checked' => 1]);
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $target->id, 'checked' => 1]);
 
-        $confirmed = $this->engine->toggle($sample, $source->id, false, [$target->id]);
+        $confirmed = $this->engine->toggle($sample, $source->id, false, [$target->id], true);
         $this->assertTrue($confirmed['ok']);
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $source->id, 'checked' => 0]);
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $target->id, 'checked' => 0]);
     }
 
-    public function test_unchecking_source_without_confirmation_leaves_target_checked(): void
+    public function test_unchecking_source_without_confirmed_flag_leaves_everything_unchanged(): void
     {
         $sindrom = $this->seedMinimalAspek(2);
         $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
@@ -325,12 +331,37 @@ class ChecklistEngineServiceTest extends TestCase
         $sample = $this->sample();
         $this->engine->toggle($sample, $source->id, true);
 
-        // Grafolog is shown the confirmation prompt but the caller never
-        // resubmits with alsoUncheckCascaded - i.e. they declined. Source
-        // and target must both remain exactly as they were.
+        // Caller hasn't shown/answered the confirmation prompt at all yet
+        // (no $confirmed flag) - must keep re-asking, not silently act.
         $this->engine->toggle($sample, $source->id, false);
 
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $source->id, 'checked' => 1]);
+        $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $target->id, 'checked' => 1]);
+    }
+
+    public function test_declining_cascade_uncheck_still_unchecks_source_and_keeps_target(): void
+    {
+        // Regression test for a bug found in review (2026-08-08): before
+        // $confirmed existed, declining the cascade prompt (confirmed=true,
+        // alsoUncheckCascaded=[]) was indistinguishable from "not yet
+        // asked" (both were an empty array), so the source could never
+        // actually be unchecked without also force-unchecking the target.
+        $sindrom = $this->seedMinimalAspek(2);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $source = $this->indikator($aspek[0], 1);
+        $target = $this->indikator($aspek[1], 1);
+        IndikatorCrossReference::create([
+            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
+            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => true,
+        ]);
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $source->id, true);
+
+        $result = $this->engine->toggle($sample, $source->id, false, [], true);
+
+        $this->assertTrue($result['ok']);
+        $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $source->id, 'checked' => 0]);
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $target->id, 'checked' => 1]);
     }
 
@@ -366,6 +397,119 @@ class ChecklistEngineServiceTest extends TestCase
 
         $this->assertSame(0, $tally[$aspek->kode]['posisi_tercentang']);
         $this->assertSame(1, $tally[$aspek->kode]['skor']);
+    }
+
+    public function test_correcting_a_measurement_updates_a_stale_auto_check(): void
+    {
+        // Regression test for a bug found in review (2026-08-08): the
+        // original evaluateSample() skipped ANY Indikator with an existing
+        // check row, including 'auto' ones - so correcting a measurement
+        // left a stale auto-checked Indikator with an inaccurate reason.
+        $sindrom = $this->seedMinimalAspek(1);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
+        $indikator = $this->indikator($aspek, 1);
+        $variable = $this->variableWithCategories();
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'category',
+            'variable_a_id' => $variable->id, 'category_label' => 'large',
+        ]);
+
+        $sample = $this->sample();
+        $sample->measurementReadings()->create(['variable_id' => $variable->id, 'nilai' => 7]); // 'large'
+        $this->engine->evaluateSample($sample);
+        $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $indikator->id, 'checked' => 1]);
+
+        // Grafolog corrects a typo - the real value is actually 'small'.
+        $sample->measurementReadings()->where('variable_id', $variable->id)->update(['nilai' => 1]);
+        $this->engine->evaluateSample($sample);
+
+        $check = SampleIndikatorCheck::where('sample_id', $sample->id)->where('indikator_id', $indikator->id)->first();
+        $this->assertFalse((bool) $check->checked);
+        $this->assertSame('auto', $check->sumber);
+    }
+
+    public function test_manual_decision_still_survives_measurement_correction(): void
+    {
+        // Companion to the regression test above - confirms the fix didn't
+        // remove the original protection for genuinely manual decisions.
+        $sindrom = $this->seedMinimalAspek(1);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
+        $indikator = $this->indikator($aspek, 1);
+        $variable = $this->variableWithCategories();
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'category',
+            'variable_a_id' => $variable->id, 'category_label' => 'large',
+        ]);
+
+        $sample = $this->sample();
+        $sample->measurementReadings()->create(['variable_id' => $variable->id, 'nilai' => 7]);
+        $this->engine->evaluateSample($sample);
+        $this->engine->toggle($sample, $indikator->id, false); // grafolog manually rejects it
+
+        $sample->measurementReadings()->where('variable_id', $variable->id)->update(['nilai' => 7]); // unchanged, still 'large'
+        $this->engine->evaluateSample($sample);
+
+        $check = SampleIndikatorCheck::where('sample_id', $sample->id)->where('indikator_id', $indikator->id)->first();
+        $this->assertFalse((bool) $check->checked);
+        $this->assertSame('manual', $check->sumber);
+    }
+
+    public function test_and_logic_stays_unresolved_when_one_rule_is_true_and_another_has_no_data(): void
+    {
+        // Regression test for a bug found in review (2026-08-08):
+        // Collection::where() compares loosely, and PHP treats null==false
+        // as true, so an unresolved rule (no measurement yet) was silently
+        // counted as "definitively false" - AND indikator would incorrectly
+        // resolve to false instead of staying null/unresolved.
+        $sindrom = $this->seedMinimalAspek(1);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
+        $indikator = $this->indikator($aspek, 1);
+        $indikator->update(['rule_group_logic' => 'AND']);
+        $varA = $this->variableWithCategories('Var A');
+        $varB = MeasurementVariable::create(['kode' => 'var-b', 'axis' => 'horizontal', 'nama' => 'Var B']);
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'category',
+            'variable_a_id' => $varA->id, 'category_label' => 'large',
+        ]);
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'comparison',
+            'variable_a_id' => $varB->id, 'operator' => 'greater_than', 'compare_value' => 10,
+        ]);
+
+        $sample = $this->sample();
+        $sample->measurementReadings()->create(['variable_id' => $varA->id, 'nilai' => 7]); // matches 'large' (true)
+        // varB has no reading at all - that rule is unresolved (null), not false.
+
+        $this->engine->evaluateSample($sample);
+
+        // Must stay unresolved (no row at all), not be wrongly marked as
+        // "definitively false" just because one rule lacks data.
+        $this->assertDatabaseCount('sample_indikator_checks', 0);
+    }
+
+    public function test_or_logic_stays_unresolved_when_one_rule_is_false_and_another_has_no_data(): void
+    {
+        $sindrom = $this->seedMinimalAspek(1);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
+        $indikator = $this->indikator($aspek, 1); // default OR
+        $varA = $this->variableWithCategories('Var A');
+        $varB = MeasurementVariable::create(['kode' => 'var-b', 'axis' => 'horizontal', 'nama' => 'Var B']);
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'category',
+            'variable_a_id' => $varA->id, 'category_label' => 'large',
+        ]);
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'comparison',
+            'variable_a_id' => $varB->id, 'operator' => 'greater_than', 'compare_value' => 10,
+        ]);
+
+        $sample = $this->sample();
+        $sample->measurementReadings()->create(['variable_id' => $varA->id, 'nilai' => 1]); // fails 'large' (false)
+        // varB has no reading at all - that rule is unresolved (null), not false.
+
+        $this->engine->evaluateSample($sample);
+
+        $this->assertDatabaseCount('sample_indikator_checks', 0);
     }
 
     public function test_checklist_for_groups_by_sindrom_and_aspek_with_tally(): void
