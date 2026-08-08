@@ -90,6 +90,24 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   backend's own test suite, not re-proven through a UI click in this
   session) that deleting a Measurement Variable still referenced by a rule
   is blocked.
+  **Gained a 6th tab, "Referensi Silang", 2026-08-08 (KM-F)** — same
+  paginated-search pattern as the Indikator tab (280 rows). Table columns:
+  Sumber (raw text + resolved source Indikator kode if known), Tujuan
+  (target kode), Status (`matched`/`unmatched` badge, read-only — computed
+  server-side, not editable), Aktif (a dedicated toggle button, the primary
+  action for this tab, separate from full row edit). Create/edit forms use
+  a new `GET /admin/knowledge/indikator-options` fetch (`indikatorOptions`,
+  loaded once at mount) for the source-Indikator dropdown — the existing
+  paginated `indikatorList` can't serve that, it only ever holds one page's
+  worth of rows. **This tab is explicitly NOT the cascade-trigger UI**
+  (checking Indikator A auto-suggesting B) — the intro text says so; that
+  needs a real grafolog-facing checklist form to exist first (KM-G), this
+  is purely the data-management layer underneath it. Browser-verified:
+  confirmed search against real data via network-response-aware waits
+  (learned from earlier KM tabs' flaky fixed-timeout scripts — this one
+  waits on the actual debounced API response instead), created a row,
+  toggled `aktif` off, edited its target kode, reloaded and re-searched to
+  confirm **both** the toggle and the edit persisted, then deleted it.
   **`AdminTokensView` + `TokenWalletView` added 2026-08-07** (grafolog
   token system, see root `ROADMAP.md`'s "Inisiatif — Token Grafolog").
   `AdminTokensView` (`/admin/tokens`, `role: 'administrator'`) has two

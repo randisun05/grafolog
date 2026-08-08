@@ -12,6 +12,7 @@ const tabs = [
   { key: 'indikator', label: 'Indikator' },
   { key: 'variabel', label: 'Variabel Ukur' },
   { key: 'band', label: 'Band Skor' },
+  { key: 'referensi', label: 'Referensi Silang' },
 ]
 const activeTab = ref('sindrom')
 
@@ -336,6 +337,110 @@ async function deleteRule(rule) {
   }
 }
 
+// --- Referensi Silang (KM-F) ----------------------------------------------
+const emptyCrossRefForm = () => ({ indikator_sumber_raw: '', indikator_sumber_id: '', mereferensikan_ke_kode: '' })
+const crossRefList = ref([])
+const crossRefMeta = ref({ currentPage: 1, lastPage: 1, total: 0 })
+const crossRefSearch = ref('')
+const crossRefAktifFilter = ref('')
+const crossRefLoading = ref(false)
+const crossRefCreateForm = ref(emptyCrossRefForm())
+const crossRefErrors = ref({})
+const crossRefSubmitting = ref(false)
+const crossRefEditingId = ref(null)
+const crossRefEditForm = ref({})
+const indikatorOptions = ref([])
+let crossRefSearchTimer = null
+
+async function loadIndikatorOptions() {
+  const { data } = await api.get('/admin/knowledge/indikator-options')
+  indikatorOptions.value = data
+}
+async function loadCrossRef(page = crossRefMeta.value.currentPage) {
+  crossRefLoading.value = true
+  try {
+    const { data } = await api.get('/admin/knowledge/cross-references', {
+      params: {
+        search: crossRefSearch.value || undefined,
+        aktif: crossRefAktifFilter.value === '' ? undefined : crossRefAktifFilter.value,
+        page,
+      },
+    })
+    crossRefList.value = data.data
+    crossRefMeta.value = { currentPage: data.current_page, lastPage: data.last_page, total: data.total }
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal memuat referensi silang.')
+  } finally {
+    crossRefLoading.value = false
+  }
+}
+function onCrossRefSearchInput() {
+  clearTimeout(crossRefSearchTimer)
+  crossRefSearchTimer = setTimeout(() => loadCrossRef(1), 400)
+}
+function onCrossRefFilterChange() {
+  loadCrossRef(1)
+}
+function goToCrossRefPage(page) {
+  if (page < 1 || page > crossRefMeta.value.lastPage) return
+  loadCrossRef(page)
+}
+async function createCrossRef() {
+  crossRefSubmitting.value = true
+  crossRefErrors.value = {}
+  try {
+    await api.post('/admin/knowledge/cross-references', crossRefCreateForm.value)
+    toast.push('Referensi silang berhasil dibuat.', 'success')
+    crossRefCreateForm.value = emptyCrossRefForm()
+    await loadCrossRef(1)
+  } catch (e) {
+    crossRefErrors.value = e.response?.data?.errors ?? {}
+    toast.push(e.response?.data?.message ?? 'Gagal membuat referensi silang.')
+  } finally {
+    crossRefSubmitting.value = false
+  }
+}
+function startEditCrossRef(r) {
+  crossRefEditingId.value = r.id
+  crossRefEditForm.value = {
+    indikator_sumber_raw: r.indikator_sumber_raw,
+    indikator_sumber_id: r.indikator_sumber_id ?? '',
+    mereferensikan_ke_kode: r.mereferensikan_ke_kode,
+  }
+}
+function cancelEditCrossRef() {
+  crossRefEditingId.value = null
+}
+async function saveCrossRef(id) {
+  try {
+    await api.put(`/admin/knowledge/cross-references/${id}`, crossRefEditForm.value)
+    toast.push('Referensi silang berhasil diubah.', 'success')
+    crossRefEditingId.value = null
+    await loadCrossRef()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah referensi silang.')
+  }
+}
+async function toggleCrossRefAktif(r) {
+  try {
+    await api.put(`/admin/knowledge/cross-references/${r.id}`, { aktif: !r.aktif })
+    toast.push(`Referensi silang ${r.aktif ? 'dinonaktifkan' : 'diaktifkan'}.`, 'success')
+    await loadCrossRef()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah status.')
+  }
+}
+async function deleteCrossRef(r) {
+  if (!confirm(`Hapus referensi silang ini?`)) return
+  try {
+    await api.delete(`/admin/knowledge/cross-references/${r.id}`)
+    toast.push('Referensi silang dihapus.', 'success')
+    await loadCrossRef()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menghapus referensi silang.')
+  }
+}
+
 // --- Measurement Variable + Category ------------------------------------
 const variableList = ref([])
 const variableForm = ref({ kode: '', axis: 'vertical', nama: '' })
@@ -498,7 +603,7 @@ onMounted(async () => {
   loading.value = true
   loadError.value = ''
   try {
-    await Promise.all([loadSindrom(), loadAspek(), loadIndikator(1), loadVariables(), loadBands()])
+    await Promise.all([loadSindrom(), loadAspek(), loadIndikator(1), loadVariables(), loadBands(), loadIndikatorOptions(), loadCrossRef(1)])
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat knowledge base.'
   } finally {
@@ -511,9 +616,9 @@ onMounted(async () => {
   <div class="admin-km">
     <h1>Kelola Knowledge Base</h1>
     <p class="admin-km__note">
-      Fondasi metodologi penilaian (KM-B/C) — Sindrom, Aspek + 4 level narasi, Variabel Ukur +
-      kategorinya, dan Band Skor. Indikator dan aturan operator belum punya panel di sini (fase KM
-      lanjutan).
+      Fondasi metodologi penilaian (KM-B s/d F) — Sindrom, Aspek + 4 level narasi, Indikator + aturan
+      operator, Variabel Ukur + kategorinya, Band Skor, dan Referensi Silang antar-Indikator. Belum
+      ada measurement worksheet sungguhan atau perhitungan skor otomatis dari sini (KM-G).
     </p>
 
     <div class="admin-km__tabs">
@@ -1085,6 +1190,124 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
+      </section>
+
+      <!-- REFERENSI SILANG -->
+      <section v-if="activeTab === 'referensi'" class="admin-km__panel">
+        <p class="admin-km__hint">
+          Mengaktifkan `indikator_cross_reference` yang sudah ada sebagai data terkelola (KM-F).
+          Panel ini murni mengelola baris referensinya (aktif/nonaktif, perbaiki target, tambah/hapus)
+          — cascade "centang A memicu saran centang B" baru berarti begitu form Indikator sungguhan
+          (measurement worksheet, KM-G) ada.
+        </p>
+        <form class="admin-km__form" @submit.prevent="createCrossRef">
+          <label class="admin-km__field">
+            Teks Sumber (raw)
+            <input v-model="crossRefCreateForm.indikator_sumber_raw" type="text" maxlength="250" required />
+          </label>
+          <div class="admin-km__row">
+            <label>
+              Indikator Sumber (opsional kalau belum jelas)
+              <select v-model.number="crossRefCreateForm.indikator_sumber_id">
+                <option value="">— tidak diketahui —</option>
+                <option v-for="o in indikatorOptions" :key="o.id" :value="o.id">{{ o.kode }} — {{ o.nama }}</option>
+              </select>
+            </label>
+            <label>
+              Kode Indikator Tujuan
+              <input v-model="crossRefCreateForm.mereferensikan_ke_kode" type="text" maxlength="20" placeholder="01-2'" required />
+            </label>
+          </div>
+          <p v-if="crossRefErrors.indikator_sumber_raw" class="error">{{ crossRefErrors.indikator_sumber_raw[0] }}</p>
+          <p v-if="crossRefErrors.mereferensikan_ke_kode" class="error">{{ crossRefErrors.mereferensikan_ke_kode[0] }}</p>
+          <button type="submit" class="btn btn--primary" :disabled="crossRefSubmitting">
+            {{ crossRefSubmitting ? 'Membuat...' : 'Tambah Referensi' }}
+          </button>
+        </form>
+
+        <div class="admin-km__toolbar">
+          <input
+            v-model="crossRefSearch"
+            type="search"
+            placeholder="Cari teks sumber atau kode tujuan..."
+            @input="onCrossRefSearchInput"
+          />
+          <select v-model="crossRefAktifFilter" @change="onCrossRefFilterChange">
+            <option value="">Semua status</option>
+            <option value="1">Aktif saja</option>
+            <option value="0">Nonaktif saja</option>
+          </select>
+          <span class="admin-km__result-count">{{ crossRefMeta.total }} referensi</span>
+        </div>
+
+        <LoadingSpinner v-if="crossRefLoading" label="Memuat..." />
+        <template v-else>
+          <table class="admin-km__table">
+            <thead>
+              <tr>
+                <th>Sumber</th>
+                <th>Tujuan</th>
+                <th>Status</th>
+                <th>Aktif</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in crossRefList" :key="r.id">
+                <template v-if="crossRefEditingId === r.id">
+                  <td><input v-model="crossRefEditForm.indikator_sumber_raw" type="text" maxlength="250" /></td>
+                  <td><input v-model="crossRefEditForm.mereferensikan_ke_kode" type="text" maxlength="20" /></td>
+                  <td colspan="2">
+                    <select v-model.number="crossRefEditForm.indikator_sumber_id">
+                      <option value="">— sumber tidak diketahui —</option>
+                      <option v-for="o in indikatorOptions" :key="o.id" :value="o.id">{{ o.kode }} — {{ o.nama }}</option>
+                    </select>
+                  </td>
+                  <td class="admin-km__actions">
+                    <button type="button" class="btn btn--primary" @click="saveCrossRef(r.id)">Simpan</button>
+                    <button type="button" class="btn" @click="cancelEditCrossRef">Batal</button>
+                  </td>
+                </template>
+                <template v-else>
+                  <td>
+                    {{ r.indikator_sumber_raw }}
+                    <div v-if="r.indikator_sumber" class="admin-km__variable-axis">sumber: {{ r.indikator_sumber.kode }}</div>
+                  </td>
+                  <td>{{ r.mereferensikan_ke_kode }}</td>
+                  <td>
+                    <span class="badge" :class="r.match_status === 'matched' ? 'badge--hijau' : 'badge--merah'">
+                      {{ r.match_status }}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn" @click="toggleCrossRefAktif(r)">
+                      {{ r.aktif ? 'Aktif' : 'Nonaktif' }}
+                    </button>
+                  </td>
+                  <td class="admin-km__actions">
+                    <button type="button" class="btn" @click="startEditCrossRef(r)">Ubah</button>
+                    <button type="button" class="btn btn--danger" @click="deleteCrossRef(r)">Hapus</button>
+                  </td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
+
+          <div v-if="crossRefMeta.lastPage > 1" class="admin-km__pagination">
+            <button type="button" class="btn" :disabled="crossRefMeta.currentPage <= 1" @click="goToCrossRefPage(crossRefMeta.currentPage - 1)">
+              Sebelumnya
+            </button>
+            <span>Halaman {{ crossRefMeta.currentPage }} / {{ crossRefMeta.lastPage }}</span>
+            <button
+              type="button"
+              class="btn"
+              :disabled="crossRefMeta.currentPage >= crossRefMeta.lastPage"
+              @click="goToCrossRefPage(crossRefMeta.currentPage + 1)"
+            >
+              Berikutnya
+            </button>
+          </div>
+        </template>
       </section>
     </template>
   </div>
