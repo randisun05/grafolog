@@ -19,7 +19,8 @@ class IndikatorController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Indikator::with('aspek:id,kode,nama')->orderBy('aspek_id')->orderBy('posisi')->orderBy('varian');
+        $query = Indikator::with(['aspek:id,kode,nama', 'rules.variableA:id,kode,nama', 'rules.variableB:id,kode,nama'])
+            ->orderBy('aspek_id')->orderBy('posisi')->orderBy('varian');
 
         if ($search = $request->string('search')->trim()->value()) {
             $query->where(function ($q) use ($search) {
@@ -39,7 +40,7 @@ class IndikatorController extends Controller
 
         AuditLog::record('buat_indikator', Indikator::class, $indikator->id, $request->user()->id, $request->ip());
 
-        return response()->json($indikator->load('aspek:id,kode,nama'), 201);
+        return response()->json($indikator->load(['aspek:id,kode,nama', 'rules']), 201);
     }
 
     public function update(UpdateIndikatorRequest $request, Indikator $indikator): JsonResponse
@@ -48,7 +49,7 @@ class IndikatorController extends Controller
 
         AuditLog::record('ubah_indikator', Indikator::class, $indikator->id, $request->user()->id, $request->ip());
 
-        return response()->json($indikator->load('aspek:id,kode,nama'));
+        return response()->json($indikator->load(['aspek:id,kode,nama', 'rules.variableA:id,kode,nama', 'rules.variableB:id,kode,nama']));
     }
 
     /**

@@ -25,6 +25,7 @@ class UpdateIndikatorRequest extends FormRequest
             'varian' => ['nullable', 'string', 'max:5'],
             'nama' => ['sometimes', 'required', 'string', 'max:255'],
             'keterangan' => ['nullable', 'string'],
+            'rule_group_logic' => ['sometimes', 'required', 'string', 'in:AND,OR'],
         ];
     }
 }

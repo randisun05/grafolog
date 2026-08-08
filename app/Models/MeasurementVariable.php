@@ -22,6 +22,16 @@ class MeasurementVariable extends Model
         return $this->belongsTo(MetodologiPenilaian::class, 'metodologi_id');
     }
 
+    public function indikatorRulesAsA(): HasMany
+    {
+        return $this->hasMany(IndikatorRule::class, 'variable_a_id');
+    }
+
+    public function indikatorRulesAsB(): HasMany
+    {
+        return $this->hasMany(IndikatorRule::class, 'variable_b_id');
+    }
+
     public static function findByKode(string $kode): ?self
     {
         return static::where('kode', $kode)->first();

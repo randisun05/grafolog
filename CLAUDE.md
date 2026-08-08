@@ -154,8 +154,8 @@ both cases; `php artisan test` still 6/6 passing.
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
   `PricingPlan`, `DiscountCode`, `ContentBlock`, `Announcement`, `Company`,
   `Assignment`, `AuditLog`, `TokenPrice`, `TokenCost`, `TokenPurchase`,
-  `TokenLedgerEntry`, `MetodologiPenilaian` (2026-08-08, see "Knowledge
-  Management System" below).
+  `TokenLedgerEntry`, `MetodologiPenilaian`, `IndikatorRule` (2026-08-08,
+  see "Knowledge Management System" below).
   Most KB models have `findByKode()`. **`DeskriptifLookup` is unused** outside
   its own class — it was designed as a per-band generic "ringkasan" but never
   got wired into the scoring engine; treat it as dead code unless someone
@@ -812,9 +812,57 @@ namespace `App\Http\Controllers\Api\Admin\`:
 - Audit log: `buat_indikator`/`ubah_indikator`/`hapus_indikator`.
 - 9 new tests (`tests/Feature/Api/Admin/IndikatorControllerTest.php`) — 260
   total.
-- **The operator/rule system (`indikator_rules`, KM-E) is still not
-  built** — Indikator can now be freely created/edited/deleted, but nothing
-  yet connects one to a measurement-based auto-check rule.
+**KM-E (operator/rule builder) added 2026-08-08** — the piece the whole KM
+plan was building toward: connecting an Indikator to a measurement-based
+auto-check rule.
+
+- **`indikator_rules` table / `App\Models\IndikatorRule`**: 2 rule types per
+  the KM plan's §3.2. `category` — `variable_a_id` + `category_label`
+  (string, mis. "Middle zone height" @ "large"). `comparison` —
+  `variable_a_id` `operator` (`equals`/`greater_than`/`less_than`/
+  `greater_or_equal`/`less_or_equal`) `koefisien` × EITHER `variable_b_id`
+  OR `compare_value` (exactly one, never both/neither). Both FKs
+  `cascadeOnDelete` — a rule referencing a deleted Indikator or
+  MeasurementVariable is meaningless, so it goes with it.
+- **`Indikator.rule_group_logic`** (`AND`/`OR`, default `OR`) — determines
+  how >1 rule row for the SAME Indikator combine. **Deliberately NOT a
+  column on `indikator_rules`** (each rule row repeating an identical value)
+  — that would let 2 rules for 1 Indikator disagree on their own combine
+  logic, a nonsensical state. One Indikator, one group-logic value.
+- **`StoreIndikatorRuleRequest`/`UpdateIndikatorRuleRequest`**: the
+  type-conditional validation (category fields forbidden on a comparison
+  rule and vice versa, exactly-one-of variable_b/compare_value) is done in
+  `withValidator()`'s `after()` hook, not via declarative `required_if`/
+  `prohibited_if` chains — much more readable for 2 mutually-exclusive
+  shapes than fighting Laravel's conditional-rule combinators.
+  **`category_label` is validated against real `measurement_category` rows**
+  for the chosen `variable_a_id`, not just "any string" — a category label
+  that doesn't match a real category would silently never match anything at
+  scoring time (KM-G), a correctness bug worth catching at write time.
+- **`Api\Admin\IndikatorRuleController`** (nested under `IndikatorController`,
+  same pattern as `MeasurementCategoryController` under
+  `MeasurementVariableController`): `store()` at
+  `POST /admin/knowledge/indikator/{indikator}/rules`,
+  `update`/`destroy` at `/admin/knowledge/indikator-rules/{indikatorRule}`.
+  No standalone `index()` — rules come back eager-loaded on
+  `IndikatorController::index()` (`rules.variableA`/`rules.variableB`).
+- **`MeasurementVariableController::destroy()` gained a guard** (previously
+  had none, see KM-B note above) — `abort_if` if the variable is referenced
+  by any rule as `variable_a_id` OR `variable_b_id`. Deleting a
+  `measurement_category` is still unguarded (fully owned by its variable),
+  but a variable used by an admin-authored operator rule is no longer safe
+  to silently cascade away.
+- Audit log: `buat_aturan_indikator`/`ubah_aturan_indikator`/
+  `hapus_aturan_indikator`.
+- 16 new tests (`tests/Feature/Api/Admin/IndikatorRuleControllerTest.php`)
+  — 276 total.
+- **Still not built**: KM-F (activating `indikator_cross_reference` as a
+  cascade-trigger UI, per the plan's §3.3), KM-G (the actual Measurement
+  Worksheet form + wiring `ScoringController` to auto-check Indikator via
+  these rules instead of manual 1-10 input), KM-H (visual knowledge concept
+  map). **Rules exist and can be authored, but nothing yet EVALUATES
+  them** — `ScoringController::submit` is completely unchanged, still takes
+  manual `skorPerAspek` input. That's KM-G's job.
 
 ## Hard constraints (user-stated, still in force)
 
