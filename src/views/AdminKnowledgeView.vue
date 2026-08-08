@@ -227,7 +227,9 @@ function startEditIndikator(i) {
     varian: i.varian ?? '',
     nama: i.nama,
     keterangan: i.keterangan ?? '',
+    rule_group_logic: i.rule_group_logic ?? 'OR',
   }
+  resetRuleForm()
 }
 function cancelEditIndikator() {
   expandedIndikatorId.value = null
@@ -253,6 +255,84 @@ async function deleteIndikator(i) {
     await loadIndikator()
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal menghapus Indikator.')
+  }
+}
+
+// --- Aturan Operator (KM-E) - nested di panel edit Indikator --------------
+const operatorLabels = {
+  equals: '=',
+  greater_than: '>',
+  less_than: '<',
+  greater_or_equal: '≥',
+  less_or_equal: '≤',
+}
+const emptyRuleForm = () => ({
+  rule_type: 'category',
+  variable_a_id: '',
+  category_label: '',
+  operator: 'equals',
+  koefisien: 1,
+  compareMode: 'variable',
+  variable_b_id: '',
+  compare_value: '',
+})
+const ruleForm = ref(emptyRuleForm())
+const ruleErrors = ref({})
+const ruleSubmitting = ref(false)
+
+function resetRuleForm() {
+  ruleForm.value = emptyRuleForm()
+  ruleErrors.value = {}
+}
+function kategoriOptionsFor(variableId) {
+  return variableList.value.find((v) => v.id === variableId)?.kategori ?? []
+}
+function formatRule(rule) {
+  if (rule.rule_type === 'category') {
+    return `${rule.variable_a.nama} = "${rule.category_label}"`
+  }
+  const kanan = rule.variable_b ? rule.variable_b.nama : rule.compare_value
+  const koef = Number(rule.koefisien) !== 1 ? `${rule.koefisien}× ` : ''
+  return `${rule.variable_a.nama} ${operatorLabels[rule.operator] ?? rule.operator} ${koef}${kanan}`
+}
+async function addRule(indikatorId) {
+  ruleSubmitting.value = true
+  ruleErrors.value = {}
+  const payload = {
+    rule_type: ruleForm.value.rule_type,
+    variable_a_id: ruleForm.value.variable_a_id,
+  }
+  if (ruleForm.value.rule_type === 'category') {
+    payload.category_label = ruleForm.value.category_label
+  } else {
+    payload.operator = ruleForm.value.operator
+    payload.koefisien = ruleForm.value.koefisien || 1
+    if (ruleForm.value.compareMode === 'variable') {
+      payload.variable_b_id = ruleForm.value.variable_b_id
+    } else {
+      payload.compare_value = ruleForm.value.compare_value
+    }
+  }
+  try {
+    await api.post(`/admin/knowledge/indikator/${indikatorId}/rules`, payload)
+    toast.push('Aturan operator berhasil ditambahkan.', 'success')
+    resetRuleForm()
+    await loadIndikator()
+  } catch (e) {
+    ruleErrors.value = e.response?.data?.errors ?? {}
+    toast.push(e.response?.data?.message ?? 'Gagal menambahkan aturan.')
+  } finally {
+    ruleSubmitting.value = false
+  }
+}
+async function deleteRule(rule) {
+  if (!confirm(`Hapus aturan "${formatRule(rule)}"?`)) return
+  try {
+    await api.delete(`/admin/knowledge/indikator-rules/${rule.id}`)
+    toast.push('Aturan operator dihapus.', 'success')
+    await loadIndikator()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menghapus aturan.')
   }
 }
 
@@ -720,11 +800,102 @@ onMounted(async () => {
                 Keterangan
                 <textarea v-model="indikatorEditForm.keterangan" rows="3"></textarea>
               </label>
+              <label class="admin-km__field admin-km__field--inline">
+                Gabungan aturan (kalau &gt;1)
+                <select v-model="indikatorEditForm.rule_group_logic">
+                  <option value="OR">OR — salah satu cukup</option>
+                  <option value="AND">AND — semua wajib</option>
+                </select>
+              </label>
               <div class="admin-km__actions">
                 <button type="button" class="btn btn--primary" :disabled="indikatorSaving" @click="saveIndikator(i.id)">
                   {{ indikatorSaving ? 'Menyimpan...' : 'Simpan' }}
                 </button>
                 <button type="button" class="btn" @click="cancelEditIndikator">Batal</button>
+              </div>
+
+              <div class="admin-km__rules">
+                <h4>Aturan Operator</h4>
+                <p v-if="!i.rules.length" class="admin-km__hint">
+                  Belum ada aturan — Indikator ini tetap muncul untuk dicentang manual grafolog.
+                </p>
+                <ul v-else class="admin-km__rule-list">
+                  <li v-for="r in i.rules" :key="r.id">
+                    <span>{{ formatRule(r) }}</span>
+                    <button type="button" class="btn btn--danger" @click="deleteRule(r)">Hapus</button>
+                  </li>
+                </ul>
+
+                <div class="admin-km__row">
+                  <label>
+                    Tipe Aturan
+                    <select v-model="ruleForm.rule_type">
+                      <option value="category">Category (variabel = kategori)</option>
+                      <option value="comparison">Comparison (bandingkan 2 nilai)</option>
+                    </select>
+                  </label>
+                  <label>
+                    Variabel A
+                    <select v-model.number="ruleForm.variable_a_id">
+                      <option value="" disabled>Pilih Variabel</option>
+                      <option v-for="v in variableList" :key="v.id" :value="v.id">{{ v.kode }} — {{ v.nama }}</option>
+                    </select>
+                  </label>
+                </div>
+
+                <template v-if="ruleForm.rule_type === 'category'">
+                  <label class="admin-km__field">
+                    Kategori
+                    <select v-model="ruleForm.category_label">
+                      <option value="" disabled>Pilih Kategori</option>
+                      <option v-for="c in kategoriOptionsFor(ruleForm.variable_a_id)" :key="c.id" :value="c.kategori">
+                        {{ c.kategori }}
+                      </option>
+                    </select>
+                  </label>
+                </template>
+                <template v-else>
+                  <div class="admin-km__row admin-km__row--3">
+                    <label>
+                      Operator
+                      <select v-model="ruleForm.operator">
+                        <option value="equals">= (equals)</option>
+                        <option value="greater_than">&gt; (greater_than)</option>
+                        <option value="less_than">&lt; (less_than)</option>
+                        <option value="greater_or_equal">≥ (greater_or_equal)</option>
+                        <option value="less_or_equal">≤ (less_or_equal)</option>
+                      </select>
+                    </label>
+                    <label>
+                      Koefisien
+                      <input v-model.number="ruleForm.koefisien" type="number" step="0.1" min="0" />
+                    </label>
+                    <label>
+                      Bandingkan ke
+                      <select v-model="ruleForm.compareMode">
+                        <option value="variable">Variabel lain</option>
+                        <option value="value">Angka tetap</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label v-if="ruleForm.compareMode === 'variable'" class="admin-km__field">
+                    Variabel B
+                    <select v-model.number="ruleForm.variable_b_id">
+                      <option value="" disabled>Pilih Variabel</option>
+                      <option v-for="v in variableList" :key="v.id" :value="v.id">{{ v.kode }} — {{ v.nama }}</option>
+                    </select>
+                  </label>
+                  <label v-else class="admin-km__field">
+                    Angka Tetap
+                    <input v-model.number="ruleForm.compare_value" type="number" step="0.1" />
+                  </label>
+                </template>
+                <p v-if="ruleErrors.category_label" class="error">{{ ruleErrors.category_label[0] }}</p>
+                <p v-if="ruleErrors.operator" class="error">{{ ruleErrors.operator[0] }}</p>
+                <p v-if="ruleErrors.variable_b_id" class="error">{{ ruleErrors.variable_b_id[0] }}</p>
+                <button type="button" class="btn btn--primary" :disabled="ruleSubmitting" @click="addRule(i.id)">
+                  {{ ruleSubmitting ? 'Menambah...' : 'Tambah Aturan' }}
+                </button>
               </div>
             </div>
           </div>
@@ -1014,6 +1185,38 @@ onMounted(async () => {
 }
 .admin-km__field textarea {
   width: 100%;
+}
+.admin-km__field--inline {
+  max-width: 320px;
+}
+.admin-km__rules {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+.admin-km__rules h4 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-soft);
+  margin-bottom: 10px;
+}
+.admin-km__rule-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+.admin-km__rule-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  font-size: 13px;
 }
 .admin-km__table {
   width: 100%;

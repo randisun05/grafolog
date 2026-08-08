@@ -68,6 +68,28 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   small" correctly narrowed 704 → 1), created a throwaway Indikator, edited
   its nama + keterangan, reloaded and re-searched to confirm persistence,
   then deleted it — zero console errors.
+  **Indikator's edit panel gained an "Aturan Operator" sub-section,
+  2026-08-08 (KM-E)** — the rule/operator builder. Below the existing
+  kode/aspek/posisi/varian/nama/keterangan fields: a `rule_group_logic`
+  select (AND/OR), a list of the Indikator's existing rules rendered via
+  `formatRule()` (mis. `Middle zone height = "large"` or
+  `d stem width > 1.5000× 5.2000`), each with its own delete button, and a
+  small add-rule form. The form's fields are conditional on `rule_type`
+  (`v-if`/`v-else` blocks, not hidden-but-present inputs) — picking
+  "category" shows a category dropdown **populated from that variable's
+  real `kategori` list** (`kategoriOptionsFor()`, reads `variableList`
+  already loaded for the Variabel Ukur tab — no separate fetch); picking
+  "comparison" shows operator/koefisien/compareMode, and `compareMode`
+  itself toggles between a variable-B dropdown and a fixed-number input.
+  Reuses `variableList` across two tabs is deliberate — it's the same data,
+  no reason to fetch it twice. Browser-verified: added one rule of each
+  type to a real Indikator, confirmed both display with correctly formatted
+  text, changed `rule_group_logic` to AND and saved, reloaded the page and
+  reopened the same Indikator to confirm both rules AND the group-logic
+  choice persisted, then deleted both rules. Also confirmed (via the
+  backend's own test suite, not re-proven through a UI click in this
+  session) that deleting a Measurement Variable still referenced by a rule
+  is blocked.
   **`AdminTokensView` + `TokenWalletView` added 2026-08-07** (grafolog
   token system, see root `ROADMAP.md`'s "Inisiatif — Token Grafolog").
   `AdminTokensView` (`/admin/tokens`, `role: 'administrator'`) has two
