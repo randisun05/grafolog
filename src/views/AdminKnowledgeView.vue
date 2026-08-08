@@ -9,6 +9,7 @@ const toast = useToast()
 const tabs = [
   { key: 'sindrom', label: 'Sindrom' },
   { key: 'aspek', label: 'Aspek' },
+  { key: 'indikator', label: 'Indikator' },
   { key: 'variabel', label: 'Variabel Ukur' },
   { key: 'band', label: 'Band Skor' },
 ]
@@ -156,6 +157,103 @@ async function deleteAspek(a) {
 async function loadAspek() {
   const { data } = await api.get('/admin/knowledge/aspek')
   aspekList.value = data
+}
+
+// --- Indikator (704 baris - paginasi + cari/filter) -----------------------
+const emptyIndikatorForm = () => ({ kode: '', aspek_id: '', posisi: 1, varian: '', nama: '', keterangan: '' })
+const indikatorList = ref([])
+const indikatorMeta = ref({ currentPage: 1, lastPage: 1, total: 0 })
+const indikatorSearch = ref('')
+const indikatorAspekFilter = ref('')
+const indikatorLoading = ref(false)
+const indikatorCreateForm = ref(emptyIndikatorForm())
+const indikatorErrors = ref({})
+const indikatorSubmitting = ref(false)
+const expandedIndikatorId = ref(null)
+const indikatorEditForm = ref(emptyIndikatorForm())
+const indikatorSaving = ref(false)
+let indikatorSearchTimer = null
+
+async function loadIndikator(page = indikatorMeta.value.currentPage) {
+  indikatorLoading.value = true
+  try {
+    const { data } = await api.get('/admin/knowledge/indikator', {
+      params: {
+        search: indikatorSearch.value || undefined,
+        aspek_id: indikatorAspekFilter.value || undefined,
+        page,
+      },
+    })
+    indikatorList.value = data.data
+    indikatorMeta.value = { currentPage: data.current_page, lastPage: data.last_page, total: data.total }
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal memuat Indikator.')
+  } finally {
+    indikatorLoading.value = false
+  }
+}
+function onIndikatorSearchInput() {
+  clearTimeout(indikatorSearchTimer)
+  indikatorSearchTimer = setTimeout(() => loadIndikator(1), 400)
+}
+function onIndikatorFilterChange() {
+  loadIndikator(1)
+}
+function goToIndikatorPage(page) {
+  if (page < 1 || page > indikatorMeta.value.lastPage) return
+  loadIndikator(page)
+}
+async function createIndikator() {
+  indikatorSubmitting.value = true
+  indikatorErrors.value = {}
+  try {
+    await api.post('/admin/knowledge/indikator', indikatorCreateForm.value)
+    toast.push('Indikator berhasil dibuat.', 'success')
+    indikatorCreateForm.value = emptyIndikatorForm()
+    await loadIndikator(1)
+  } catch (e) {
+    indikatorErrors.value = e.response?.data?.errors ?? {}
+    toast.push(e.response?.data?.message ?? 'Gagal membuat Indikator.')
+  } finally {
+    indikatorSubmitting.value = false
+  }
+}
+function startEditIndikator(i) {
+  expandedIndikatorId.value = i.id
+  indikatorEditForm.value = {
+    kode: i.kode,
+    aspek_id: i.aspek_id,
+    posisi: i.posisi,
+    varian: i.varian ?? '',
+    nama: i.nama,
+    keterangan: i.keterangan ?? '',
+  }
+}
+function cancelEditIndikator() {
+  expandedIndikatorId.value = null
+}
+async function saveIndikator(id) {
+  indikatorSaving.value = true
+  try {
+    await api.put(`/admin/knowledge/indikator/${id}`, indikatorEditForm.value)
+    toast.push('Indikator berhasil diubah.', 'success')
+    expandedIndikatorId.value = null
+    await loadIndikator()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah Indikator.')
+  } finally {
+    indikatorSaving.value = false
+  }
+}
+async function deleteIndikator(i) {
+  if (!confirm(`Hapus Indikator "${i.kode}"?`)) return
+  try {
+    await api.delete(`/admin/knowledge/indikator/${i.id}`)
+    toast.push('Indikator dihapus.', 'success')
+    await loadIndikator()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menghapus Indikator.')
+  }
 }
 
 // --- Measurement Variable + Category ------------------------------------
@@ -320,7 +418,7 @@ onMounted(async () => {
   loading.value = true
   loadError.value = ''
   try {
-    await Promise.all([loadSindrom(), loadAspek(), loadVariables(), loadBands()])
+    await Promise.all([loadSindrom(), loadAspek(), loadIndikator(1), loadVariables(), loadBands()])
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat knowledge base.'
   } finally {
@@ -518,6 +616,134 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+      </section>
+
+      <!-- INDIKATOR -->
+      <section v-if="activeTab === 'indikator'" class="admin-km__panel">
+        <form class="admin-km__form" @submit.prevent="createIndikator">
+          <div class="admin-km__row admin-km__row--3">
+            <label>
+              Kode
+              <input v-model="indikatorCreateForm.kode" type="text" maxlength="20" placeholder="01-11'" required />
+            </label>
+            <label>
+              Aspek
+              <select v-model="indikatorCreateForm.aspek_id" required>
+                <option value="" disabled>Pilih Aspek</option>
+                <option v-for="a in aspekList" :key="a.id" :value="a.id">{{ a.kode }} — {{ a.nama }}</option>
+              </select>
+            </label>
+            <label>
+              Posisi
+              <select v-model.number="indikatorCreateForm.posisi" required>
+                <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+              </select>
+            </label>
+          </div>
+          <div class="admin-km__row">
+            <label>
+              Varian (opsional)
+              <input v-model="indikatorCreateForm.varian" type="text" maxlength="5" placeholder="a" />
+            </label>
+            <label>
+              Nama
+              <input v-model="indikatorCreateForm.nama" type="text" maxlength="255" required />
+            </label>
+          </div>
+          <p v-if="indikatorErrors.kode" class="error">{{ indikatorErrors.kode[0] }}</p>
+          <p v-if="indikatorErrors.aspek_id" class="error">{{ indikatorErrors.aspek_id[0] }}</p>
+          <button type="submit" class="btn btn--primary" :disabled="indikatorSubmitting">
+            {{ indikatorSubmitting ? 'Membuat...' : 'Tambah Indikator' }}
+          </button>
+        </form>
+
+        <div class="admin-km__toolbar">
+          <input
+            v-model="indikatorSearch"
+            type="search"
+            placeholder="Cari kode atau nama Indikator..."
+            @input="onIndikatorSearchInput"
+          />
+          <select v-model="indikatorAspekFilter" @change="onIndikatorFilterChange">
+            <option value="">Semua Aspek</option>
+            <option v-for="a in aspekList" :key="a.id" :value="a.id">{{ a.kode }} — {{ a.nama }}</option>
+          </select>
+          <span class="admin-km__result-count">{{ indikatorMeta.total }} indikator</span>
+        </div>
+
+        <LoadingSpinner v-if="indikatorLoading" label="Memuat..." />
+        <template v-else>
+          <div v-for="i in indikatorList" :key="i.id" class="admin-km__variable">
+            <div class="admin-km__variable-head" @click="expandedIndikatorId === i.id ? cancelEditIndikator() : startEditIndikator(i)">
+              <span class="admin-km__variable-kode">{{ i.kode }}</span>
+              <span class="admin-km__variable-nama">{{ i.nama }}</span>
+              <span class="admin-km__variable-axis">{{ i.aspek.kode }} — {{ i.aspek.nama }}</span>
+              <span class="admin-km__variable-count">posisi {{ i.posisi }}<template v-if="i.varian">{{ i.varian }}</template></span>
+              <span class="admin-km__actions" @click.stop>
+                <button type="button" class="btn" @click="expandedIndikatorId === i.id ? cancelEditIndikator() : startEditIndikator(i)">
+                  {{ expandedIndikatorId === i.id ? 'Tutup' : 'Ubah' }}
+                </button>
+                <button type="button" class="btn btn--danger" @click="deleteIndikator(i)">Hapus</button>
+              </span>
+            </div>
+
+            <div v-if="expandedIndikatorId === i.id" class="admin-km__categories">
+              <div class="admin-km__row admin-km__row--3">
+                <label>
+                  Kode
+                  <input v-model="indikatorEditForm.kode" type="text" maxlength="20" />
+                </label>
+                <label>
+                  Aspek
+                  <select v-model="indikatorEditForm.aspek_id">
+                    <option v-for="a in aspekList" :key="a.id" :value="a.id">{{ a.kode }} — {{ a.nama }}</option>
+                  </select>
+                </label>
+                <label>
+                  Posisi
+                  <select v-model.number="indikatorEditForm.posisi">
+                    <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+                  </select>
+                </label>
+              </div>
+              <div class="admin-km__row">
+                <label>
+                  Varian
+                  <input v-model="indikatorEditForm.varian" type="text" maxlength="5" />
+                </label>
+                <label>
+                  Nama
+                  <input v-model="indikatorEditForm.nama" type="text" maxlength="255" />
+                </label>
+              </div>
+              <label class="admin-km__field">
+                Keterangan
+                <textarea v-model="indikatorEditForm.keterangan" rows="3"></textarea>
+              </label>
+              <div class="admin-km__actions">
+                <button type="button" class="btn btn--primary" :disabled="indikatorSaving" @click="saveIndikator(i.id)">
+                  {{ indikatorSaving ? 'Menyimpan...' : 'Simpan' }}
+                </button>
+                <button type="button" class="btn" @click="cancelEditIndikator">Batal</button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="indikatorMeta.lastPage > 1" class="admin-km__pagination">
+            <button type="button" class="btn" :disabled="indikatorMeta.currentPage <= 1" @click="goToIndikatorPage(indikatorMeta.currentPage - 1)">
+              Sebelumnya
+            </button>
+            <span>Halaman {{ indikatorMeta.currentPage }} / {{ indikatorMeta.lastPage }}</span>
+            <button
+              type="button"
+              class="btn"
+              :disabled="indikatorMeta.currentPage >= indikatorMeta.lastPage"
+              @click="goToIndikatorPage(indikatorMeta.currentPage + 1)"
+            >
+              Berikutnya
+            </button>
+          </div>
+        </template>
       </section>
 
       <!-- MEASUREMENT VARIABLE -->
@@ -740,6 +966,40 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+.admin-km__row--3 {
+  grid-template-columns: 2fr 3fr 1fr;
+}
+.admin-km__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.admin-km__toolbar input[type='search'] {
+  flex: 1;
+  min-width: 220px;
+  margin: 0;
+}
+.admin-km__toolbar select {
+  margin: 0;
+  width: auto;
+}
+.admin-km__result-count {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+  white-space: nowrap;
+  margin-left: auto;
+}
+.admin-km__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--color-text-soft);
 }
 .admin-km__hint {
   font-size: 12px;

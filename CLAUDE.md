@@ -55,6 +55,19 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   saved text was still there** (proves it round-tripped through the
   backend, not just local state), then deleted it — zero console errors,
   row count back to the real 40 Aspek afterward.
+  **Gained a 5th tab, "Indikator", 2026-08-08 (KM-D)** — unlike the other 4
+  tabs, this one is **paginated + searchable** (704 rows): a search box
+  (400ms debounced, resets to page 1) matches kode/nama, a dropdown filters
+  to one Aspek (reuses `aspekList`, already loaded), and a simple
+  prev/next + "Halaman X / Y" footer drives `?page=`. Create form takes
+  kode/Aspek/posisi (1-10 dropdown) in one row, varian (optional) + nama in
+  another. "Ubah" expands the same kind of nested panel as Aspek/Variabel
+  Ukur, this time for `keterangan` (a textarea — some Indikator descriptions
+  run to a full sentence, not worth cramming into an inline table cell).
+  Browser-verified: confirmed search against real KB data (e.g. "extremely
+  small" correctly narrowed 704 → 1), created a throwaway Indikator, edited
+  its nama + keterangan, reloaded and re-searched to confirm persistence,
+  then deleted it — zero console errors.
   **`AdminTokensView` + `TokenWalletView` added 2026-08-07** (grafolog
   token system, see root `ROADMAP.md`'s "Inisiatif — Token Grafolog").
   `AdminTokensView` (`/admin/tokens`, `role: 'administrator'`) has two
