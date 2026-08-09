@@ -291,7 +291,44 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   self-upload flow was dead code). Old rapid-tier reports are still viewable
   through the unrelated `RiwayatView` → `ReportView` path, which never
   depended on the deleted views.
-- `src/components/report/`: `TraitBar`, `ReportDocument`.
+- `src/components/report/`: `TraitBar`, `ReportDocument`, plus 2 new ones
+  added 2026-08-08 (report koreksi/edit, see `guratan-api/CLAUDE.md`'s
+  "Koreksi laporan & riwayat versi" for the backend half):
+  - **`ReportCorrectionPanel.vue`** - toggled by a "Koreksi Skor" button on
+    `ReportView`. Reuses `SindromAccordion`/`AspekRow`/`ScoreSelector`
+    UNCHANGED (fetches `GET /sindrom` itself, pre-fills `scores` from the
+    report's existing `aspek_scores` prop) - same form as the original
+    scoring flow, just pointed at `POST /samples/{id}/scores/correct`
+    instead of `/scores`, with an added optional "alasan koreksi" textarea.
+  - **`ReportRevisionHistory.vue`** - collapsible "Riwayat Perubahan"
+    section, lazy-loads `GET /reports/{id}/revisions` on first open.
+    Clicking a revision lazy-loads and renders its frozen snapshot using
+    `ReportDocument` itself (read-only, `editable` not passed) - the same
+    component doubles as both the live report view and the historical
+    snapshot viewer.
+  - **`ReportDocument.vue` gained an `editable` prop + inline edit**: each
+    Aspek's narasi gets an "Edit narasi" link when `editable` is true
+    (grafolog viewing their own report); clicking swaps it for a textarea,
+    saves via `PATCH /reports/{id}/aspek/{kode}/narasi`. A manually-edited
+    Aspek shows a "✏️ diedit manual" badge, driven by the API's
+    `narasi_diedit_manual` flag - this flag (and the override text itself)
+    disappears automatically the moment the report is regenerated via a
+    score correction, so the badge is a reliable "this text is NOT what
+    the KB would currently generate" signal, not just "was ever edited."
+  - **`ReportView.vue`**: `report.aspek_scores` — **the API returns
+    Eloquent relations in snake_case** (`aspekScores` relation method →
+    `aspek_scores` JSON key), a real bug caught during browser
+    verification (the correction panel silently never rendered because
+    the template checked `report.aspekScores`, which is always
+    `undefined`). If you add a new relation-backed field to a Vue
+    component, check the actual JSON key Laravel serializes, don't assume
+    it matches the PHP relation method's camelCase name.
+  - Browser-verified end-to-end against real KB data (40 real aspek, not
+    a test fixture): narasi override → badge appears → full score
+    correction via clicking real score buttons in the reused
+    `ScoreSelector` UI (not a direct API call) → response confirms new
+    scores → ground-truth DB check confirms the override flag was cleared
+    and revision history recorded both changes correctly.
 - `src/components/scoring/`: `AspekRow`, `ScoreSelector`, `SindromAccordion`
   (all unchanged since 2026-07-26 — reused as-is, only repositioned),
   `AutoCalculationPanel` (added 2026-08-03, MGA Fase 04),

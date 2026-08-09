@@ -1,9 +1,44 @@
 <script setup>
+import { ref } from 'vue'
 import TraitBar from './TraitBar.vue'
+import api from '@/lib/api'
+import { useToast } from '@/composables/useToast'
 
-defineProps({
+const props = defineProps({
   data: { type: Object, required: true }, // { sindrom: [...] }
+  editable: { type: Boolean, default: false }, // grafolog pemilik sample - lihat CLAUDE.md
+  reportId: { type: [Number, String], default: null },
 })
+const emit = defineEmits(['narasi-updated'])
+
+const toast = useToast()
+const editingKode = ref(null)
+const draftNarasi = ref('')
+const saving = ref(false)
+
+function startEdit(aspek) {
+  editingKode.value = aspek.kode
+  draftNarasi.value = aspek.narasi
+}
+function cancelEdit() {
+  editingKode.value = null
+}
+
+async function saveEdit(kode) {
+  saving.value = true
+  try {
+    const { data } = await api.patch(`/reports/${props.reportId}/aspek/${encodeURIComponent(kode)}/narasi`, {
+      narasi: draftNarasi.value,
+    })
+    toast.push('Narasi berhasil diperbarui.', 'success')
+    editingKode.value = null
+    emit('narasi-updated', data)
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menyimpan narasi.')
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
@@ -19,7 +54,25 @@ defineProps({
 
       <div v-for="aspek in sindrom.aspek" :key="aspek.kode" class="report-document__aspek">
         <TraitBar :nama="aspek.nama" :skor="aspek.skor" :band-label="aspek.band_label" />
-        <p class="report-document__narasi">{{ aspek.narasi }}</p>
+
+        <template v-if="editingKode === aspek.kode">
+          <textarea v-model="draftNarasi" class="report-document__narasi-edit"></textarea>
+          <div class="report-document__narasi-actions">
+            <button type="button" class="btn btn--primary" :disabled="saving" @click="saveEdit(aspek.kode)">
+              {{ saving ? 'Menyimpan...' : 'Simpan' }}
+            </button>
+            <button type="button" class="btn" :disabled="saving" @click="cancelEdit">Batal</button>
+          </div>
+        </template>
+        <template v-else>
+          <p class="report-document__narasi">
+            {{ aspek.narasi }}
+            <span v-if="aspek.narasi_diedit_manual" class="report-document__edited-badge">✏️ diedit manual</span>
+          </p>
+          <button v-if="editable" type="button" class="report-document__edit-btn" @click="startEdit(aspek)">
+            Edit narasi
+          </button>
+        </template>
       </div>
     </section>
   </div>
@@ -54,5 +107,39 @@ defineProps({
   color: var(--color-text);
   white-space: pre-line;
   overflow-wrap: break-word;
+}
+.report-document__edited-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-style: normal;
+  color: var(--color-text-soft);
+  white-space: nowrap;
+}
+.report-document__edit-btn {
+  margin-top: 4px;
+  border: none;
+  background: none;
+  color: var(--color-seal);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+.report-document__edit-btn:hover {
+  text-decoration: underline;
+}
+.report-document__narasi-edit {
+  display: block;
+  width: 100%;
+  min-height: 100px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-sizing: border-box;
+  margin-top: 4px;
+}
+.report-document__narasi-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
 }
 </style>
