@@ -1161,6 +1161,59 @@ tebakan otomatis). Idempoten (`updateOrCreate`), aman dijalankan ulang.
 - 6 test baru (`tests/Unit/IrregularityRuleSeederTest.php`), 333 backend
   tests total (up from 327).
 
+**2 batch analisis lanjutan, 2026-08-08 (sama hari, diminta setelah
+irregularity di atas):**
+
+- **`CategoryMatchRuleSeeder.php`** - 66 aturan tipe `category`. Pola
+  paling sederhana yang ditemukan: Indikator yang namanya PERSIS SAMA
+  dengan `"[nama Variabel Ukur] [nama kategori]"` milik variabel itu
+  (mis. Indikator "Middle zone height large" == Variabel "Middle zone
+  height" @ kategori "large" - sudah ada rentang mm-nya di
+  `measurement_category`, jadi TIDAK ADA tebakan ambang sama sekali,
+  beda dari batch irregularity yang harus menebak rasio). Dicari lewat
+  pencocokan string persis (case-insensitive) antara 704 nama Indikator
+  vs 34 Variabel × kategorinya, daftar hasil dibekukan sebagai array PHP
+  eksplisit di seeder (bukan dihitung ulang tiap run) supaya perubahan KB
+  nanti tidak diam-diam mengubah aturan yang sudah direview. Beberapa
+  Indikator dengan nama sama muncul di sampai 5 Aspek berbeda (mis.
+  "Middle zone height large") - semuanya dapat aturan yang sama, itu
+  memang benar (1 ciri fisik jadi bukti untuk beberapa trait kepribadian
+  tergantung Aspek), bukan duplikat keliru.
+- **`VariableEqualityRuleSeeder.php`** - 7 aturan tipe `comparison`
+  (`operator: equals`, `koefisien: 1.0`). Dari 28 Indikator yang namanya
+  mengandung bahasa perbandingan ("equals", "larger than", "narrower
+  than", dst), cuma 7 yang jelas membandingkan 2 Variabel Ukur yang
+  benar-benar ada ("Middle zone width equals middle zone height",
+  "Ovals width equals ovals height"). **21 SENGAJA di-skip**, dengan
+  alasan berbeda-beda per kelompok (didokumentasikan lengkap di docblock
+  seeder) - paling penting untuk diingat: **Indikator 38-9 ("Score for
+  Mental Orientation is 2.0+ points higher than score for Physical
+  Energy") membandingkan SKOR ASPEK, bukan measurement mentah** - ini di
+  luar kemampuan skema `indikator_rules` sama sekali (dirancang untuk
+  membandingkan `measurement_readings`, bukan hasil tally skor Aspek
+  yang baru ada SETELAH scoring selesai) - kalau user minta jenis aturan
+  ini lagi nanti, itu butuh desain skema baru, bukan sekadar entri baru
+  di seeder yang ada. Juga di-skip: perbandingan tanda tangan-vs-teks (9,
+  tidak ada variabel terpisah), margin sisi-ke-sisi (3, sudah digabung 1
+  kolom di `measurement_variable`), bentuk huruf spesifik (4, terlalu
+  granular), 2 kasus butuh konfirmasi user yang belum dijawab (konteks
+  "in signature"/"in text", konvensi tanda "ascending").
+- Kata "or"/"and" yang muncul di beberapa nama Indikator (mis. "M's and
+  N's or m's and n's") DIPERIKSA dan dipastikan cuma tata bahasa Inggris
+  biasa (huruf besar ATAU kecil), bukan operator logika - tidak dihitung
+  sebagai kandidat `rule_group_logic` AND/OR.
+- Live-verified lagi lewat `ChecklistEngineService` sungguhan (bukan
+  cuma unit test): MZH=3.5 (masuk kategori "large") → 5 Indikator
+  "Middle zone height large" di 5 Aspek berbeda semua tercentang benar;
+  M/Z/Ovals width=3.5 = MZH=3.5 → 4 Indikator "equals" tercentang benar;
+  Letter Spacing=0.3 → "Letter spacing narrow" tercentang, "balanced"/
+  "broad" TIDAK, "Letter spacing regular" (dari batch sebelumnya) juga
+  tetap tercentang benar berdampingan - ketiga batch aturan (irregularity,
+  category, equality) hidup berdampingan tanpa saling bentrok.
+- 8 test baru (`CategoryMatchRuleSeederTest`, `VariableEqualityRuleSeederTest`),
+  341 backend tests total (up from 333). `indikator_rules` sekarang 101
+  baris total (28 + 66 + 7).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

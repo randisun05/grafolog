@@ -11,6 +11,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             GrafologiKnowledgeSeeder::class,
             IrregularityRuleSeeder::class,
+            CategoryMatchRuleSeeder::class,
+            VariableEqualityRuleSeeder::class,
             AdministratorSeeder::class,
             PricingPlanSeeder::class,
             ContentBlockSeeder::class,
