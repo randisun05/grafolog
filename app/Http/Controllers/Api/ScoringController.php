@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Scoring\CorrectScoresRequest;
 use App\Http\Requests\Scoring\PreviewScoresRequest;
 use App\Http\Requests\Scoring\SubmitScoresRequest;
 use App\Models\Aspek;
+use App\Models\AuditLog;
 use App\Models\HandwritingSample;
 use App\Models\PersonalityReport;
 use App\Models\ReportAspekScore;
 use App\Models\TokenCost;
+use App\Services\Reporting\ReportRevisionService;
 use App\Services\Scoring\ScoringEngineService;
 use App\Services\TokenWalletService;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +23,7 @@ class ScoringController extends Controller
     public function __construct(
         private ScoringEngineService $scoringEngine,
         private TokenWalletService $tokenWallet,
+        private ReportRevisionService $reportRevisions,
     ) {}
 
     /**
@@ -107,5 +111,55 @@ class ScoringController extends Controller
         });
 
         return response()->json($report->fresh('aspekScores'), 201);
+    }
+
+    /**
+     * Koreksi skor untuk sample yang laporannya SUDAH selesai (kebalikan
+     * dari submit(), yang justru menolak sample completed). Dipakai grafolog
+     * pemilik sample untuk memperbaiki salah input skor SETELAH laporan
+     * jadi - versi laporan sebelum dikoreksi disimpan dulu ke
+     * report_revisions (audit trail), baru report_aspek_scores & data
+     * laporan ditulis ulang. Token TIDAK ditagih ulang - ini koreksi atas
+     * laporan yang sudah dibayar/dipotong tokennya, bukan laporan baru.
+     */
+    public function correct(CorrectScoresRequest $request, HandwritingSample $sample): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat mengoreksi skor.');
+        abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
+        abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan form skor manual.');
+        abort_if($sample->status !== 'completed', 422, 'Sample ini belum memiliki laporan untuk dikoreksi.');
+        abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
+
+        $report = $sample->reports()->latest()->firstOrFail();
+
+        $report = DB::transaction(function () use ($request, $report, $user) {
+            $this->reportRevisions->snapshotBeforeChange($report, 'koreksi_skor', $user, $request->input('catatan'));
+
+            $aspekByKode = Aspek::whereIn('kode', collect($request->validated('skor'))->pluck('kode'))
+                ->get()->keyBy('kode');
+
+            $report->aspekScores()->delete();
+
+            $skorPerAspek = [];
+            foreach ($request->validated('skor') as $entry) {
+                $skorPerAspek[$entry['kode']] = (int) $entry['skor'];
+                ReportAspekScore::create([
+                    'report_id' => $report->id,
+                    'aspek_id' => $aspekByKode[$entry['kode']]->id,
+                    'skor' => $entry['skor'],
+                    'catatan_grafolog' => $entry['catatan_grafolog'] ?? null,
+                ]);
+            }
+
+            $data = $this->scoringEngine->generate($skorPerAspek);
+            $report->update(['data' => $data, 'generated_at' => now()]);
+
+            AuditLog::record('koreksi_skor_laporan', PersonalityReport::class, $report->id, $user->id, $request->ip());
+
+            return $report;
+        });
+
+        return response()->json($report->fresh('aspekScores'));
     }
 }

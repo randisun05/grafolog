@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/samples/{sample}', [SampleController::class, 'show']);
     Route::post('/samples/{sample}/scores/preview', [ScoringController::class, 'preview']);
     Route::post('/samples/{sample}/scores', [ScoringController::class, 'submit']);
+    Route::post('/samples/{sample}/scores/correct', [ScoringController::class, 'correct']);
     Route::post('/samples/{sample}/payment', [PaymentController::class, 'store']);
 
     // KM-G: measurement worksheet + checklist Indikator - lihat CLAUDE.md.
@@ -86,6 +87,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
+    Route::patch('/reports/{report}/aspek/{kode}/narasi', [ReportController::class, 'updateNarasi']);
+    Route::get('/reports/{report}/revisions', [ReportController::class, 'revisions']);
+    Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);
 
     Route::get('/sindrom', [SindromController::class, 'index']);
     Route::middleware('throttle:15,1')->get('/users/lookup', [UserLookupController::class, 'byEmail']);

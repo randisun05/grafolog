@@ -231,6 +231,64 @@ both cases; `php artisan test` still 6/6 passing.
   frontend view currently renders `image_path` back as an `<img>`. If you
   wire that up later, verify the symlink still resolves.
 
+## Koreksi laporan & riwayat versi — added 2026-08-08
+
+User meminta pengembangan lanjutan report: (1) koreksi manual skor
+Indikator/Sindrom setelah laporan selesai (dengan regenerasi otomatis),
+(2) edit narasi manual langsung, (3) kategorisasi topik (karier/cinta/dst)
+untuk basis chat interaktif klien nanti. **Cuma #1+#2 yang dikerjakan
+sesi ini** ("#2 dl" - user eksplisit minta ini duluan) - kategorisasi
+topik dan chat interaktif masih belum dikerjakan, lihat memory
+`project_report_editing` untuk breakdown lengkap & kenapa chat perlu
+diskusi produk terpisah (bertentangan dengan prinsip "LLM tidak live
+per-user" yang sudah dikunci).
+
+- **`report_revisions` table / `App\Models\ReportRevision`**: jejak audit
+  UNTUK KEDUANYA (koreksi skor DAN edit narasi manual) - satu mekanisme,
+  bukan dua sistem terpisah. Menyimpan snapshot `personality_reports.data`
+  SEBELUM perubahan diterapkan, plus `jenis` (`koreksi_skor`/`edit_manual`),
+  `catatan` (alasan, opsional), `actor_user_id`.
+  `PersonalityReport.data` sendiri SELALU mencerminkan versi TERKINI (tidak
+  ada perubahan di `ReportController::show`/`pdf` yang sudah ada) - kode
+  lama yang membaca laporan tidak perlu tahu apa-apa soal revisi.
+- **`App\Services\Reporting\ReportRevisionService::snapshotBeforeChange()`**
+  - satu titik dipakai baik oleh `ScoringController::correct()` maupun
+  `ReportController::updateNarasi()`, supaya keduanya konsisten.
+- **`ScoringController::correct()`** (`POST /api/samples/{sample}/scores/correct`)
+  - kebalikan tepat dari `submit()`: `submit()` MENOLAK sample yang sudah
+  `completed`, `correct()` JUSTRU MENSYARATKANNYA. Otorisasi sama
+  (`isGrafolog` + `isScorableBy` - grafolog pemilik sample, TANPA approval
+  tambahan, sesuai keputusan user). Menerima `SubmitScoresRequest` yang
+  sama (40 aspek lengkap wajib) + field `catatan` opsional. **Token TIDAK
+  ditagih ulang** - ini koreksi atas laporan yang sudah dibayar, bukan
+  laporan baru (keputusan desain, bukan bug). `report_aspek_scores` lama
+  dihapus & ditulis ulang (bukan diversi terpisah - hanya `data` JSON final
+  yang di-versi lewat `report_revisions`, riwayat skor mentah implisit ada
+  di situ juga karena JSON-nya menyertakan skor per aspek).
+- **`ReportController::updateNarasi()`** (`PATCH /api/reports/{report}/aspek/{kode}/narasi`,
+  grafolog pemilik sample saja) - menimpa `narasi` 1 entri Aspek langsung
+  di JSON `data` (bukan tabel terpisah) + menambahkan flag
+  `narasi_diedit_manual: true` ke entri itu, supaya frontend bisa
+  menandainya. **Flag & teks override ini HILANG OTOMATIS begitu laporan
+  dikoreksi skornya** (`ScoringController::correct()` menulis `data` yang
+  benar-benar baru dari `ScoringEngineService::generate()`, yang tidak tahu
+  apa-apa soal override manual) - keputusan desain sengaja, bukan bug:
+  regenerasi penuh dari KB dianggap lebih dipercaya daripada teks manual
+  yang mungkin sudah tidak relevan dengan skor baru. Diuji eksplisit di
+  `ScoringCorrectionTest::test_correcting_clears_manual_narasi_override_on_regeneration`.
+- **`ReportController::revisions()`/`showRevision()`** (`GET /api/reports/{report}/revisions[/{revision}]`)
+  - otorisasi `isViewableBy` (lebih luas dari `isScorableBy` - klien
+  pemilik juga boleh lihat riwayat, bukan cuma grafolog).
+- Audit log: `koreksi_skor_laporan`, `edit_narasi_laporan`.
+- Browser-verified end-to-end dengan data KB sungguhan (40 aspek nyata,
+  bukan fixture minimal): edit narasi manual → badge muncul → koreksi skor
+  penuh (klik tombol skor 9 di 40 baris sungguhan lewat UI, bukan API
+  langsung) → response mengonfirmasi skor berubah jadi 9 → ground-truth DB
+  dicek langsung (bukan cuma baca browser) mengonfirmasi flag override
+  hilang dari versi aktif setelah regenerasi, riwayat menyimpan versi lama
+  dengan benar. 14 test baru (`ScoringCorrectionTest`, `ReportRevisionTest`),
+  355 backend tests total (up from 341).
+
 ## Roles & staff provisioning — added 2026-08-03 (MGA pivot Fase 05)
 
 - `users.role` enum: `user` (client), `grafolog`, `administrator`,

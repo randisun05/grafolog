@@ -29,4 +29,9 @@ class PersonalityReport extends Model
     {
         return $this->hasMany(ReportAspekScore::class, 'report_id');
     }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(ReportRevision::class, 'report_id');
+    }
 }
