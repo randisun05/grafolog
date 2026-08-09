@@ -1109,6 +1109,58 @@ CRUD/scoring surfaces above.
   (KM-F) and both cascade-active and browsable in both directions (KM-G,
   KM-H). Nothing from the original plan is outstanding.
 
+## Aturan Irregularity — konten pertama lewat rule builder, 2026-08-08
+
+**`database/seeders/IrregularityRuleSeeder.php`** (dipanggil dari
+`DatabaseSeeder`, setelah `GrafologiKnowledgeSeeder`) - 28 baris
+`indikator_rules` pertama yang benar-benar berisi konten sungguhan
+(sebelum ini `indikator_rules` selalu kosong, hanya diuji lewat data
+buatan test). Bukan bagian dari `GrafologiKnowledgeSeeder` karena datanya
+BUKAN dari JSON sumber Excel - ini hasil analisis baru (user memberi 20
+ambang ukur untuk konsep "irregular", dicocokkan ke nama 45 Indikator
+yang mengandung kata "regular"/"irregular" lewat diskusi langsung, bukan
+tebakan otomatis). Idempoten (`updateOrCreate`), aman dijalankan ulang.
+
+- **20 ambang yang diberikan user** (semuanya relatif ke variabel
+  "Middle zone height" via rasio, kecuali 6 item sudut yang pakai ambang
+  absolut derajat) dicocokkan ke Indikator yang namanya benar-benar
+  menyebut variabel itu + kata "irregular"/"regular" - bukan dibuat
+  untuk semua 20 variabel secara membabi-buta. **7 dari 20 variabel tidak
+  punya Indikator "irregular/regular" yang cocok sama sekali** (Diacriticals
+  height, Baseline Spacing, UZ&LZ width, Upper/Lower zone upslant-downslant)
+  - sengaja tidak dibuatkan aturan, tidak ada target untuk itu.
+- **"Regular" = kebalikan matematis dari "irregular"** pada ambang yang
+  sama (`greater_than` → `less_or_equal`), bukan variabel/ambang
+  terpisah - keputusan eksplisit user. Untuk Extension Spacing yang
+  "irregular"-nya adalah OR dari 2 syarat (>4mm ATAU >1×MZH), pasangan
+  "regular"-nya otomatis jadi AND dari 2 syarat terbalik (≤4mm DAN
+  ≤1×MZH) - hukum De Morgan, bukan aturan baru yang ditebak.
+- **"Middle zone height irregular/regular" (5 Indikator) SENGAJA tidak
+  diberi aturan** - sumber data user untuk item ini secara harfiah
+  membandingkan variabel dengan dirinya sendiri ("Range is more than 1x
+  Middle zone height" untuk variabel "Middle zone height" itu sendiri),
+  kemungkinan typo/kesalahan transkripsi di sumber asli. User memutuskan
+  untuk skip, bukan menebak variabel pembanding yang benar. Begitu pula
+  ~15 Indikator "irregular"/"regular" lain yang nama variabelnya tidak
+  ada di 20 daftar user (Connectedness, Pressure pattern, Margin(s),
+  "Regularity" generik tanpa nama variabel) - tidak ada hubungan jelas,
+  tidak dibuatkan aturan.
+- **`M, Z, Ovals width` (1 measurement_variable, gabungan 3 hal terukur
+  jadi 1 kolom nilai) dipakai bersama oleh 2 pasang Indikator berbeda**
+  ("Middle zone width irregular" DAN "Ovals width irregular") dengan
+  ambang yang sama - bukan bug, itu memang bagaimana data sumbernya
+  digabung sejak konversi awal (lihat KM-A's catatan soal variabel yang
+  masih perlu direvisi).
+- Live-verified (bukan cuma test unit) lewat `ChecklistEngineService`
+  sungguhan dengan sample nyata: Ovals height=3 vs MZH=2 (rasio >1) →
+  "Ovals height irregular" tercentang benar; Middle zone upslant=10°
+  (≤30°) → "Middle zone upslant irregular" (×4 baris) TIDAK tercentang,
+  sementara pasangan "Middle zone upslant regular"-nya JUSTRU tercentang
+  - membuktikan pasangan irregular/regular saling eksklusif seperti
+  seharusnya, bukan cuma tersimpan benar tapi tidak pernah dievaluasi.
+- 6 test baru (`tests/Unit/IrregularityRuleSeederTest.php`), 333 backend
+  tests total (up from 327).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

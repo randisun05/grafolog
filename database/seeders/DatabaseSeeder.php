@@ -10,6 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             GrafologiKnowledgeSeeder::class,
+            IrregularityRuleSeeder::class,
             AdministratorSeeder::class,
             PricingPlanSeeder::class,
             ContentBlockSeeder::class,
