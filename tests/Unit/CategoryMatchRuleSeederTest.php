@@ -20,7 +20,7 @@ class CategoryMatchRuleSeederTest extends TestCase
 
         $this->seed(CategoryMatchRuleSeeder::class);
 
-        $this->assertSame(66, IndikatorRule::count());
+        $this->assertSame(66 + 257, IndikatorRule::count());
     }
 
     public function test_running_seeder_twice_does_not_duplicate_rows(): void
@@ -30,7 +30,7 @@ class CategoryMatchRuleSeederTest extends TestCase
 
         $this->seed(CategoryMatchRuleSeeder::class);
 
-        $this->assertSame(66, IndikatorRule::count());
+        $this->assertSame(66 + 257, IndikatorRule::count());
     }
 
     public function test_middle_zone_height_large_matches_the_real_category(): void
@@ -39,7 +39,7 @@ class CategoryMatchRuleSeederTest extends TestCase
         $this->seed(CategoryMatchRuleSeeder::class);
 
         $indikator = Indikator::where('kode', '02-8a')->firstOrFail();
-        $rule = $indikator->rules->first();
+        $rule = $indikator->rules->firstWhere('rule_type', 'category');
         $mzh = MeasurementVariable::where('nama', 'Middle zone height')->firstOrFail();
 
         $this->assertSame('category', $rule->rule_type);
@@ -55,10 +55,14 @@ class CategoryMatchRuleSeederTest extends TestCase
         // "Middle zone height large" appears in 5 different Aspek - all
         // should get the same category rule, this is intentional (one
         // physical trait is evidence for multiple personality traits).
+        // Filtered to rule_type='category' - some of these Indikator may
+        // ALSO carry an unrelated indikator_checked rule from cross-
+        // reference migration (2026-08-19), that's expected to coexist.
         foreach (['02-8a', '04-5a', '11-2b', '23-4a', '35-8-dup3'] as $kode) {
             $indikator = Indikator::where('kode', $kode)->firstOrFail();
-            $this->assertCount(1, $indikator->rules, "Indikator {$kode} should have exactly 1 rule");
-            $this->assertSame('large', $indikator->rules->first()->category_label);
+            $categoryRules = $indikator->rules->where('rule_type', 'category');
+            $this->assertCount(1, $categoryRules, "Indikator {$kode} should have exactly 1 category rule");
+            $this->assertSame('large', $categoryRules->first()->category_label);
         }
     }
 }

@@ -25,7 +25,7 @@ class IndikatorRuleController extends Controller
 
         AuditLog::record('buat_aturan_indikator', IndikatorRule::class, $rule->id, $request->user()->id, $request->ip());
 
-        return response()->json($rule->load(['variableA:id,kode,nama', 'variableB:id,kode,nama']), 201);
+        return response()->json($rule->load(['variableA:id,kode,nama', 'variableB:id,kode,nama', 'dependsOnIndikator:id,kode,nama']), 201);
     }
 
     public function update(UpdateIndikatorRuleRequest $request, IndikatorRule $indikatorRule): JsonResponse
@@ -34,7 +34,7 @@ class IndikatorRuleController extends Controller
 
         AuditLog::record('ubah_aturan_indikator', IndikatorRule::class, $indikatorRule->id, $request->user()->id, $request->ip());
 
-        return response()->json($indikatorRule->load(['variableA:id,kode,nama', 'variableB:id,kode,nama']));
+        return response()->json($indikatorRule->load(['variableA:id,kode,nama', 'variableB:id,kode,nama', 'dependsOnIndikator:id,kode,nama']));
     }
 
     public function destroy(Request $request, IndikatorRule $indikatorRule): JsonResponse

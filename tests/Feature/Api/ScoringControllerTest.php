@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Aspek;
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
+use App\Models\Indikator;
 use App\Models\Payment;
 use App\Models\Project;
+use App\Models\SampleIndikatorCheck;
 use App\Models\TokenCost;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,6 +52,39 @@ class ScoringControllerTest extends TestCase
         $this->assertDatabaseHas('personality_reports', ['sample_id' => $sample->id, 'status' => 'completed']);
         $this->assertDatabaseHas('handwriting_samples', ['id' => $sample->id, 'status' => 'completed']);
         $this->assertDatabaseCount('report_aspek_scores', 3);
+    }
+
+    public function test_submit_attaches_checked_indikator_narasi_to_matching_aspek(): void
+    {
+        $this->seedMinimalAspek(3);
+        $aspek01 = Aspek::where('kode', '01')->firstOrFail();
+        $indikator = Indikator::create([
+            'kode' => '01-1', 'posisi' => 1, 'aspek_id' => $aspek01->id,
+            'nama' => 'Angles in the middle zone', 'keterangan' => 'Penjelasan indikator 01-1.',
+        ]);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id,
+            'tier' => 'comprehensive',
+            'status' => 'pending',
+        ]);
+        SampleIndikatorCheck::create([
+            'sample_id' => $sample->id, 'indikator_id' => $indikator->id,
+            'checked' => true, 'sumber' => 'manual',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertCreated();
+        $aspekData = collect($response->json('data.sindrom'))->pluck('aspek')->flatten(1)->firstWhere('kode', '01');
+        $this->assertSame([
+            ['kode' => '01-1', 'nama' => 'Angles in the middle zone', 'keterangan' => 'Penjelasan indikator 01-1.'],
+        ], $aspekData['indikator_terkait']);
+
+        $aspekWithoutChecks = collect($response->json('data.sindrom'))->pluck('aspek')->flatten(1)->firstWhere('kode', '02');
+        $this->assertArrayNotHasKey('indikator_terkait', $aspekWithoutChecks);
     }
 
     public function test_incomplete_scores_are_rejected(): void

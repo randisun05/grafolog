@@ -19,7 +19,7 @@ class IndikatorController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Indikator::with(['aspek:id,kode,nama', 'rules.variableA:id,kode,nama', 'rules.variableB:id,kode,nama'])
+        $query = Indikator::with(['aspek:id,kode,nama', 'rules.variableA:id,kode,nama', 'rules.variableB:id,kode,nama', 'rules.dependsOnIndikator:id,kode,nama'])
             ->orderBy('aspek_id')->orderBy('posisi')->orderBy('varian');
 
         if ($search = $request->string('search')->trim()->value()) {
@@ -62,7 +62,7 @@ class IndikatorController extends Controller
 
         AuditLog::record('ubah_indikator', Indikator::class, $indikator->id, $request->user()->id, $request->ip());
 
-        return response()->json($indikator->load(['aspek:id,kode,nama', 'rules.variableA:id,kode,nama', 'rules.variableB:id,kode,nama']));
+        return response()->json($indikator->load(['aspek:id,kode,nama', 'rules.variableA:id,kode,nama', 'rules.variableB:id,kode,nama', 'rules.dependsOnIndikator:id,kode,nama']));
     }
 
     /**

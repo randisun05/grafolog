@@ -4,7 +4,7 @@ namespace Tests\Feature\Api\Admin;
 
 use App\Models\Aspek;
 use App\Models\Indikator;
-use App\Models\IndikatorCrossReference;
+use App\Models\IndikatorRule;
 use App\Models\MeasurementVariable;
 use App\Models\Sindrom;
 use App\Models\User;
@@ -55,14 +55,14 @@ class ConceptMapControllerTest extends TestCase
     {
         $sindrom = $this->sindromWithAspek();
         $aspek = Aspek::where('kode', '01')->first();
+        $aspekB = Aspek::where('kode', '02')->first();
         $indikator = Indikator::create(['kode' => '01-1', 'posisi' => 1, 'aspek_id' => $aspek->id, 'nama' => 'Posisi 1']);
+        $target = Indikator::create(['kode' => '02-1', 'posisi' => 1, 'aspek_id' => $aspekB->id, 'nama' => 'Target']);
         $variable = MeasurementVariable::create(['kode' => 'v1', 'axis' => 'vertical', 'nama' => 'Middle zone height']);
         $variable->kategori()->create(['kategori' => 'large', 'urutan' => 1]);
         $indikator->rules()->create(['rule_type' => 'category', 'variable_a_id' => $variable->id, 'category_label' => 'large']);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $indikator->kode, 'indikator_sumber_id' => $indikator->id,
-            'mereferensikan_ke_kode' => '02-1', 'match_status' => 'matched', 'aktif' => true,
-        ]);
+        // cross_ref_count = jumlah Indikator LAIN yang depends_on Indikator ini.
+        IndikatorRule::create(['indikator_id' => $target->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $indikator->id]);
         $admin = User::factory()->create(['role' => 'administrator']);
 
         $response = $this->actingAs($admin, 'sanctum')->getJson("/api/admin/knowledge/concept-map/aspek/{$aspek->id}");
@@ -87,20 +87,13 @@ class ConceptMapControllerTest extends TestCase
         $variable->kategori()->create(['kategori' => 'large', 'urutan' => 1]);
         $source->rules()->create(['rule_type' => 'category', 'variable_a_id' => $variable->id, 'category_label' => 'large']);
 
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => true,
-        ]);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $incoming->kode, 'indikator_sumber_id' => $incoming->id,
-            'mereferensikan_ke_kode' => $source->kode, 'match_status' => 'matched', 'aktif' => true,
-        ]);
-        // Inactive - must NOT show up as a relation.
-        $other = Indikator::create(['kode' => '02-3', 'posisi' => 3, 'aspek_id' => $aspekB->id, 'nama' => 'Nonaktif']);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $other->kode, 'match_status' => 'matched', 'aktif' => false,
-        ]);
+        // Keluar: target depends_on source.
+        IndikatorRule::create(['indikator_id' => $target->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $source->id]);
+        // Masuk: source depends_on incoming.
+        IndikatorRule::create(['indikator_id' => $source->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $incoming->id]);
+        // Tidak boleh muncul - rule ini TIDAK melibatkan $source sama sekali.
+        $other = Indikator::create(['kode' => '02-3', 'posisi' => 3, 'aspek_id' => $aspekB->id, 'nama' => 'Tidak Terkait']);
+        IndikatorRule::create(['indikator_id' => $other->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $target->id]);
 
         $admin = User::factory()->create(['role' => 'administrator']);
         $response = $this->actingAs($admin, 'sanctum')->getJson("/api/admin/knowledge/concept-map/indikator/{$source->id}");

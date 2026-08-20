@@ -19,14 +19,19 @@ class GrafologiKnowledgeSeeder extends Seeder
      *
      * Idempoten sejak 2026-08-08 (KM-A, diperluas KM-F): setiap method pakai
      * `updateOrInsert`/`updateOrCreate` keyed ke kolom unik alaminya (kode /
-     * kode_romawi / pasangan indikator_sumber_raw+mereferensikan_ke_kode),
-     * bukan `insert` buta - menjalankan ulang seeder ini di atas data yang
-     * sudah ada memperbarui baris yang cocok, bukan dobel atau gagal kena
-     * constraint unik. Hanya `scoring_rule_band` yang masih ditulis ulang
-     * penuh (delete-lalu-insert) - 6 baris kecil tanpa kunci alami dan
-     * tanpa status admin-editable apa pun yang perlu dijaga, beda dari
-     * `indikator_cross_reference` yang sejak KM-F punya kolom `aktif` yang
-     * WAJIB tidak tertimpa. Semuanya dibungkus 1 transaksi supaya tidak
+     * kode_romawi / pasangan indikator_id+depends_on_indikator_id untuk
+     * referensi silang), bukan `insert` buta - menjalankan ulang seeder ini
+     * di atas data yang sudah ada memperbarui baris yang cocok, bukan dobel
+     * atau gagal kena constraint unik. Hanya `scoring_rule_band` yang masih
+     * ditulis ulang penuh (delete-lalu-insert) - 6 baris kecil tanpa kunci
+     * alami. **Catatan 2026-08-19**: referensi silang sekarang jadi baris
+     * `indikator_rules` biasa (rule_type='indikator_checked'), bukan lagi
+     * tabel `indikator_cross_reference` terpisah dengan flag `aktif` -
+     * reseed akan MENULIS ULANG relasi ini dari sumber JSON setiap kali,
+     * termasuk relasi yang admin sudah hapus manual lewat Aturan Operator
+     * (beda dari perilaku `aktif` lama yang sengaja dijaga tidak tertimpa) -
+     * sama seperti seeder konten lain (Irregularity/CategoryMatch/dst),
+     * bukan kelas risiko baru. Semuanya dibungkus 1 transaksi supaya tidak
      * pernah dalam keadaan kosong-sebagian jika seeding gagal di tengah
      * jalan.
      */
@@ -227,41 +232,60 @@ class GrafologiKnowledgeSeeder extends Seeder
      * ikut ditulis di sini - itu status yang dikelola administrator lewat
      * panel KM-F, re-seed tidak boleh menimpanya balik ke default true.
      */
+    /**
+     * Sejak 2026-08-19: langsung jadi baris `indikator_rules`
+     * (rule_type='indikator_checked', indikator_id=target,
+     * depends_on_indikator_id=sumber) - bukan lagi tabel
+     * `indikator_cross_reference` terpisah (dihapus, lihat migrasi
+     * `migrate_cross_reference_into_indikator_rules_and_drop_table`).
+     * Cuma pasangan yang KEDUA sisinya (sumber & target) berhasil di-resolve
+     * ke Indikator sungguhan yang bisa jadi rule - baris `unmatched` (source
+     * atau target tidak ketemu) tidak pernah berfungsi di sistem lama juga,
+     * sengaja tidak dibawa. Idempoten lewat `updateOrInsert` keyed
+     * (indikator_id, rule_type, depends_on_indikator_id).
+     */
     private function seedCrossReference(array $rows, array $indikatorMap, $now): void
     {
         $looseMap = [];
         foreach ($indikatorMap as $kode => $id) {
-            $looseMap[$this->looseKey($kode)] = ['id' => $id, 'kode' => $kode];
+            $looseMap[$this->looseKey($kode)] = $id;
         }
 
         $total = 0;
         $matchedCount = 0;
         foreach ($rows as $r) {
             $sumberKey = $r['indikator_sumber_kode_estimasi'] ?? null;
-            $sumberMatch = $sumberKey ? ($looseMap[$this->looseKey($sumberKey)] ?? null) : null;
-            $sumberRaw = Str::limit($r['indikator_sumber_raw'], 250, '');
+            $sumberId = $sumberKey ? ($looseMap[$this->looseKey($sumberKey)] ?? null) : null;
 
             foreach ($r['mereferensikan_ke'] as $target) {
-                $targetMatch = $looseMap[$this->looseKey($target)] ?? null;
-                $status = ($sumberMatch && $targetMatch) ? 'matched' : 'unmatched';
-                if ($status === 'matched') {
-                    $matchedCount++;
+                $targetId = $looseMap[$this->looseKey($target)] ?? null;
+                $total++;
+                if (! $sumberId || ! $targetId) {
+                    continue;
                 }
-                $targetKode = $targetMatch['kode'] ?? $target;
+                $matchedCount++;
 
-                DB::table('indikator_cross_reference')->updateOrInsert(
-                    ['indikator_sumber_raw' => $sumberRaw, 'mereferensikan_ke_kode' => $targetKode],
+                DB::table('indikator_rules')->updateOrInsert(
                     [
-                        'indikator_sumber_id' => $sumberMatch['id'] ?? null,
-                        'match_status' => $status,
+                        'indikator_id' => $targetId,
+                        'rule_type' => 'indikator_checked',
+                        'depends_on_indikator_id' => $sumberId,
+                    ],
+                    [
+                        'variable_a_id' => null,
+                        'variable_a_value_mode' => 'nilai',
+                        'category_label' => null,
+                        'operator' => null,
+                        'koefisien' => 1.0,
+                        'variable_b_id' => null,
+                        'compare_value' => null,
                         'updated_at' => $now,
                         'created_at' => $now,
                     ]
                 );
-                $total++;
             }
         }
-        $this->command->info("$total baris cross_reference di-seed ($matchedCount matched, ".($total - $matchedCount).' unmatched - wajar, lihat catatan konversi).');
+        $this->command->info("$matchedCount referensi silang di-seed sebagai indikator_rules (dari $total baris sumber, ".($total - $matchedCount).' tidak ketemu source/target - wajar, lihat catatan konversi).');
     }
 
     private function looseKey(string $code): string

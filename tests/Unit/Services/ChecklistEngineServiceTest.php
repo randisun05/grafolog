@@ -5,7 +5,6 @@ namespace Tests\Unit\Services;
 use App\Models\Aspek;
 use App\Models\HandwritingSample;
 use App\Models\Indikator;
-use App\Models\IndikatorCrossReference;
 use App\Models\IndikatorRule;
 use App\Models\MeasurementVariable;
 use App\Models\SampleIndikatorCheck;
@@ -166,6 +165,55 @@ class ChecklistEngineServiceTest extends TestCase
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $indikator->id]);
     }
 
+    public function test_range_mode_rule_uses_max_minus_min_not_point_value(): void
+    {
+        $sindrom = $this->seedMinimalAspek(1);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
+        $indikator = $this->indikator($aspek, 1);
+        $varA = MeasurementVariable::create(['kode' => 'ovals-h', 'axis' => 'vertical', 'nama' => 'Ovals height']);
+        $mzh = $this->variableWithCategories('Middle zone height');
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'comparison',
+            'variable_a_id' => $varA->id, 'variable_a_value_mode' => 'range',
+            'operator' => 'greater_than', 'koefisien' => 1.0, 'variable_b_id' => $mzh->id,
+        ]);
+
+        $sample = $this->sample();
+        $sample->measurementReadings()->create(['variable_id' => $mzh->id, 'nilai' => 2]);
+        // Point nilai stays small (would NOT match if evaluated as point value),
+        // but selisih (max-min) = 4.0 - 1.0 = 3.0 > 1x MZH(2) - must use range.
+        $sample->measurementReadings()->create(['variable_id' => $varA->id, 'nilai' => 0.1, 'nilai_min' => 1.0, 'nilai_max' => 4.0]);
+
+        $this->engine->evaluateSample($sample);
+
+        $check = SampleIndikatorCheck::where('sample_id', $sample->id)->where('indikator_id', $indikator->id)->first();
+        $this->assertTrue((bool) $check->checked);
+        $this->assertStringContainsString('Range', $check->keterangan_pemicu);
+    }
+
+    public function test_range_mode_rule_unresolved_when_min_or_max_missing(): void
+    {
+        $sindrom = $this->seedMinimalAspek(1);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
+        $indikator = $this->indikator($aspek, 1);
+        $varA = MeasurementVariable::create(['kode' => 'ovals-h', 'axis' => 'vertical', 'nama' => 'Ovals height']);
+        $mzh = $this->variableWithCategories('Middle zone height');
+        IndikatorRule::create([
+            'indikator_id' => $indikator->id, 'rule_type' => 'comparison',
+            'variable_a_id' => $varA->id, 'variable_a_value_mode' => 'range',
+            'operator' => 'greater_than', 'koefisien' => 1.0, 'variable_b_id' => $mzh->id,
+        ]);
+
+        $sample = $this->sample();
+        $sample->measurementReadings()->create(['variable_id' => $mzh->id, 'nilai' => 2]);
+        // Only a point nilai is present, no min/max - range mode must stay unresolved.
+        $sample->measurementReadings()->create(['variable_id' => $varA->id, 'nilai' => 5]);
+
+        $this->engine->evaluateSample($sample);
+
+        $this->assertDatabaseCount('sample_indikator_checks', 0);
+    }
+
     public function test_and_group_logic_requires_all_rules_true(): void
     {
         $sindrom = $this->seedMinimalAspek(1);
@@ -250,15 +298,15 @@ class ChecklistEngineServiceTest extends TestCase
         $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $indikator->id, 'checked' => 0]);
     }
 
-    public function test_checking_source_cascades_to_active_matched_cross_reference(): void
+    public function test_checking_source_cascades_via_indikator_checked_rule(): void
     {
         $sindrom = $this->seedMinimalAspek(2);
         $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
         $source = $this->indikator($aspek[0], 1);
         $target = $this->indikator($aspek[1], 1);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => true,
+        IndikatorRule::create([
+            'indikator_id' => $target->id, 'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $source->id,
         ]);
 
         $sample = $this->sample();
@@ -269,21 +317,57 @@ class ChecklistEngineServiceTest extends TestCase
         ]);
     }
 
-    public function test_inactive_cross_reference_does_not_cascade(): void
+    public function test_no_indikator_checked_rule_means_no_cascade(): void
     {
+        // "Menonaktifkan" referensi silang sekarang berarti tidak ada baris
+        // indikator_rules sama sekali (dihapus lewat Aturan Operator) -
+        // bukan lagi flag `aktif` terpisah seperti KM-F lama.
         $sindrom = $this->seedMinimalAspek(2);
         $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
         $source = $this->indikator($aspek[0], 1);
         $target = $this->indikator($aspek[1], 1);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => false,
-        ]);
 
         $sample = $this->sample();
         $this->engine->toggle($sample, $source->id, true);
 
         $this->assertDatabaseMissing('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $target->id]);
+    }
+
+    public function test_indikator_checked_rule_can_chain_multiple_levels(): void
+    {
+        // 2026-08-19: rantai boleh berlapis (keputusan eksplisit user) -
+        // A->B->C, bukan cuma satu-hop seperti cascade lama.
+        $sindrom = $this->seedMinimalAspek(3);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $a = $this->indikator($aspek[0], 1);
+        $b = $this->indikator($aspek[1], 1);
+        $c = $this->indikator($aspek[2], 1);
+        IndikatorRule::create(['indikator_id' => $b->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $a->id]);
+        IndikatorRule::create(['indikator_id' => $c->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $b->id]);
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $a->id, true);
+
+        $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $b->id, 'checked' => 1]);
+        $this->assertDatabaseHas('sample_indikator_checks', ['sample_id' => $sample->id, 'indikator_id' => $c->id, 'checked' => 1]);
+    }
+
+    public function test_mutually_dependent_indikator_stay_unchecked_not_infinite_loop(): void
+    {
+        // A depends on B, B depends on A, neither has any other way to
+        // become true - harus stabil di "tidak tercentang", bukan infinite
+        // loop atau exception (lihat catatan monotonicity di evaluateSample()).
+        $sindrom = $this->seedMinimalAspek(2);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $a = $this->indikator($aspek[0], 1);
+        $b = $this->indikator($aspek[1], 1);
+        IndikatorRule::create(['indikator_id' => $a->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $b->id]);
+        IndikatorRule::create(['indikator_id' => $b->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $a->id]);
+
+        $sample = $this->sample();
+        $this->engine->evaluateSample($sample);
+
+        $this->assertDatabaseCount('sample_indikator_checks', 0);
     }
 
     public function test_unchecking_source_offers_confirmation_before_uncascading_target(): void
@@ -292,9 +376,9 @@ class ChecklistEngineServiceTest extends TestCase
         $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
         $source = $this->indikator($aspek[0], 1);
         $target = $this->indikator($aspek[1], 1);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => true,
+        IndikatorRule::create([
+            'indikator_id' => $target->id, 'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $source->id,
         ]);
 
         $sample = $this->sample();
@@ -323,9 +407,9 @@ class ChecklistEngineServiceTest extends TestCase
         $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
         $source = $this->indikator($aspek[0], 1);
         $target = $this->indikator($aspek[1], 1);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => true,
+        IndikatorRule::create([
+            'indikator_id' => $target->id, 'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $source->id,
         ]);
 
         $sample = $this->sample();
@@ -350,9 +434,9 @@ class ChecklistEngineServiceTest extends TestCase
         $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
         $source = $this->indikator($aspek[0], 1);
         $target = $this->indikator($aspek[1], 1);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => true,
+        IndikatorRule::create([
+            'indikator_id' => $target->id, 'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $source->id,
         ]);
 
         $sample = $this->sample();

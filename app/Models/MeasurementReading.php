@@ -9,10 +9,12 @@ class MeasurementReading extends Model
 {
     protected $table = 'measurement_readings';
 
-    protected $fillable = ['sample_id', 'variable_id', 'nilai'];
+    protected $fillable = ['sample_id', 'variable_id', 'nilai', 'nilai_min', 'nilai_max'];
 
     protected $casts = [
         'nilai' => 'float',
+        'nilai_min' => 'float',
+        'nilai_max' => 'float',
     ];
 
     public function sample(): BelongsTo

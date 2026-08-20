@@ -22,6 +22,15 @@ class IndikatorRuleControllerTest extends TestCase
         return Indikator::create(['kode' => "01-1'", 'posisi' => 1, 'aspek_id' => $aspek->id, 'nama' => 'Middle zone height large']);
     }
 
+    /** Kedua Indikator yang berbeda - dipakai test rule indikator_checked (butuh sumber & target). */
+    private function otherIndikator(): Indikator
+    {
+        $sindrom = Sindrom::firstOrCreate(['kode_romawi' => 'I'], ['nama' => 'Driving Forces', 'polaritas_inferred' => 'HIJAU']);
+        $aspek = Aspek::firstOrCreate(['kode' => '01'], ['sindrom_id' => $sindrom->id, 'nama' => 'Authoritarian']);
+
+        return Indikator::create(['kode' => "01-2'", 'posisi' => 2, 'aspek_id' => $aspek->id, 'nama' => 'Indikator lain']);
+    }
+
     private function variableWithCategories(): MeasurementVariable
     {
         $variable = MeasurementVariable::create(['kode' => '1', 'axis' => 'vertical', 'nama' => 'Middle zone height']);
@@ -244,5 +253,85 @@ class IndikatorRuleControllerTest extends TestCase
         $indikator = $this->indikator();
 
         $this->assertSame('OR', $indikator->fresh()->rule_group_logic);
+    }
+
+    // --- indikator_checked (unifikasi cross-reference, 2026-08-19) -------
+
+    public function test_administrator_can_create_indikator_checked_rule(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $indikator = $this->indikator();
+        $source = $this->otherIndikator();
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson("/api/admin/knowledge/indikator/{$indikator->id}/rules", [
+            'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $source->id,
+        ]);
+
+        $response->assertCreated()->assertJsonPath('depends_on_indikator.id', $source->id);
+        $this->assertDatabaseHas('indikator_rules', [
+            'indikator_id' => $indikator->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $source->id,
+        ]);
+    }
+
+    public function test_indikator_checked_rule_requires_depends_on_indikator_id(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $indikator = $this->indikator();
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/knowledge/indikator/{$indikator->id}/rules", [
+            'rule_type' => 'indikator_checked',
+        ])->assertUnprocessable()->assertJsonValidationErrors('depends_on_indikator_id');
+    }
+
+    public function test_indikator_checked_rule_rejects_measurement_fields(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $indikator = $this->indikator();
+        $source = $this->otherIndikator();
+        $variable = $this->variableWithCategories();
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/knowledge/indikator/{$indikator->id}/rules", [
+            'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $source->id,
+            'variable_a_id' => $variable->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('variable_a_id');
+    }
+
+    public function test_indikator_checked_rule_cannot_depend_on_itself(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $indikator = $this->indikator();
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/knowledge/indikator/{$indikator->id}/rules", [
+            'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $indikator->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('depends_on_indikator_id');
+    }
+
+    public function test_category_rule_rejects_depends_on_indikator_id(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $indikator = $this->indikator();
+        $source = $this->otherIndikator();
+        $variable = $this->variableWithCategories();
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/knowledge/indikator/{$indikator->id}/rules", [
+            'rule_type' => 'category',
+            'variable_a_id' => $variable->id,
+            'category_label' => 'large',
+            'depends_on_indikator_id' => $source->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('depends_on_indikator_id');
+    }
+
+    public function test_deleting_indikator_cascades_dependent_indikator_checked_rules(): void
+    {
+        $indikator = $this->indikator();
+        $source = $this->otherIndikator();
+        $rule = $indikator->rules()->create(['rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $source->id]);
+
+        $source->delete();
+
+        $this->assertDatabaseMissing('indikator_rules', ['id' => $rule->id]);
     }
 }

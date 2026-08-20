@@ -10,7 +10,7 @@ class SampleIndikatorCheck extends Model
     protected $table = 'sample_indikator_checks';
 
     protected $fillable = [
-        'sample_id', 'indikator_id', 'checked', 'sumber', 'rule_id', 'cross_reference_id', 'keterangan_pemicu',
+        'sample_id', 'indikator_id', 'checked', 'sumber', 'rule_id', 'keterangan_pemicu',
     ];
 
     protected $attributes = [
@@ -34,10 +34,5 @@ class SampleIndikatorCheck extends Model
     public function rule(): BelongsTo
     {
         return $this->belongsTo(IndikatorRule::class, 'rule_id');
-    }
-
-    public function crossReference(): BelongsTo
-    {
-        return $this->belongsTo(IndikatorCrossReference::class, 'cross_reference_id');
     }
 }

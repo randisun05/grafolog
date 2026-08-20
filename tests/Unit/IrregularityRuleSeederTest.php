@@ -20,7 +20,7 @@ class IrregularityRuleSeederTest extends TestCase
 
         $this->seed(IrregularityRuleSeeder::class);
 
-        $this->assertSame(28, IndikatorRule::count());
+        $this->assertSame(33 + 257, IndikatorRule::count());
     }
 
     public function test_running_seeder_twice_does_not_duplicate_rows(): void
@@ -30,7 +30,7 @@ class IrregularityRuleSeederTest extends TestCase
 
         $this->seed(IrregularityRuleSeeder::class);
 
-        $this->assertSame(28, IndikatorRule::count());
+        $this->assertSame(33 + 257, IndikatorRule::count());
     }
 
     public function test_extension_spacing_irregular_uses_or_logic_with_two_rules(): void
@@ -55,18 +55,28 @@ class IrregularityRuleSeederTest extends TestCase
         $this->assertCount(2, $indikator->rules);
     }
 
-    public function test_middle_zone_height_self_referential_indikator_intentionally_has_no_rule(): void
+    public function test_middle_zone_height_self_comparison_uses_range_vs_point_value(): void
     {
         $this->seed(GrafologiKnowledgeSeeder::class);
         $this->seed(IrregularityRuleSeeder::class);
 
-        // "Middle zone height irregular/regular" was deliberately skipped -
-        // ambiguous self-referential source data (kode 1 compared to itself).
-        foreach (['26-6b', '27-5a', '36-8b', '38-3a', '11-1b'] as $kode) {
-            $indikator = Indikator::where('kode', $kode)->first();
-            if ($indikator) {
-                $this->assertCount(0, $indikator->rules, "Indikator {$kode} should have no auto rule");
-            }
+        // Retrofit 2026-08-17: "Range is more than 1x Middle zone height" IS
+        // coherent, not a source typo - variable_a in range mode (selisih
+        // maks-min) compared to variable_b (MZH) in point mode. Previously
+        // skipped as ambiguous; now has exactly 1 rule each.
+        // Filtered to rule_type='comparison' - some of these Indikator may
+        // ALSO carry an unrelated indikator_checked rule from cross-
+        // reference migration (2026-08-19), that's expected to coexist.
+        $mzh = MeasurementVariable::where('nama', 'Middle zone height')->firstOrFail();
+        foreach (['26-6b' => 'greater_than', '27-5a' => 'greater_than', '36-8b' => 'greater_than', '38-3a' => 'greater_than', '11-1b' => 'less_or_equal'] as $kode => $operator) {
+            $indikator = Indikator::where('kode', $kode)->firstOrFail();
+            $comparisonRules = $indikator->rules->where('rule_type', 'comparison');
+            $rule = $comparisonRules->first();
+            $this->assertCount(1, $comparisonRules, "Indikator {$kode} should have exactly 1 comparison rule");
+            $this->assertSame('range', $rule->variable_a_value_mode);
+            $this->assertSame($mzh->id, $rule->variable_a_id);
+            $this->assertSame($mzh->id, $rule->variable_b_id);
+            $this->assertSame($operator, $rule->operator);
         }
     }
 
@@ -83,5 +93,6 @@ class IrregularityRuleSeederTest extends TestCase
         $this->assertSame('greater_than', $rule->operator);
         $this->assertEquals(1.0, (float) $rule->koefisien);
         $this->assertSame($mzh->id, $rule->variable_b_id);
+        $this->assertSame('range', $rule->variable_a_value_mode);
     }
 }

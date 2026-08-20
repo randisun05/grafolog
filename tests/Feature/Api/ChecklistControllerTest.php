@@ -5,7 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Aspek;
 use App\Models\HandwritingSample;
 use App\Models\Indikator;
-use App\Models\IndikatorCrossReference;
+use App\Models\IndikatorRule;
 use App\Models\MeasurementVariable;
 use App\Models\Project;
 use App\Models\User;
@@ -103,8 +103,12 @@ class ChecklistControllerTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['aksi' => 'ubah_centang_indikator', 'actor_user_id' => $grafolog->id]);
     }
 
-    public function test_toggle_rejects_completed_sample(): void
+    public function test_toggle_allows_completed_sample_for_correction_flow(): void
     {
+        // 2026-08-17: completed tidak lagi diblok - dibutuhkan alur koreksi
+        // laporan via measurement worksheet (ReportCorrectionPanel), lihat
+        // ChecklistController::toggle(). Mengubah checklist di sini TIDAK
+        // mengubah laporan aktif sampai ScoringController::correct() dipanggil.
         $sindrom = $this->seedMinimalAspek(1);
         $aspek = Aspek::where('sindrom_id', $sindrom->id)->first();
         $indikator = $this->indikatorFor($aspek);
@@ -112,9 +116,11 @@ class ChecklistControllerTest extends TestCase
         $sample = $this->sample($grafolog);
         $sample->update(['status' => 'completed']);
 
-        $this->actingAs($grafolog, 'sanctum')->postJson("/api/samples/{$sample->id}/checklist/toggle", [
+        $response = $this->actingAs($grafolog, 'sanctum')->postJson("/api/samples/{$sample->id}/checklist/toggle", [
             'indikator_id' => $indikator->id, 'checked' => true,
-        ])->assertStatus(422);
+        ]);
+
+        $response->assertOk()->assertJsonPath('ok', true);
     }
 
     public function test_checklist_reflects_measurement_driven_auto_check_with_reason(): void
@@ -145,9 +151,9 @@ class ChecklistControllerTest extends TestCase
         $aspekList = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
         $source = $this->indikatorFor($aspekList[0]);
         $target = $this->indikatorFor($aspekList[1]);
-        IndikatorCrossReference::create([
-            'indikator_sumber_raw' => $source->kode, 'indikator_sumber_id' => $source->id,
-            'mereferensikan_ke_kode' => $target->kode, 'match_status' => 'matched', 'aktif' => true,
+        IndikatorRule::create([
+            'indikator_id' => $target->id, 'rule_type' => 'indikator_checked',
+            'depends_on_indikator_id' => $source->id,
         ]);
         $grafolog = User::factory()->create(['role' => 'grafolog']);
         $sample = $this->sample($grafolog);

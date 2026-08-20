@@ -21,14 +21,20 @@ class Indikator extends Model
         return $this->belongsTo(Aspek::class, 'aspek_id');
     }
 
-    public function referensiKeluar(): HasMany
-    {
-        return $this->hasMany(IndikatorCrossReference::class, 'indikator_sumber_id');
-    }
-
     public function rules(): HasMany
     {
         return $this->hasMany(IndikatorRule::class, 'indikator_id');
+    }
+
+    /**
+     * Aturan indikator_checked milik Indikator LAIN yang bergantung pada
+     * status tercentang Indikator ini - dulu "referensi silang keluar"
+     * lewat tabel terpisah, sekarang cuma query balik ke indikator_rules
+     * (2026-08-19, lihat ChecklistEngineService).
+     */
+    public function dependentRules(): HasMany
+    {
+        return $this->hasMany(IndikatorRule::class, 'depends_on_indikator_id');
     }
 
     public static function findByKode(string $kode): ?self

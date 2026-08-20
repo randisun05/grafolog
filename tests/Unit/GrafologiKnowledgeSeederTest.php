@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\Indikator;
-use App\Models\IndikatorCrossReference;
+use App\Models\IndikatorRule;
 use App\Models\MeasurementCategory;
 use App\Models\MeasurementVariable;
 use App\Models\MetodologiPenilaian;
@@ -45,16 +45,22 @@ class GrafologiKnowledgeSeederTest extends TestCase
             'measurement_category' => DB::table('measurement_category')->count(),
             'scoring_rule_band' => DB::table('scoring_rule_band')->count(),
             'deskriptif_lookup' => DB::table('deskriptif_lookup')->count(),
-            'indikator_cross_reference' => DB::table('indikator_cross_reference')->count(),
             'metodologi_penilaian' => DB::table('metodologi_penilaian')->count(),
         ];
+        $indikatorCheckedCount = IndikatorRule::where('rule_type', 'indikator_checked')->count();
         $this->assertGreaterThan(0, $counts['indikator']);
+        $this->assertGreaterThan(0, $indikatorCheckedCount);
 
         $this->seed(GrafologiKnowledgeSeeder::class);
 
         foreach ($counts as $table => $expected) {
             $this->assertSame($expected, DB::table($table)->count(), "$table row count changed after re-seeding");
         }
+        $this->assertSame(
+            $indikatorCheckedCount,
+            IndikatorRule::where('rule_type', 'indikator_checked')->count(),
+            'indikator_checked rule count changed after re-seeding',
+        );
     }
 
     public function test_running_seeder_twice_preserves_ids_referenced_by_other_tables(): void
@@ -78,18 +84,24 @@ class GrafologiKnowledgeSeederTest extends TestCase
     }
 
     /**
-     * KM-F (2026-08-08): `aktif` adalah status yang dikelola administrator,
-     * bukan data sumber JSON - re-seed WAJIB tidak menimpanya balik ke
-     * default true (lihat catatan di GrafologiKnowledgeSeeder::seedCrossReference()).
+     * 2026-08-19: referensi silang sekarang cuma baris `indikator_rules`
+     * biasa (rule_type='indikator_checked'), tidak ada lagi flag `aktif`
+     * terpisah yang dijaga tidak tertimpa (beda dari KM-F lama) -
+     * "menonaktifkan" sekarang berarti HAPUS baris lewat Aturan Operator,
+     * sama seperti rule measurement lainnya. Reseed akan MEMBUAT ULANG
+     * relasi itu dari sumber JSON kalau masih ada di sana - keputusan
+     * desain yang didokumentasikan di GrafologiKnowledgeSeeder, bukan bug.
      */
-    public function test_reseeding_preserves_admin_deactivated_cross_reference(): void
+    public function test_reseeding_recreates_a_cross_reference_rule_deleted_via_admin_ui(): void
     {
         $this->seed(GrafologiKnowledgeSeeder::class);
-        $row = IndikatorCrossReference::where('match_status', 'matched')->firstOrFail();
-        $row->update(['aktif' => false]);
+        $row = IndikatorRule::where('rule_type', 'indikator_checked')->firstOrFail();
+        $key = ['indikator_id' => $row->indikator_id, 'depends_on_indikator_id' => $row->depends_on_indikator_id];
+        $row->delete();
+        $this->assertDatabaseMissing('indikator_rules', $key + ['rule_type' => 'indikator_checked']);
 
         $this->seed(GrafologiKnowledgeSeeder::class);
 
-        $this->assertFalse($row->fresh()->aktif);
+        $this->assertDatabaseHas('indikator_rules', $key + ['rule_type' => 'indikator_checked']);
     }
 }

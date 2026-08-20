@@ -33,13 +33,17 @@ class ChecklistController extends Controller
         return response()->json($this->engine->checklistFor($sample));
     }
 
+    /**
+     * `status === 'completed'` sengaja TIDAK diblok (2026-08-17) - dibutuhkan
+     * alur koreksi laporan via measurement worksheet, lihat catatan yang
+     * sama di MeasurementController::store().
+     */
     public function toggle(ToggleIndikatorCheckRequest $request, HandwritingSample $sample): JsonResponse
     {
         $user = $request->user();
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat mengubah checklist Indikator.');
         abort_unless($sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($sample->tier === 'rapid', 422, 'Sample rapid tidak menggunakan checklist Indikator.');
-        abort_if($sample->status === 'completed', 422, 'Sample ini sudah memiliki laporan selesai, tidak bisa diubah lagi.');
         abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
         $result = $this->engine->toggle(

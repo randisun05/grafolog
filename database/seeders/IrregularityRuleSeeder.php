@@ -18,6 +18,19 @@ use Illuminate\Support\Facades\DB;
  * Idempoten (updateOrCreate) - aman dijalankan ulang. Bukan bagian dari
  * `GrafologiKnowledgeSeeder` karena itu khusus data dari JSON sumber Excel;
  * ini analisis baru dari sesi ini, bukan konten Excel asli.
+ *
+ * **Retrofit 2026-08-17**: ke-20 ambang asli SEMUANYA berbunyi "Range is
+ * more than..." - kata "Range" bukan hiasan, itu literal selisih (nilai
+ * terbesar - nilai terkecil) yang diamati grafolog untuk variabel itu di 1
+ * sample, bukan 1 nilai ukur titik tunggal. variable_a di SEMUA 28 baris di
+ * bawah sekarang variable_a_value_mode='range' (dibaca dari nilai_max -
+ * nilai_min di measurement_readings, lihat ChecklistEngineService),
+ * variable_b (MZH sebagai pembanding) tetap nilai titik. Ini juga
+ * menyelesaikan 5 Indikator "Middle zone height irregular/regular" yang
+ * dulu SENGAJA di-skip (dikira typo self-reference, ambang membandingkan
+ * MZH dengan dirinya sendiri) - sekarang jelas valid: range(MZH) vs
+ * 1×nilai-titik(MZH), 2 mode berbeda untuk variabel yang sama, ditambahkan
+ * di bawah sebagai $middleZoneHeightRules.
  */
 class IrregularityRuleSeeder extends Seeder
 {
@@ -87,7 +100,30 @@ class IrregularityRuleSeeder extends Seeder
                         'variable_b_id' => $varB,
                         'compare_value' => $compareValue,
                     ],
-                    ['koefisien' => $koefisien ?? 1.0],
+                    ['koefisien' => $koefisien ?? 1.0, 'variable_a_value_mode' => 'range'],
+                );
+            }
+
+            // Middle zone height irregular/regular (5 Indikator, dulu di-skip) -
+            // range(MZH) vs 1x nilai-titik(MZH), variabel sama 2 mode berbeda.
+            $middleZoneHeightRules = [
+                ['26-6b', 'greater_than'],
+                ['27-5a', 'greater_than'],
+                ['36-8b', 'greater_than'],
+                ['38-3a', 'greater_than'],
+                ['11-1b', 'less_or_equal'], // regular - kebalikan
+            ];
+            foreach ($middleZoneHeightRules as [$kode, $operator]) {
+                IndikatorRule::updateOrCreate(
+                    [
+                        'indikator_id' => $ind($kode),
+                        'rule_type' => 'comparison',
+                        'variable_a_id' => $mzh,
+                        'operator' => $operator,
+                        'variable_b_id' => $mzh,
+                        'compare_value' => null,
+                    ],
+                    ['koefisien' => 1.0, 'variable_a_value_mode' => 'range'],
                 );
             }
 
@@ -96,11 +132,11 @@ class IrregularityRuleSeeder extends Seeder
             $extIrregular->update(['rule_group_logic' => 'OR']);
             IndikatorRule::updateOrCreate(
                 ['indikator_id' => $extIrregular->id, 'rule_type' => 'comparison', 'variable_a_id' => $extensionSpacing, 'operator' => 'greater_than', 'variable_b_id' => null, 'compare_value' => 4],
-                ['koefisien' => 1.0],
+                ['koefisien' => 1.0, 'variable_a_value_mode' => 'range'],
             );
             IndikatorRule::updateOrCreate(
                 ['indikator_id' => $extIrregular->id, 'rule_type' => 'comparison', 'variable_a_id' => $extensionSpacing, 'operator' => 'greater_than', 'variable_b_id' => $mzh, 'compare_value' => null],
-                ['koefisien' => 1.0],
+                ['koefisien' => 1.0, 'variable_a_value_mode' => 'range'],
             );
 
             // Extension spacing regular (14-1d): <=4mm DAN <=1x MZH (AND - kebalikan De Morgan dari OR di atas).
@@ -108,11 +144,11 @@ class IrregularityRuleSeeder extends Seeder
             $extRegular->update(['rule_group_logic' => 'AND']);
             IndikatorRule::updateOrCreate(
                 ['indikator_id' => $extRegular->id, 'rule_type' => 'comparison', 'variable_a_id' => $extensionSpacing, 'operator' => 'less_or_equal', 'variable_b_id' => null, 'compare_value' => 4],
-                ['koefisien' => 1.0],
+                ['koefisien' => 1.0, 'variable_a_value_mode' => 'range'],
             );
             IndikatorRule::updateOrCreate(
                 ['indikator_id' => $extRegular->id, 'rule_type' => 'comparison', 'variable_a_id' => $extensionSpacing, 'operator' => 'less_or_equal', 'variable_b_id' => $mzh, 'compare_value' => null],
-                ['koefisien' => 1.0],
+                ['koefisien' => 1.0, 'variable_a_value_mode' => 'range'],
             );
         });
     }

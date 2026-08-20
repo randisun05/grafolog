@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Aspek;
 use App\Models\Indikator;
-use App\Models\IndikatorCrossReference;
+use App\Models\IndikatorRule;
 use App\Models\Sindrom;
 use Illuminate\Http\JsonResponse;
 
@@ -38,26 +38,24 @@ class ConceptMapController extends Controller
     }
 
     /**
-     * Ring kedua: daftar Indikator 1 Aspek, ringan (tanpa full rule/cross-
-     * reference detail - itu baru dimuat kalau 1 Indikator diklik lewat
-     * indikator() di bawah). rules_count/cross_ref_count dipakai frontend
-     * untuk menandai node mana yang punya relasi (auto-evaluable atau
-     * dirujuk Indikator lain) tanpa perlu memuat isinya.
+     * Ring kedua: daftar Indikator 1 Aspek, ringan (tanpa full rule/relasi
+     * detail - itu baru dimuat kalau 1 Indikator diklik lewat indikator()
+     * di bawah). rules_count/cross_ref_count dipakai frontend untuk
+     * menandai node mana yang punya relasi (auto-evaluable atau memicu
+     * Indikator lain) tanpa perlu memuat isinya. cross_ref_count sekarang
+     * dihitung dari indikator_rules rule_type=indikator_checked
+     * (dependentRules) - unifikasi cross-reference 2026-08-19, lihat
+     * ChecklistEngineService.
      */
     public function aspek(Aspek $aspek): JsonResponse
     {
         $indikator = $aspek->indikator()
-            ->withCount('rules')
+            ->withCount(['rules', 'dependentRules'])
             ->orderBy('posisi')->orderBy('varian')
             ->get(['id', 'kode', 'posisi', 'varian', 'nama', 'aspek_id']);
 
-        $crossRefCounts = IndikatorCrossReference::whereIn('indikator_sumber_id', $indikator->pluck('id'))
-            ->selectRaw('indikator_sumber_id, count(*) as total')
-            ->groupBy('indikator_sumber_id')
-            ->pluck('total', 'indikator_sumber_id');
-
-        $indikator->each(function ($ind) use ($crossRefCounts) {
-            $ind->cross_ref_count = (int) ($crossRefCounts[$ind->id] ?? 0);
+        $indikator->each(function ($ind) {
+            $ind->cross_ref_count = $ind->dependent_rules_count;
         });
 
         return response()->json([
@@ -68,10 +66,11 @@ class ConceptMapController extends Controller
 
     /**
      * Detail penuh 1 Indikator untuk panel relasi: aturan operator (KM-E,
-     * Indikator<->Measurement Variable) plus referensi silang KELUAR
-     * (Indikator ini memicu yang lain, KM-F) DAN MASUK (dirujuk Indikator
-     * lain) - dua arah, supaya admin bisa menjelajah ke kedua arah relasi,
-     * bukan cuma satu seperti tampilan tab Referensi Silang biasa.
+     * Indikator<->Measurement Variable) plus relasi KELUAR (Indikator ini
+     * memicu yang lain) DAN MASUK (dipicu Indikator lain) - dua arah,
+     * supaya admin bisa menjelajah ke kedua arah relasi. Keduanya sekarang
+     * baca dari indikator_rules rule_type=indikator_checked, bukan tabel
+     * cross-reference terpisah (2026-08-19).
      */
     public function indikator(Indikator $indikator): JsonResponse
     {
@@ -80,24 +79,30 @@ class ConceptMapController extends Controller
             'aspek.sindrom:id,kode_romawi,nama',
             'rules.variableA:id,kode,nama',
             'rules.variableB:id,kode,nama',
+            'rules.dependsOnIndikator:id,kode,nama,aspek_id',
         ]);
 
-        $keluar = $indikator->referensiKeluar()
-            ->where('aktif', true)->where('match_status', 'matched')
-            ->get(['id', 'mereferensikan_ke_kode']);
-        $targetIndikator = Indikator::whereIn('kode', $keluar->pluck('mereferensikan_ke_kode'))
-            ->get(['id', 'kode', 'nama', 'aspek_id'])
-            ->keyBy('kode');
+        // Keluar: Indikator LAIN yang rule-nya depends_on Indikator ini.
+        $keluar = IndikatorRule::where('rule_type', 'indikator_checked')
+            ->where('depends_on_indikator_id', $indikator->id)
+            ->with('indikator:id,kode,nama,aspek_id')
+            ->get()
+            ->pluck('indikator')
+            ->filter()
+            ->values();
 
-        $masuk = IndikatorCrossReference::where('mereferensikan_ke_kode', $indikator->kode)
-            ->where('aktif', true)->where('match_status', 'matched')
-            ->with('indikatorSumber:id,kode,nama,aspek_id')
-            ->get();
+        // Masuk: rule Indikator ini SENDIRI yang bertipe indikator_checked
+        // (sisi kanan/depends_on-nya adalah sumber yang memicu).
+        $masuk = $indikator->rules
+            ->where('rule_type', 'indikator_checked')
+            ->pluck('dependsOnIndikator')
+            ->filter()
+            ->values();
 
         return response()->json([
             'indikator' => $indikator,
-            'referensi_keluar' => $keluar->map(fn ($ref) => $targetIndikator->get($ref->mereferensikan_ke_kode))->filter()->values(),
-            'referensi_masuk' => $masuk->map(fn ($ref) => $ref->indikatorSumber)->filter()->values(),
+            'referensi_keluar' => $keluar,
+            'referensi_masuk' => $masuk,
         ]);
     }
 }

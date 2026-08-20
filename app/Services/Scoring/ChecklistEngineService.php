@@ -5,130 +5,140 @@ namespace App\Services\Scoring;
 use App\Models\Aspek;
 use App\Models\HandwritingSample;
 use App\Models\Indikator;
-use App\Models\IndikatorCrossReference;
 use App\Models\IndikatorRule;
 use App\Models\SampleIndikatorCheck;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * KM-G: mengevaluasi indikator_rules terhadap measurement_readings 1 sample
- * untuk auto-centang Indikator (measurement worksheet -> checklist), lalu
- * menghitung skor per Aspek dari jumlah posisi tercentang. Sumber kebenaran
- * status "tercentang" adalah tabel sample_indikator_checks - lihat migrasi
- * & CLAUDE.md. Baris `sumber=manual`/`cascade` beku begitu diputuskan
- * (keputusan grafolog harus tahan re-evaluasi); baris `sumber=auto`
- * SENGAJA terus direkonsiliasi ulang setiap evaluateSample() dipanggil,
- * supaya koreksi hasil ukur tidak meninggalkan centang/alasan yang basi
- * (bug ditemukan lewat review 2026-08-08 - versi awal melewati baris auto
- * yang sudah ada juga, bukan cuma yang manual).
+ * KM-G, diperluas 2026-08-19: mengevaluasi indikator_rules terhadap
+ * measurement_readings 1 sample untuk auto-centang Indikator (measurement
+ * worksheet -> checklist), lalu menghitung skor per Aspek dari jumlah
+ * posisi tercentang. Sumber kebenaran status "tercentang" adalah tabel
+ * sample_indikator_checks - lihat migrasi & CLAUDE.md.
+ *
+ * **Unifikasi cross-reference (2026-08-19)**: dulu cascade "centang A ->
+ * ikut centang B" adalah mekanisme TERPISAH (tabel indikator_cross_reference
+ * + applyCascadeFrom() satu-hop, dijalankan setelah loop utama). Sekarang
+ * itu HANYA rule_type='indikator_checked' biasa di indikator_rules,
+ * dievaluasi lewat mesin AND/OR yang sama persis dengan rule
+ * measurement/irregularity - satu sistem kriteria, bukan dua. Konsekuensi:
+ * rantai bisa berlapis (A men-trigger B, B men-trigger C) dan bisa
+ * dikombinasi AND/OR dengan rule measurement (keputusan eksplisit user,
+ * lebih kuat dari cascade satu-hop lama).
+ *
+ * Baris `sumber=manual` beku begitu diputuskan grafolog - tidak pernah
+ * ditimpa evaluasi ulang. Baris `sumber=auto`/`cascade` SENGAJA terus
+ * direkonsiliasi ulang setiap evaluateSample() dipanggil (termasuk yang
+ * dulu berasal dari rule indikator_checked) - konsisten dengan filosofi
+ * "cascade dan auto sama-sama derivasi otomatis, bukan keputusan manusia."
  */
 class ChecklistEngineService
 {
     /**
-     * Jalankan aturan operator utk semua Indikator, buat/perbarui baris
-     * `sumber=auto` sesuai hasil terbaru, lalu terapkan cascade referensi
-     * silang (satu hop) dari yang baru transisi ke tercentang. Baris
-     * `manual`/`cascade` tidak pernah disentuh. Aman dipanggil berkali-kali
-     * (idempoten - re-run tanpa perubahan data ukur tidak menulis apa pun).
+     * Jalankan seluruh indikator_rules atas hasil ukur + status tercentang
+     * Indikator lain, sampai titik tetap (fixed point) tercapai. Baris
+     * `sumber=manual` tidak pernah disentuh.
+     *
+     * **Kenapa aman berhenti dalam N iterasi (N = jumlah Indikator)**: rule
+     * indikator_checked HANYA bisa mengembalikan true/null (tidak pernah
+     * false eksplisit - "belum tercentang" bukan berarti "tidak akan
+     * pernah") sehingga status Indikator non-manual di sini monoton naik
+     * (false/tidak-ada-baris -> true), tidak pernah dibalik oleh loop ini.
+     * Kombinasi dengan rule measurement (yang stabil per-panggilan, karena
+     * measurement_readings tidak berubah selama satu evaluateSample())
+     * lewat AND/OR tetap monoton. Jadi tiap iterasi minimal 1 baris
+     * berubah (false/kosong -> true) atau loop berhenti - tidak mungkin
+     * lebih dari N iterasi tanpa perubahan, tidak butuh deteksi siklus
+     * terpisah (siklus A<->B saling bergantung otomatis stabil di false,
+     * bukan infinite loop).
      */
     public function evaluateSample(HandwritingSample $sample): void
     {
-        $values = $sample->measurementReadings()->pluck('nilai', 'variable_id')->all();
+        $readings = $sample->measurementReadings()->get(['variable_id', 'nilai', 'nilai_min', 'nilai_max']);
+        $values = $readings->pluck('nilai', 'variable_id')->all();
+        // Selisih (range) = nilai_max - nilai_min, dihitung di sini - bukan
+        // kolom tersimpan - dipakai rule bertipe variable_a_value_mode=range
+        // (ambang "Range is more than..." dari user, lihat IrregularityRuleSeeder).
+        $ranges = $readings
+            ->filter(fn ($r) => $r->nilai_min !== null && $r->nilai_max !== null)
+            ->mapWithKeys(fn ($r) => [$r->variable_id => $r->nilai_max - $r->nilai_min])
+            ->all();
 
-        $indikatorList = Indikator::with(['rules.variableA.kategori', 'rules.variableB'])
+        $indikatorList = Indikator::with(['rules.variableA.kategori', 'rules.variableB', 'rules.dependsOnIndikator'])
             ->get()
             ->keyBy('id');
 
         $existing = $sample->indikatorChecks()->get()->keyBy('indikator_id');
 
-        $newlyCheckedIds = [];
-        foreach ($indikatorList as $indikator) {
-            $row = $existing->get($indikator->id);
-            if ($row && $row->sumber !== 'auto') {
-                continue; // keputusan manual/cascade beku, tidak pernah ditimpa
-            }
-
-            $eval = $this->evaluateIndikator($indikator, $values);
-            if ($eval['result'] === null) {
-                continue; // data belum cukup - biarkan state terakhir apa adanya
-            }
-
-            $nowChecked = $eval['result'] === true;
-            $wasChecked = $row?->checked ?? false;
-            $unchanged = $row
-                && $row->checked === $nowChecked
-                && $row->rule_id === $eval['rule_id']
-                && $row->keterangan_pemicu === $eval['reason'];
-            if ($unchanged) {
-                continue;
-            }
-
-            $check = SampleIndikatorCheck::updateOrCreate(
-                ['sample_id' => $sample->id, 'indikator_id' => $indikator->id],
-                [
-                    'checked' => $nowChecked,
-                    'sumber' => 'auto',
-                    'rule_id' => $nowChecked ? $eval['rule_id'] : null,
-                    'keterangan_pemicu' => $nowChecked ? $eval['reason'] : null,
-                ],
-            );
-            $existing->put($indikator->id, $check);
-
-            if (! $wasChecked && $nowChecked) {
-                $newlyCheckedIds[] = $indikator->id;
-            }
+        // Peta status tercentang SAAT INI (manual maupun hasil evaluasi
+        // sebelumnya) - rule indikator_checked butuh melihat Indikator lain
+        // yang SUDAH diputuskan, termasuk yang manual (grafolog mencentang A
+        // manual harus tetap memicu B yang depends_on A).
+        $checkedMap = [];
+        foreach ($existing as $id => $row) {
+            $checkedMap[$id] = (bool) $row->checked;
         }
 
-        foreach ($newlyCheckedIds as $indikatorId) {
-            $this->applyCascadeFrom($sample, $indikatorList[$indikatorId], $existing);
-        }
-    }
+        $maxIterations = max(1, $indikatorList->count());
+        for ($iteration = 0; $iteration < $maxIterations; $iteration++) {
+            $anyChange = false;
 
-    /**
-     * Cascade satu-arah, satu-hop saja (bukan rekursif) dari 1 Indikator
-     * sumber yang baru tercentang ke target referensi silangnya yang
-     * aktif+matched - sesuai rencana KM §3.3. Tidak pernah menimpa baris
-     * yang sudah ada (baik manual maupun auto/cascade sebelumnya).
-     */
-    private function applyCascadeFrom(HandwritingSample $sample, Indikator $source, Collection $existing): void
-    {
-        $refs = IndikatorCrossReference::where('indikator_sumber_id', $source->id)
-            ->where('aktif', true)
-            ->where('match_status', 'matched')
-            ->get();
+            foreach ($indikatorList as $indikator) {
+                $row = $existing->get($indikator->id);
+                if ($row && $row->sumber === 'manual') {
+                    continue; // keputusan manual beku, tidak pernah ditimpa
+                }
 
-        foreach ($refs as $ref) {
-            $target = Indikator::where('kode', $ref->mereferensikan_ke_kode)->first();
-            if (! $target || $existing->has($target->id)) {
-                continue;
+                $eval = $this->evaluateIndikator($indikator, $values, $ranges, $checkedMap);
+                if ($eval['result'] === null) {
+                    continue; // data belum cukup - biarkan state terakhir apa adanya
+                }
+
+                $nowChecked = $eval['result'] === true;
+                $unchanged = $row
+                    && $row->checked === $nowChecked
+                    && $row->rule_id === $eval['rule_id']
+                    && $row->keterangan_pemicu === $eval['reason'];
+                if ($unchanged) {
+                    continue;
+                }
+
+                $check = SampleIndikatorCheck::updateOrCreate(
+                    ['sample_id' => $sample->id, 'indikator_id' => $indikator->id],
+                    [
+                        'checked' => $nowChecked,
+                        'sumber' => $nowChecked ? $eval['sumber'] : 'auto',
+                        'rule_id' => $nowChecked ? $eval['rule_id'] : null,
+                        'keterangan_pemicu' => $nowChecked ? $eval['reason'] : null,
+                    ],
+                );
+                $existing->put($indikator->id, $check);
+                $checkedMap[$indikator->id] = $nowChecked;
+                $anyChange = true;
             }
 
-            $check = SampleIndikatorCheck::create([
-                'sample_id' => $sample->id,
-                'indikator_id' => $target->id,
-                'checked' => true,
-                'sumber' => 'cascade',
-                'cross_reference_id' => $ref->id,
-                'keterangan_pemicu' => "Ikut tercentang karena Indikator {$source->kode} tercentang (referensi silang).",
-            ]);
-            $existing->put($target->id, $check);
+            if (! $anyChange) {
+                break;
+            }
         }
     }
 
     /**
      * @param  array<int,float>  $values  variable_id => nilai
-     * @return array{result: ?bool, reason: ?string, rule_id: ?int}
+     * @param  array<int,float>  $ranges  variable_id => selisih (nilai_max - nilai_min)
+     * @param  array<int,bool>  $checkedMap  indikator_id => status tercentang saat ini
+     * @return array{result: ?bool, reason: ?string, rule_id: ?int, sumber: ?string}
      */
-    private function evaluateIndikator(Indikator $indikator, array $values): array
+    private function evaluateIndikator(Indikator $indikator, array $values, array $ranges, array $checkedMap): array
     {
         if ($indikator->rules->isEmpty()) {
-            return ['result' => null, 'reason' => null, 'rule_id' => null];
+            return ['result' => null, 'reason' => null, 'rule_id' => null, 'sumber' => null];
         }
 
         $results = $indikator->rules->map(fn (IndikatorRule $rule) => [
             'rule' => $rule,
-            ...$this->evaluateRule($rule, $values),
+            ...$this->evaluateRule($rule, $values, $ranges, $checkedMap),
         ]);
 
         // Filter dengan closure (strict ===), BUKAN Collection::where('result', ...)
@@ -141,55 +151,90 @@ class ChecklistEngineService
 
         if ($indikator->rule_group_logic === 'AND') {
             if ($falseOnes->isNotEmpty()) {
-                return ['result' => false, 'reason' => null, 'rule_id' => null];
+                return ['result' => false, 'reason' => null, 'rule_id' => null, 'sumber' => null];
             }
             if ($trueOnes->count() === $results->count()) {
-                return [
-                    'result' => true,
-                    'reason' => $trueOnes->pluck('reason')->implode('; '),
-                    'rule_id' => $trueOnes->first()['rule']->id,
-                ];
+                return $this->winningResult($trueOnes);
             }
 
-            return ['result' => null, 'reason' => null, 'rule_id' => null];
+            return ['result' => null, 'reason' => null, 'rule_id' => null, 'sumber' => null];
         }
 
         // OR (default)
         if ($trueOnes->isNotEmpty()) {
-            return [
-                'result' => true,
-                'reason' => $trueOnes->pluck('reason')->implode('; '),
-                'rule_id' => $trueOnes->first()['rule']->id,
-            ];
+            return $this->winningResult($trueOnes);
         }
         if ($falseOnes->count() === $results->count()) {
-            return ['result' => false, 'reason' => null, 'rule_id' => null];
+            return ['result' => false, 'reason' => null, 'rule_id' => null, 'sumber' => null];
         }
 
-        return ['result' => null, 'reason' => null, 'rule_id' => null];
+        return ['result' => null, 'reason' => null, 'rule_id' => null, 'sumber' => null];
+    }
+
+    /**
+     * `sumber` dipilih dari rule PEMENANG (yang pertama membuktikan true) -
+     * 'cascade' kalau lewat rule indikator_checked (badge "Terkait" di UI,
+     * dulu berasal dari tabel cross-reference terpisah), 'auto' kalau lewat
+     * measurement (category/comparison) - mempertahankan label UI yang sudah
+     * ada meski mekanismenya sekarang satu sistem.
+     */
+    private function winningResult(Collection $trueOnes): array
+    {
+        $winning = $trueOnes->first()['rule'];
+
+        return [
+            'result' => true,
+            'reason' => $trueOnes->pluck('reason')->implode('; '),
+            'rule_id' => $winning->id,
+            'sumber' => $winning->rule_type === 'indikator_checked' ? 'cascade' : 'auto',
+        ];
     }
 
     /**
      * @param  array<int,float>  $values
+     * @param  array<int,float>  $ranges
+     * @param  array<int,bool>  $checkedMap
      * @return array{result: ?bool, reason: ?string}
      */
-    private function evaluateRule(IndikatorRule $rule, array $values): array
+    private function evaluateRule(IndikatorRule $rule, array $values, array $ranges, array $checkedMap): array
     {
-        $nilaiA = $values[$rule->variable_a_id] ?? null;
+        if ($rule->rule_type === 'indikator_checked') {
+            $depChecked = $checkedMap[$rule->depends_on_indikator_id] ?? false;
+            if (! $depChecked) {
+                // Belum tercentang SEKARANG bukan berarti tidak akan pernah -
+                // unresolved (null), bukan false, supaya AND-group tidak
+                // salah short-circuit ke false saat dependensi belum sempat
+                // dievaluasi di iterasi ini (lihat evaluateSample()).
+                return ['result' => null, 'reason' => null];
+            }
+
+            $dep = $rule->dependsOnIndikator;
+
+            return [
+                'result' => true,
+                'reason' => "Ikut tercentang karena Indikator {$dep->kode} tercentang.",
+            ];
+        }
+
+        // Rule kategori selalu pakai nilai titik - konsep "range" cuma
+        // relevan untuk perbandingan ambang irregularity (comparison).
+        $isRange = $rule->rule_type === 'comparison' && $rule->variable_a_value_mode === 'range';
+        $nilaiA = $isRange ? ($ranges[$rule->variable_a_id] ?? null) : ($values[$rule->variable_a_id] ?? null);
         if ($nilaiA === null) {
             return ['result' => null, 'reason' => null];
         }
         $nilaiA = (float) $nilaiA;
+        $labelA = $isRange ? "Range {$rule->variableA->nama}" : $rule->variableA->nama;
 
         if ($rule->rule_type === 'category') {
             $kategori = $rule->variableA->kategoriUntukNilai($nilaiA);
             if (! $kategori) {
-                return ['result' => false, 'reason' => "{$rule->variableA->nama}: {$nilaiA} (tidak cocok kategori manapun)"];
+                return ['result' => false, 'reason' => "{$labelA}: {$nilaiA} (tidak cocok kategori manapun)"];
             }
 
             $cocok = strcasecmp(trim($kategori->kategori), trim($rule->category_label)) === 0;
 
-            return ['result' => $cocok, 'reason' => "{$rule->variableA->nama}: {$nilaiA} → {$kategori->kategori}"];
+            return ['result' => $cocok, 'reason' => "{$labelA}: {$nilaiA} → {$kategori->kategori}"];
         }
 
         // comparison
@@ -221,7 +266,7 @@ class ChecklistEngineService
             'greater_or_equal' => '≥', 'less_or_equal' => '≤',
         ][$rule->operator] ?? $rule->operator;
 
-        return ['result' => $result, 'reason' => "{$rule->variableA->nama}: {$nilaiA} {$opSymbol} {$rightLabel}"];
+        return ['result' => $result, 'reason' => "{$labelA}: {$nilaiA} {$opSymbol} {$rightLabel}"];
     }
 
     /**
@@ -311,19 +356,25 @@ class ChecklistEngineService
 
     /**
      * Toggle manual 1 Indikator. Centang: langsung tersimpan (checked=true,
-     * sumber=manual) + cascade satu-hop dijalankan. Uncheck: baris TETAP
+     * sumber=manual), lalu evaluateSample() dipanggil supaya rule
+     * indikator_checked yang depends_on Indikator ini langsung ikut
+     * tercentang (dulu applyCascadeFrom() terpisah - sekarang cuma
+     * evaluasi ulang biasa, sudah mencakup itu). Uncheck: baris TETAP
      * disimpan dengan checked=false (bukan dihapus) - supaya evaluateSample()
      * berikutnya tahu ini sudah pernah diputuskan grafolog dan tidak
-     * mencentangnya lagi otomatis. Kalau baris ini dulu memicu cascade ke
-     * Indikator lain yang masih tercentang, TIDAK otomatis ikut di-uncheck
-     * (sesuai rencana KM §3.3) - dikembalikan sebagai cascade_candidates
-     * supaya frontend bisa menawarkan pilihan eksplisit. $confirmed HARUS
-     * true untuk melanjutkan setelah prompt itu ditampilkan - $alsoUncheckCascaded
-     * yang kosong TIDAK cukup sebagai sinyal "sudah dijawab, tolak" karena
-     * itu juga nilai default sebelum grafolog sempat menjawab sama sekali
-     * (bug ditemukan lewat review 2026-08-08: sebelum ada $confirmed,
-     * menolak cascade selalu memicu ulang prompt yang sama, tidak pernah
-     * benar-benar meng-uncheck sumbernya).
+     * mencentangnya lagi otomatis. Kalau baris ini dulu memicu Indikator
+     * lain (lewat rule indikator_checked) yang masih tercentang, TIDAK
+     * otomatis ikut di-uncheck (sesuai rencana KM §3.3) - dikembalikan
+     * sebagai cascade_candidates supaya frontend bisa menawarkan pilihan
+     * eksplisit. $confirmed HARUS true untuk melanjutkan setelah prompt itu
+     * ditampilkan - $alsoUncheckCascaded yang kosong TIDAK cukup sebagai
+     * sinyal "sudah dijawab, tolak" karena itu juga nilai default sebelum
+     * grafolog sempat menjawab sama sekali (bug ditemukan lewat review
+     * 2026-08-08). Target yang ikut di-uncheck lewat $alsoUncheckCascaded
+     * DIBEKUKAN jadi sumber=manual juga (2026-08-19) - kalau tidak, karena
+     * baris `cascade` sekarang direkonsiliasi ulang seperti `auto` (lihat
+     * evaluateSample()), 1 rule OR dengan sumber lain yang masih valid bisa
+     * diam-diam mencentangnya lagi, membatalkan keputusan grafolog barusan.
      *
      * @param  int[]  $alsoUncheckCascaded
      * @return array{ok:bool, requires_confirmation?:bool, cascade_candidates?:array}
@@ -335,18 +386,19 @@ class ChecklistEngineService
         if ($checked) {
             SampleIndikatorCheck::updateOrCreate(
                 ['sample_id' => $sample->id, 'indikator_id' => $indikator->id],
-                ['checked' => true, 'sumber' => 'manual', 'rule_id' => null, 'cross_reference_id' => null, 'keterangan_pemicu' => null],
+                ['checked' => true, 'sumber' => 'manual', 'rule_id' => null, 'keterangan_pemicu' => null],
             );
 
-            $existing = $sample->indikatorChecks()->get()->keyBy('indikator_id');
-            $this->applyCascadeFrom($sample, $indikator, $existing);
+            $this->evaluateSample($sample);
 
             return ['ok' => true];
         }
 
-        $refIds = IndikatorCrossReference::where('indikator_sumber_id', $indikator->id)->pluck('id');
+        $dependentRuleIds = IndikatorRule::where('rule_type', 'indikator_checked')
+            ->where('depends_on_indikator_id', $indikator->id)
+            ->pluck('id');
         $cascadeCandidates = $sample->indikatorChecks()
-            ->whereIn('cross_reference_id', $refIds)
+            ->whereIn('rule_id', $dependentRuleIds)
             ->where('checked', true)
             ->with('indikator')
             ->get();
@@ -363,11 +415,14 @@ class ChecklistEngineService
 
         SampleIndikatorCheck::updateOrCreate(
             ['sample_id' => $sample->id, 'indikator_id' => $indikator->id],
-            ['checked' => false, 'sumber' => 'manual', 'rule_id' => null, 'cross_reference_id' => null, 'keterangan_pemicu' => null],
+            ['checked' => false, 'sumber' => 'manual', 'rule_id' => null, 'keterangan_pemicu' => null],
         );
         if ($alsoUncheckCascaded !== []) {
-            $sample->indikatorChecks()->whereIn('indikator_id', $alsoUncheckCascaded)->update(['checked' => false]);
+            $sample->indikatorChecks()->whereIn('indikator_id', $alsoUncheckCascaded)
+                ->update(['checked' => false, 'sumber' => 'manual', 'rule_id' => null, 'keterangan_pemicu' => null]);
         }
+
+        $this->evaluateSample($sample);
 
         return ['ok' => true];
     }

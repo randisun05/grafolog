@@ -92,7 +92,7 @@ class ScoringController extends Controller
                 ]);
             }
 
-            $data = $this->scoringEngine->generate($skorPerAspek);
+            $data = $this->attachIndikatorNarasi($this->scoringEngine->generate($skorPerAspek), $sample);
 
             $report->update([
                 'status' => 'completed',
@@ -133,7 +133,7 @@ class ScoringController extends Controller
 
         $report = $sample->reports()->latest()->firstOrFail();
 
-        $report = DB::transaction(function () use ($request, $report, $user) {
+        $report = DB::transaction(function () use ($request, $report, $user, $sample) {
             $this->reportRevisions->snapshotBeforeChange($report, 'koreksi_skor', $user, $request->input('catatan'));
 
             $aspekByKode = Aspek::whereIn('kode', collect($request->validated('skor'))->pluck('kode'))
@@ -152,7 +152,7 @@ class ScoringController extends Controller
                 ]);
             }
 
-            $data = $this->scoringEngine->generate($skorPerAspek);
+            $data = $this->attachIndikatorNarasi($this->scoringEngine->generate($skorPerAspek), $sample);
             $report->update(['data' => $data, 'generated_at' => now()]);
 
             AuditLog::record('koreksi_skor_laporan', PersonalityReport::class, $report->id, $user->id, $request->ip());
@@ -161,5 +161,40 @@ class ScoringController extends Controller
         });
 
         return response()->json($report->fresh('aspekScores'));
+    }
+
+    /**
+     * Tempel narasi per-Indikator (kolom `keterangan`, sebelumnya tidak
+     * pernah dipakai di laporan - hanya narasi 4-level per-Aspek) ke tiap
+     * entri Aspek di `$data`, dari Indikator yang tercentang lewat
+     * measurement worksheet/checklist untuk sample ini. Post-processing
+     * murni - ScoringEngineService::generate() sengaja tidak disentuh.
+     * No-op untuk laporan mode manual (tidak pernah ada sample_indikator_checks).
+     */
+    private function attachIndikatorNarasi(array $data, HandwritingSample $sample): array
+    {
+        $checks = $sample->indikatorChecks()->where('checked', true)->with('indikator.aspek')->get();
+        if ($checks->isEmpty()) {
+            return $data;
+        }
+
+        $byAspekKode = $checks->groupBy(fn ($c) => $c->indikator->aspek->kode);
+
+        foreach ($data['sindrom'] as &$sindrom) {
+            foreach ($sindrom['aspek'] as &$aspek) {
+                $group = $byAspekKode->get($aspek['kode']);
+                if ($group) {
+                    $aspek['indikator_terkait'] = $group->map(fn ($c) => [
+                        'kode' => $c->indikator->kode,
+                        'nama' => $c->indikator->nama,
+                        'keterangan' => $c->indikator->keterangan,
+                    ])->values()->all();
+                }
+            }
+            unset($aspek);
+        }
+        unset($sindrom);
+
+        return $data;
     }
 }

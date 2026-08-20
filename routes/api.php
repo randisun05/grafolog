@@ -8,7 +8,6 @@ use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
-use App\Http\Controllers\Api\Admin\IndikatorCrossReferenceController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
@@ -148,11 +147,6 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/knowledge/indikator/{indikator}/rules', [IndikatorRuleController::class, 'store']);
         Route::put('/knowledge/indikator-rules/{indikatorRule}', [IndikatorRuleController::class, 'update']);
         Route::delete('/knowledge/indikator-rules/{indikatorRule}', [IndikatorRuleController::class, 'destroy']);
-
-        Route::get('/knowledge/cross-references', [IndikatorCrossReferenceController::class, 'index']);
-        Route::post('/knowledge/cross-references', [IndikatorCrossReferenceController::class, 'store']);
-        Route::put('/knowledge/cross-references/{indikatorCrossReference}', [IndikatorCrossReferenceController::class, 'update']);
-        Route::delete('/knowledge/cross-references/{indikatorCrossReference}', [IndikatorCrossReferenceController::class, 'destroy']);
 
         // KM-H (2026-08-08): peta konsep, murni baca - lihat CLAUDE.md.
         Route::get('/knowledge/concept-map', [ConceptMapController::class, 'overview']);

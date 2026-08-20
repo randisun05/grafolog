@@ -20,7 +20,7 @@ class VariableEqualityRuleSeederTest extends TestCase
 
         $this->seed(VariableEqualityRuleSeeder::class);
 
-        $this->assertSame(7, IndikatorRule::count());
+        $this->assertSame(7 + 257, IndikatorRule::count());
     }
 
     public function test_running_seeder_twice_does_not_duplicate_rows(): void
@@ -30,7 +30,7 @@ class VariableEqualityRuleSeederTest extends TestCase
 
         $this->seed(VariableEqualityRuleSeeder::class);
 
-        $this->assertSame(7, IndikatorRule::count());
+        $this->assertSame(7 + 257, IndikatorRule::count());
     }
 
     public function test_middle_zone_width_equals_middle_zone_height(): void

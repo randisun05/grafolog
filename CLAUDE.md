@@ -149,7 +149,7 @@ both cases; `php artisan test` still 6/6 passing.
 ## Architecture
 
 - **Models** (`app/Models/`): `Sindrom`, `Aspek`, `Indikator`,
-  `IndikatorCrossReference`, `MeasurementVariable`, `MeasurementCategory`,
+  `MeasurementVariable`, `MeasurementCategory`,
   `ScoringRuleBand`, `DeskriptifLookup`, `NarasiCache`, `User`, `Project`,
   `HandwritingSample`, `PersonalityReport`, `ReportAspekScore`, `Payment`,
   `PricingPlan`, `DiscountCode`, `ContentBlock`, `Announcement`, `Company`,
@@ -288,6 +288,187 @@ per-user" yang sudah dikunci).
   hilang dari versi aktif setelah regenerasi, riwayat menyimpan versi lama
   dengan benar. 14 test baru (`ScoringCorrectionTest`, `ReportRevisionTest`),
   355 backend tests total (up from 341).
+
+## Range-mode irregularity rules, worksheet-based correction, per-Indikator narasi — added 2026-08-17
+
+User mengklarifikasi bahwa ke-20 ambang "irregular" asli (lihat
+"Aturan Irregularity" di atas) SEMUANYA literal berbunyi "Range is more
+than..." - bukan hiasan kata. "Range" = selisih (nilai terbesar - nilai
+terkecil) yang diamati grafolog untuk 1 variabel di 1 sample, bukan 1 nilai
+ukur titik tunggal seperti yang diimplementasikan sebelumnya. Ini juga
+membuka 3 request terkait: (1) grafolog perlu bisa input nilai
+terbesar/terkecil, bukan cuma 1 nilai, (2) koreksi laporan perlu bisa
+membuka ulang measurement worksheet (bukan cuma form skor 1-10), (3)
+`Indikator.keterangan` (narasi per-indikator, sudah ada di KB sejak awal
+tapi tidak pernah dipakai) harus ikut masuk laporan.
+
+- **`measurement_readings.nilai_min`/`nilai_max`** (nullable decimal,
+  migrasi driver-aware sama seperti migrasi enum role - `nilai` juga
+  dilonggarkan jadi nullable karena 1 baris sekarang boleh cuma berisi
+  rentang saja tanpa nilai titik). `MeasurementController::store` menghapus
+  baris hanya kalau KETIGA field (`nilai`/`nilai_min`/`nilai_max`) null -
+  bukan cuma `nilai` seperti sebelumnya.
+- **`indikator_rules.variable_a_value_mode`** (`nilai`|`range`, default
+  `nilai`) - cuma variable_a yang butuh mode ini (variable_b/compare_value
+  di semua 20 ambang user selalu nilai titik, tidak pernah "Range of..."
+  di sisi kanan). `ChecklistEngineService::evaluateSample()` menghitung
+  peta `$ranges` (variable_id => nilai_max - nilai_min, cuma untuk baris
+  yang punya keduanya) di samping `$values` yang sudah ada;
+  `evaluateRule()` baca dari `$ranges` alih-alih `$values` untuk sisi A
+  kalau mode-nya `range`, dan tetap unresolved (null) kalau min/max belum
+  lengkap - sama seperti pola unresolved untuk `nilai` yang sudah ada.
+  Teks alasan (`keterangan_pemicu`) diberi prefix "Range " biar grafolog
+  tahu itu bukan nilai titik biasa (mis. "Range Ovals height: 3 >
+  Middle zone height (2)").
+- **`IrregularityRuleSeeder` diretrofit, bukan ditulis ulang** - SEMUA 28
+  baris lama (termasuk 4 rule Extension Spacing OR/AND) sekarang
+  `variable_a_value_mode = 'range'`, key `updateOrCreate` tidak berubah
+  jadi ini murni migrasi konten in-place. **5 Indikator "Middle zone
+  height irregular/regular" yang dulu SENGAJA di-skip** (dikira typo
+  self-reference - ambang membandingkan MZH dengan dirinya sendiri)
+  sekarang ditambahkan sebagai kasus valid: variable_a=MZH mode `range`,
+  variable_b=MZH mode `nilai` (titik) - 2 mode berbeda untuk variabel yang
+  sama, bukan lagi ambigu begitu mekanisme range ada. `indikator_rules`
+  sekarang 106 baris (101 + 5). Live-verified lawan dev DB sungguhan:
+  Ovals height min=1/max=4 (selisih 3) vs MZH nilai=2 → "Ovals height
+  irregular" (27-5b) tercentang benar dengan alasan "Range Ovals height: 3
+  > Middle zone height (2)"; MZH sendiri min=1/max=3.5 (selisih 2.5) vs
+  nilai titik 2 → "Middle zone height irregular" (27-5a) tercentang,
+  pasangan "regular"-nya (11-1b) TIDAK - saling eksklusif seperti
+  seharusnya.
+- **`MeasurementController::store` dan `ChecklistController::toggle` tidak
+  lagi memblokir sample `status === 'completed'`** - dibutuhkan alur
+  koreksi laporan lewat measurement worksheet (lihat di bawah). Mengedit
+  hasil ukur/checklist di sini TIDAK mengubah laporan aktif - itu tetap
+  versi beku sampai grafolog sengaja memanggil
+  `ScoringController::correct()` dengan tally terbaru, exactly seperti
+  alur koreksi form-manual yang sudah ada. `ScoringController::submit`
+  TETAP menolak resubmit ke sample completed - guard yang dilonggarkan
+  cuma di 2 endpoint draft/scratch itu, bukan endpoint yang benar-benar
+  mengunci laporan.
+- **`indikator.keterangan` (narasi per-indikator) sekarang ikut laporan** -
+  `ScoringController::attachIndikatorNarasi()` (post-processing murni,
+  `ScoringEngineService::generate()` sengaja TIDAK disentuh) menempel
+  `aspek.indikator_terkait: [{kode, nama, keterangan}]` untuk tiap Aspek
+  yang punya `sample_indikator_checks.checked=true` terkait. No-op untuk
+  laporan mode manual (tidak pernah ada baris `sample_indikator_checks`
+  sama sekali) - key `indikator_terkait` cuma muncul kalau memang ada data.
+  Dipanggil dari `submit()` DAN `correct()`, jadi koreksi lewat worksheet
+  juga memperbarui daftar ini (indikator yang sudah tidak lagi tercentang
+  hilang dari laporan setelah regenerasi).
+- Live-verified end-to-end lawan dev DB sungguhan (bukan cuma test): submit
+  40 aspek nyata → laporan berisi `indikator_terkait` dengan teks
+  `keterangan` sungguhan dari KB; edit measurement pada sample yang SUDAH
+  `completed` (Ovals height range dipersempit sampai tidak lagi
+  "irregular") → checklist re-evaluasi otomatis → `scores/correct` dengan
+  tally baru → `indikator_terkait` di laporan aktif hilangkan
+  "Ovals height irregular" sementara `report_revisions` menyimpan
+  snapshot versi SEBELUM koreksi lengkap dengan entri lama. 362 backend
+  tests total (up from 355) - 6 test baru
+  (`MeasurementControllerTest`/`ChecklistControllerTest`), 3 test
+  diperbarui (`IrregularityRuleSeederTest`, count 28→33), 2 test baru
+  `ChecklistEngineServiceTest` (range mode + unresolved-tanpa-min/max), 1
+  test baru `ScoringControllerTest` (`indikator_terkait` muncul di respons
+  submit). **Browser-verified lewat Playwright** (sesi lanjutan): sample
+  nyata diberi MZH=2 (nilai) + Ovals height min=1/maks=4 lewat worksheet ->
+  Indikator 27-5b auto-checked dengan alasan "Range Ovals height: 3 >
+  Middle zone height (2)" -> laporan jadi, `indikator_terkait` Aspek 27
+  berisi keterangan Indikator itu -> buka "Koreksi Skor" mode Measurement
+  Worksheet, field MZH/Ovals min/maks ter-prefill dari hasil ukur
+  tersimpan. 0 error console. Data uji coba dibersihkan.
+
+## Unifikasi cross-reference ke indikator_rules — 2026-08-19
+
+User mengajukan diskusi: kenapa cascade "centang A -> ikut centang B"
+(cross-reference, KM-F) adalah mekanisme TERPISAH dari sistem aturan
+measurement/irregularity, padahal secara konsep sama-sama "kriteria yang
+membuat Indikator tercentang otomatis"? Usulan: jadikan satu sistem -
+`indikator_rules` jadi satu-satunya tempat definisi kriteria, cross-
+reference jadi rule_type ketiga. Dikonfirmasi lewat AskUserQuestion: (1)
+rantai ketergantungan BOLEH berlapis (A->B->C, bukan cuma satu-hop seperti
+cascade lama), (2) migrasi PENUH - tabel `indikator_cross_reference` lama
+dihapus, bukan berdampingan.
+
+- **`indikator_rules` rule_type ketiga: `indikator_checked`.** Kolom baru
+  `depends_on_indikator_id` (FK ke `indikator`, cascadeOnDelete - rule jadi
+  tidak berarti kalau Indikator yang di-depend dihapus). `variable_a_id`
+  dilonggarkan nullable (migrasi driver-aware, sama pola dengan migrasi
+  enum sebelumnya) karena rule tipe ini tidak pakai measurement variable
+  sama sekali - sisi kirinya adalah status tercentang Indikator lain.
+- **`ChecklistEngineService::evaluateSample()` ditulis ulang jadi evaluasi
+  titik-tetap (fixed-point), bukan 1 pass + cascade terpisah.** Loop
+  berulang sampai tidak ada perubahan, dibatasi maksimal N iterasi (N =
+  jumlah Indikator). **Ini aman/terjamin berhenti** karena rule
+  `indikator_checked` HANYA bisa mengembalikan true/null (tidak pernah
+  false eksplisit - "belum tercentang" bukan berarti "tidak akan pernah"),
+  jadi status Indikator non-manual monoton naik (false->true, tidak pernah
+  dibalik) - setiap iterasi minimal 1 baris berubah atau loop berhenti,
+  tidak butuh deteksi siklus terpisah. 2 Indikator yang saling depends_on
+  (A<->B) otomatis stabil di "tidak tercentang", bukan infinite loop -
+  dibuktikan test (`test_mutually_dependent_indikator_stay_unchecked_not_infinite_loop`).
+  `applyCascadeFrom()` (method terpisah lama) **dihapus total** - fungsinya
+  sekarang otomatis tercakup evaluasi rule biasa.
+- **`sumber` pada `sample_indikator_checks` tetap `'auto'`/`'cascade'`**
+  (bukan digabung jadi 1 nilai) - dipilih dari rule_type pemenang saat
+  Indikator jadi tercentang (`category`/`comparison` -> `'auto'`,
+  `indikator_checked` -> `'cascade'`), supaya badge UI "Auto"/"Terkait"
+  yang sudah ada di `IndikatorChecklist.vue` tidak perlu berubah sama
+  sekali meski mekanisme di baliknya sekarang satu sistem.
+  **Perilaku live-reconciliation ikut berubah**: baris `cascade` sekarang
+  direkonsiliasi ulang tiap `evaluateSample()` sama seperti `auto` (dulu
+  dibekukan permanen begitu tercipta, sama seperti `manual`) - konsisten
+  dengan filosofi baru "cascade dan auto sama-sama derivasi otomatis."
+  Konsekuensi: `toggle()`'s force-uncheck (`alsoUncheckCascaded`) sekarang
+  membekukan target jadi `sumber='manual'` juga (bukan cuma `checked=false`
+  seperti dulu) - kalau tidak, target dengan rule OR yang punya sumber lain
+  yang masih valid bisa diam-diam tercentang lagi, membatalkan keputusan
+  grafolog barusan.
+- **Migrasi data**: 1 migration one-time (`migrate_cross_reference_into_indikator_rules_and_drop_table`)
+  mengonversi 257 baris `indikator_cross_reference` yang `aktif=true` DAN
+  `match_status='matched'` di database ini SAAT migrasi benar-benar
+  dijalankan jadi baris `indikator_rules`, lalu drop tabel lama (plus
+  kolom `sample_indikator_checks.cross_reference_id` yang jadi redundan -
+  cascade sekarang ditandai lewat `rule_id` yang sama dengan rule lain).
+  23 baris `unmatched` tidak dibawa (tidak pernah berfungsi di sistem
+  lama juga). `GrafologiKnowledgeSeeder::seedCrossReference()` diretrofit
+  jadi menulis LANGSUNG ke `indikator_rules` dari sumber JSON (bukan lagi
+  tabel perantara) - supaya fresh install/test suite tetap dapat 257
+  relasi yang sama tanpa lewat migrasi data satu-kali itu.
+  **Trade-off yang disengaja, didokumentasikan bukan bug**: beda dari
+  `aktif` KM-F lama yang sengaja dijaga tidak tertimpa reseed, sekarang
+  "menonaktifkan" = hapus rule row, dan reseed AKAN menulis ulang relasi
+  itu dari JSON kalau masih ada di sana (sama seperti seeder konten lain -
+  Irregularity/CategoryMatch/dst - bukan kelas risiko baru, cuma
+  konsisten). Dikunci test `test_reseeding_recreates_a_cross_reference_rule_deleted_via_admin_ui`.
+- **Admin UI**: tab "Referensi Silang" (KM-F, 7→6 tab) **dihapus total** -
+  membuat/mengelola relasi sekarang lewat sub-bagian "Aturan Operator" di
+  tab Indikator yang sudah ada (KM-E), pilih Tipe Aturan "Indikator Lain
+  Tercentang". `ConceptMapController` (KM-H, Peta Konsep) ditulis ulang
+  baca dari `indikator_rules` bukan tabel lama - **bentuk response API
+  SAMA PERSIS** (`cross_ref_count`, `referensi_keluar`, `referensi_masuk`),
+  jadi `ConceptMapExplorer.vue` di frontend **tidak perlu diubah sama
+  sekali**.
+- 8 test baru/diperbarui di `IndikatorRuleControllerTest` (validasi tipe
+  ketiga: wajib `depends_on_indikator_id`, tolak field measurement, tolak
+  depends-on-diri-sendiri, cascade delete), 5 test baru di
+  `ChecklistEngineServiceTest` (cascade via rule, tanpa rule = tanpa
+  cascade, rantai berlapis, mutual-dependency stabil), test
+  `IndikatorCrossReferenceControllerTest` **dihapus seluruhnya** (fitur
+  tidak ada lagi), `ConceptMapControllerTest`/`GrafologiKnowledgeSeederTest`/
+  `ChecklistControllerTest` diperbarui pakai `IndikatorRule` bukan
+  `IndikatorCrossReference`. 361 test backend lolos (dari 355, net turun
+  meski banyak tes baru karena 9 test `IndikatorCrossReferenceControllerTest`
+  dihapus).
+- Browser-verified end-to-end via Playwright lawan data KB sungguhan: tab
+  "Referensi Silang" terkonfirmasi hilang dari 6 tab yang tersisa, tambah
+  rule `indikator_checked` baru lewat UI (Indikator "01-1'" depends_on
+  "01-2'") tampil sebagai "Tercentang jika Indikator 01-2' tercentang",
+  hapus lagi lewat UI yang sama; Peta Konsep untuk Indikator "01-1'" (data
+  hasil migrasi asli, bukan buatan) menampilkan badge "3 referensi" +
+  3 chip Referensi Silang Keluar (15-2a, 21-2, 30-2a) dengan garis
+  penghubung SVG benar. 0 error console di kedua skenario. `indikator_rules`
+  dikonfirmasi kembali ke 363 baris (tidak ada sisa data uji) setelah
+  verifikasi.
 
 ## Roles & staff provisioning — added 2026-08-03 (MGA pivot Fase 05)
 
@@ -920,6 +1101,12 @@ auto-check rule.
   and can be authored, but nothing yet EVALUATES them** —
   `ScoringController::submit` is completely unchanged, still takes manual
   `skorPerAspek` input. That's KM-G's job.
+
+**KM-F superseded 2026-08-19** — see "Unifikasi cross-reference ke
+indikator_rules" above. `indikator_cross_reference` table, its controller,
+and the admin "Referensi Silang" tab described below no longer exist;
+the same relationships now live as `indikator_rules` rows
+(`rule_type='indikator_checked'`). Kept below for history only.
 
 **KM-F (`indikator_cross_reference` management) added 2026-08-08** —
 activates a table that was dormant since the original JSON→DB conversion
