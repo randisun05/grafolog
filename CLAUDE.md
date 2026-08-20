@@ -8,6 +8,14 @@ menghasilkan laporan kepribadian. Dua repo di folder ini: `guratan-api`
 apa pun yang code-shaped, jangan asumsi dari file ini.** File ini adalah
 konteks produk/bisnis, ditulis 2026-07-26.
 
+**Riwayat kerja & keputusan sesi-sesi sebelumnya** (snapshot memori Claude,
+dibawa serta supaya sesi baru di clone manapun langsung punya konteks penuh
+tanpa baca ulang semua kode dari nol) ada di `.claude/memory/MEMORY.md` —
+baca itu duluan untuk tahu apa yang sudah selesai, keputusan yang sudah
+dikunci, dan yang sengaja ditunda. Isinya snapshot per-tanggal (bukan live
+state) — tetap verifikasi klaim spesifik ke kode/CLAUDE.md sub-repo sebelum
+dipakai sebagai fakta.
+
 ## Masalah yang diselesaikan
 
 Psikotes konvensional lambat, mahal, dan butuh psikolog per sesi. Grafologi

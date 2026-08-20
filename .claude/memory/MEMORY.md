@@ -1,0 +1,15 @@
+- [Project overview](project_overview.md) — Guratan grafology SaaS, 3 tiers, 8 Sindrom→40 Aspek→704 Indikator KB, B2C/B2B markets, pricing, 4 guiding principles
+- [Project status](project_status.md) — code-verified 2026-07-26: scoring engine, Sanctum auth, controllers all done; see guratan-api/web CLAUDE.md for detail
+- [Guratan build principles](feedback_guratan_principles.md) — no per-report LLM calls, no CV yet, fix KB at JSON source, security mandatory
+- [ScoringEngineService design](feedback_scoring_engine_design.md) — corrected 2026-07-26: very_high IS used (4-way narasi_level), deskriptif_lookup is dead code
+- [Roadmap pointer](reference_roadmap.md) — ordered work backlog lives in ROADMAP.md at project root, phased 0-3
+- [MGA pivot](project_mga_pivot.md) — Guratan→"Master Graphology Assistant", 5 roles; 7-phase roadmap COMPLETE 2026-08-06, see file for deferred items list
+- [Commerce & CMS initiative](project_commerce_initiative.md) — pricing/discount/checkout/CMS/promo; Fase A/B/D/E/F all done 2026-08-06, only Fase C (DOKU sandbox creds) left
+- [Token system for grafolog](project_token_system.md) — built 2026-08-07, complete but gated off until admin sets real price/cost in /admin/tokens
+- [FE redesign](project_fe_redesign.md) — homepage rebuilt 2026-08-07, "Kertas Berani" palette, CMS expanded to 21 fields, dashboards not yet touched
+- [Knowledge Management System](project_km_system.md) — KM-A through H ALL COMPLETE 2026-08-08: admin CRUD, rule builder, measurement worksheet wired into real scoring, visual concept map. Nothing outstanding.
+- [Terse output mode](feedback_terse_output.md) — 2026-08-08: no fluff, diff-only edits, minimal comments/markdown, ask short Qs not guesses
+- [Report editing](project_report_editing.md) — score correction+regen & manual narasi override built 2026-08-08; topic categorization & client chat still pending (chat needs separate product discussion, conflicts with no-live-LLM principle)
+- [Range-mode scoring](project_range_mode_scoring.md) — 2026-08-17: irregularity rules use max-min range not point value, worksheet reopens on completed samples for correction, per-Indikator keterangan now in reports
+- [KB content gaps](project_kb_content_gaps.md) — 2026-08-17: 30 empty Indikator.keterangan rows (Aspek 35 "Fears" degree-variants) deferred pending user-supplied text, don't fill without asking
+- [Cross-reference unification](project_cross_reference_unification.md) — 2026-08-19: KM-F cascade merged into indikator_rules as 3rd rule_type, old table dropped, multi-hop chains, admin tab removed
