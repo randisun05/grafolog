@@ -1,0 +1,74 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+}
+
+/* Shared building blocks — used across views/components alongside their own scoped styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-hover);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.05s ease;
+}
+.btn:hover {
+  border-color: var(--color-ink);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn--primary {
+  background: var(--color-seal);
+  border-color: var(--color-seal);
+  color: #fff;
+}
+.btn--primary:hover {
+  background: var(--color-seal-dark);
+  border-color: var(--color-seal-dark);
+}
+
+.error {
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='file'],
+select,
+textarea {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  margin-top: 4px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border-hover);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 14px;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--color-seal);
+  outline-offset: 1px;
+}
