@@ -126,6 +126,18 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   loading window, producing a Relasi panel inconsistent with the
   visibly-selected column. Fixed by clearing `aspekDetail` synchronously
   before the request starts.
+  **"Referensi Silang" tab REMOVED 2026-08-19** (cross-reference unified
+  into `indikator_rules`, see `guratan-api/CLAUDE.md`'s "Unifikasi cross-
+  reference ke indikator_rules") — back to 6 tabs. Creating/managing these
+  relationships now happens in the Indikator tab's existing "Aturan
+  Operator" sub-section: a 3rd `rule_type` option, "Indikator Lain
+  Tercentang", with a `depends_on_indikator_id` dropdown (reuses the same
+  `indikatorOptions`/`loadIndikatorOptions()` fetch this removed tab used
+  for its source dropdown — kept, not deleted). `formatRule()` gained a
+  branch rendering it as "Tercentang jika Indikator {kode} tercentang".
+  Browser-verified: added a real rule this way, confirmed it lists and
+  deletes correctly, confirmed the tab itself is gone from the tab bar.
+  **Below is the original (now-removed) tab's history, kept for context:**
   **Gained a 6th tab, "Referensi Silang", 2026-08-08 (KM-F)** — same
   paginated-search pattern as the Indikator tab (280 rows). Table columns:
   Sumber (raw text + resolved source Indikator kode if known), Tujuan
@@ -300,6 +312,16 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
     report's existing `aspek_scores` prop) - same form as the original
     scoring flow, just pointed at `POST /samples/{id}/scores/correct`
     instead of `/scores`, with an added optional "alasan koreksi" textarea.
+    **Gained a mode toggle 2026-08-17** (`correctionMode`, `'manual'` default
+    | `'worksheet'`) mirroring `PortalGrafologView`'s step 2 exactly: worksheet
+    mode swaps `SindromAccordion` for `MeasurementWorksheet` +
+    `IndikatorChecklist` (both reused unchanged), `IndikatorChecklist`'s
+    `apply` event merges into the same `scores` ref manual mode uses, so
+    `buildSkorPayload()`/`submitCorrection()` needed zero changes. This is
+    what lets a grafolog re-open the original measurement worksheet for an
+    already-completed sample - `MeasurementController`/`ChecklistController`
+    no longer block `status === 'completed'` (see
+    `guratan-api/CLAUDE.md`'s 2026-08-17 entry) specifically to support this.
   - **`ReportRevisionHistory.vue`** - collapsible "Riwayat Perubahan"
     section, lazy-loads `GET /reports/{id}/revisions` on first open.
     Clicking a revision lazy-loads and renders its frozen snapshot using
@@ -329,6 +351,14 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
     `ScoreSelector` UI (not a direct API call) → response confirms new
     scores → ground-truth DB check confirms the override flag was cleared
     and revision history recorded both changes correctly.
+  - **`ReportDocument.vue` gained `aspek.indikator_terkait` rendering,
+    2026-08-17**: a small list under each Aspek's narasi (kode/nama/
+    keterangan per checked Indikator) when the API includes it - see
+    `guratan-api/CLAUDE.md`'s "per-Indikator narasi" entry. Renders nothing
+    when the key is absent (manual-mode reports never have it), no
+    `v-if` branching needed beyond the list's own `v-if="...?.length"`.
+    Correction-panel's worksheet mode (above) is what actually changes
+    this list's contents on an existing report.
 - `src/components/scoring/`: `AspekRow`, `ScoreSelector`, `SindromAccordion`
   (all unchanged since 2026-07-26 — reused as-is, only repositioned),
   `AutoCalculationPanel` (added 2026-08-03, MGA Fase 04),
@@ -377,7 +407,10 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   exactly what was already there (`SindromAccordion`, completely
   untouched). `'worksheet'` swaps the middle column for
   `MeasurementWorksheet` (input grid for the ~34 measurement variables,
-  posts to `POST /api/samples/{id}/measurements`) stacked above
+  posts to `POST /api/samples/{id}/measurements`; **each variable gained
+  optional min/max fields 2026-08-17** alongside the original point-value
+  input, for irregularity rules that compare a selisih/range rather than a
+  single reading — see `guratan-api/CLAUDE.md`'s range-mode entry) stacked above
   `IndikatorChecklist` (fetches `GET /api/samples/{id}/checklist`, ALL
   Sindrom→Aspek→Indikator rendered flat/expanded — **no accordion**, see
   the 2026-08-08 UX-feedback note below for why; each checked-by-rule/

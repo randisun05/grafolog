@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
 import SindromAccordion from '@/components/scoring/SindromAccordion.vue'
+import MeasurementWorksheet from '@/components/scoring/MeasurementWorksheet.vue'
+import IndikatorChecklist from '@/components/scoring/IndikatorChecklist.vue'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
@@ -18,6 +20,20 @@ const scores = ref({})
 const catatan = ref('')
 const submitting = ref(false)
 const submitError = ref('')
+// Koreksi bisa lewat form manual (skor 1-10 langsung, seperti semula) atau
+// membuka ulang measurement worksheet + checklist Indikator - dibutuhkan
+// untuk sample yang aslinya diskor lewat mode worksheet (KM-G), supaya
+// koreksi juga bisa mengubah hasil ukur, bukan cuma angka skor akhir.
+const correctionMode = ref('manual')
+const checklistRef = ref(null)
+
+function applyChecklistTally(skor) {
+  scores.value = { ...scores.value, ...skor }
+}
+
+function onMeasurementsSaved() {
+  checklistRef.value?.load()
+}
 
 const totalAspek = computed(() => sindromList.value.reduce((n, s) => n + s.aspek.length, 0))
 const scoredCount = computed(() => Object.values(scores.value).filter((s) => Number.isInteger(s?.skor)).length)
@@ -74,13 +90,31 @@ async function submitCorrection() {
       </p>
       <p v-if="loading">Memuat form skor...</p>
       <template v-else>
-        <SindromAccordion
-          v-for="sindrom in sindromList"
-          :key="sindrom.id"
-          :sindrom="sindrom"
-          :scores="scores"
-          @update:scores="(v) => (scores = v)"
-        />
+        <div class="report-correction__mode">
+          <label>
+            <input v-model="correctionMode" type="radio" value="manual" />
+            Form Skor Manual
+          </label>
+          <label>
+            <input v-model="correctionMode" type="radio" value="worksheet" />
+            Measurement Worksheet
+          </label>
+        </div>
+
+        <template v-if="correctionMode === 'manual'">
+          <SindromAccordion
+            v-for="sindrom in sindromList"
+            :key="sindrom.id"
+            :sindrom="sindrom"
+            :scores="scores"
+            @update:scores="(v) => (scores = v)"
+          />
+        </template>
+        <template v-else>
+          <MeasurementWorksheet :sample-id="sampleId" @saved="onMeasurementsSaved" />
+          <IndikatorChecklist ref="checklistRef" :sample-id="sampleId" @apply="applyChecklistTally" />
+        </template>
+
         <label class="report-correction__catatan">
           Alasan koreksi (opsional, tersimpan di riwayat)
           <textarea v-model="catatan" placeholder="Mis. salah input skor Aspek 07 sebelumnya" />
@@ -113,6 +147,12 @@ async function submitCorrection() {
   padding: 8px 12px;
   font-size: 13px;
   margin-bottom: 14px;
+}
+.report-correction__mode {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
 }
 .report-correction__catatan {
   display: block;

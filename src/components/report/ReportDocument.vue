@@ -73,6 +73,14 @@ async function saveEdit(kode) {
             Edit narasi
           </button>
         </template>
+
+        <ul v-if="aspek.indikator_terkait?.length" class="report-document__indikator">
+          <li v-for="ind in aspek.indikator_terkait" :key="ind.kode">
+            <span class="report-document__indikator-kode">{{ ind.kode }}</span>
+            {{ ind.nama }}
+            <p v-if="ind.keterangan" class="report-document__indikator-keterangan">{{ ind.keterangan }}</p>
+          </li>
+        </ul>
       </div>
     </section>
   </div>
@@ -141,5 +149,27 @@ async function saveEdit(kode) {
   display: flex;
   gap: 8px;
   margin-top: 6px;
+}
+.report-document__indikator {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--color-border);
+  list-style: none;
+}
+.report-document__indikator li {
+  font-size: 12px;
+  color: var(--color-text-soft);
+  margin-bottom: 6px;
+}
+.report-document__indikator-kode {
+  font-family: var(--font-heading);
+  color: var(--color-ink);
+  margin-right: 6px;
+}
+.report-document__indikator-keterangan {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.4;
 }
 </style>

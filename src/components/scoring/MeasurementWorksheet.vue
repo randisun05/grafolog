@@ -9,6 +9,8 @@ const emit = defineEmits(['saved'])
 
 const variables = ref([]) // [{ id, nama, axis, kategori: [...] }]
 const nilai = ref({}) // { [variable_id]: number|string }
+const nilaiMin = ref({}) // { [variable_id]: number|string } - dipakai rule irregularity (selisih maks-min)
+const nilaiMax = ref({})
 const loading = ref(true)
 const saving = ref(false)
 const saveError = ref('')
@@ -23,11 +25,17 @@ onMounted(async () => {
     variables.value = vars
     for (const reading of existing) {
       nilai.value[reading.variable_id] = reading.nilai
+      nilaiMin.value[reading.variable_id] = reading.nilai_min
+      nilaiMax.value[reading.variable_id] = reading.nilai_max
     }
   } finally {
     loading.value = false
   }
 })
+
+function toNumberOrNull(raw) {
+  return raw === '' || raw === null || raw === undefined ? null : Number(raw)
+}
 
 async function save() {
   // Kirim SEMUA variabel, bukan cuma yang terisi - field yang dikosongkan
@@ -35,11 +43,12 @@ async function save() {
   // hasil ukur lamanya, bukan diam-diam dibiarkan basi (bug ditemukan
   // lewat review 2026-08-08: sebelumnya field kosong difilter keluar dari
   // payload sama sekali, jadi "Tersimpan" tapi nilai lama tidak terhapus).
-  const pengukuran = variables.value.map((v) => {
-    const raw = nilai.value[v.id]
-
-    return { variable_id: v.id, nilai: raw === '' || raw === null || raw === undefined ? null : Number(raw) }
-  })
+  const pengukuran = variables.value.map((v) => ({
+    variable_id: v.id,
+    nilai: toNumberOrNull(nilai.value[v.id]),
+    nilai_min: toNumberOrNull(nilaiMin.value[v.id]),
+    nilai_max: toNumberOrNull(nilaiMax.value[v.id]),
+  }))
   if (pengukuran.length === 0) return
 
   saving.value = true
@@ -62,16 +71,21 @@ async function save() {
     <p class="measurement-worksheet__hint">
       Isi hasil ukur fisik (kaliper) untuk variabel yang relevan. Tidak perlu semua variabel -
       Indikator yang punya aturan operator akan otomatis tercentang di langkah berikutnya begitu
-      variabelnya terisi.
+      variabelnya terisi. Kolom <strong>Min</strong>/<strong>Maks</strong> opsional - isi kalau ukurannya
+      bervariasi di tulisan (dipakai rule "irregular", dihitung dari selisih maks-min).
     </p>
 
     <p v-if="loading" class="measurement-worksheet__note">Memuat variabel ukur...</p>
     <template v-else>
       <div class="measurement-worksheet__grid">
-        <label v-for="v in variables" :key="v.id" class="measurement-worksheet__field">
+        <div v-for="v in variables" :key="v.id" class="measurement-worksheet__field">
           <span class="measurement-worksheet__label">{{ v.nama }}</span>
-          <input v-model="nilai[v.id]" type="number" step="0.01" placeholder="mm" />
-        </label>
+          <div class="measurement-worksheet__inputs">
+            <input v-model="nilai[v.id]" type="number" step="0.01" placeholder="nilai" title="Nilai" />
+            <input v-model="nilaiMin[v.id]" type="number" step="0.01" placeholder="min" title="Min (untuk rentang)" />
+            <input v-model="nilaiMax[v.id]" type="number" step="0.01" placeholder="maks" title="Maks (untuk rentang)" />
+          </div>
+        </div>
       </div>
 
       <p v-if="saveError" class="error">{{ saveError }}</p>
@@ -120,6 +134,17 @@ async function save() {
 }
 .measurement-worksheet__field input {
   margin-top: 0;
+}
+.measurement-worksheet__inputs {
+  display: flex;
+  gap: 4px;
+}
+.measurement-worksheet__inputs input {
+  min-width: 0;
+  flex: 1;
+}
+.measurement-worksheet__inputs input:first-child {
+  flex: 1.4;
 }
 .measurement-worksheet__label {
   line-height: 1.3;
