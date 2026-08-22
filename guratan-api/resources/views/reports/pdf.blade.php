@@ -14,6 +14,10 @@
         .aspek h3 { font-size: 13px; margin-bottom: 2px; }
         .aspek .skor { color: #444; font-size: 11px; margin-bottom: 4px; }
         .aspek p { text-align: justify; line-height: 1.4; margin: 0; }
+        .aspek .indikator { margin: 6px 0 0 0; padding-left: 16px; font-size: 11px; color: #333; }
+        .aspek .indikator li { margin-bottom: 4px; }
+        .aspek .indikator .kode { font-weight: bold; margin-right: 4px; }
+        .aspek .indikator .keterangan { color: #555; margin: 2px 0 0 0; }
     </style>
 </head>
 <body>
@@ -35,6 +39,18 @@
                     <h3>{{ $aspek['nama'] }}</h3>
                     <p class="skor">Skor: {{ $aspek['skor'] }}/10 - {{ $aspek['band_label'] }}</p>
                     <p>{!! nl2br(e($aspek['narasi'])) !!}</p>
+                    @if (!empty($aspek['indikator_terkait']))
+                        <ul class="indikator">
+                            @foreach ($aspek['indikator_terkait'] as $indikator)
+                                <li>
+                                    <span class="kode">{{ $indikator['kode'] }}</span>{{ $indikator['nama'] }}
+                                    @if (!empty($indikator['keterangan']))
+                                        <p class="keterangan">{{ $indikator['keterangan'] }}</p>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
             @endforeach
         </div>
