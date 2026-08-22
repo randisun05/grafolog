@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
 
@@ -8,14 +8,16 @@ const props = defineProps({
   narasiTerpadu: { type: String, default: null },
   narasiBahasa: { type: String, default: null },
   narasiStatus: { type: String, default: 'belum_dibuat' },
+  narasiGenerationError: { type: String, default: null },
 })
 const emit = defineEmits(['updated'])
 
 const toast = useToast()
 const draft = ref(props.narasiTerpadu ?? '')
 const bahasa = ref(props.narasiBahasa ?? 'id')
-const generating = ref(false)
+const requesting = ref(false) // POST /generate atau /narasi-terpadu sedang di-kirim
 const saving = ref(false)
+let pollTimer = null
 
 watch(
   () => [props.narasiTerpadu, props.narasiBahasa],
@@ -25,22 +27,54 @@ watch(
   },
 )
 
+// Job generate berjalan di background (GenerateNarasiTerpaduJob, lihat
+// guratan-api/CLAUDE.md) - selama status 'generating', poll laporan tiap
+// beberapa detik supaya UI otomatis update begitu job selesai, tanpa
+// grafolog perlu reload manual.
+watch(
+  () => props.narasiStatus,
+  (status) => (status === 'generating' ? startPolling() : stopPolling()),
+  { immediate: true },
+)
+onUnmounted(stopPolling)
+
+function startPolling() {
+  if (pollTimer) return
+  pollTimer = setInterval(async () => {
+    const { data } = await api.get(`/reports/${props.reportId}`)
+    emit('updated', data)
+  }, 4000)
+}
+
+function stopPolling() {
+  if (!pollTimer) return
+  clearInterval(pollTimer)
+  pollTimer = null
+}
+
 const statusLabel = {
   belum_dibuat: 'Belum dibuat',
+  generating: 'Sedang di-generate...',
   draft: 'Draft (belum terlihat klien)',
   final: 'Final (terlihat klien)',
 }
 
-async function generateDraft() {
-  generating.value = true
+async function generateDraft(force = false) {
+  requesting.value = true
   try {
-    const { data } = await api.post(`/reports/${props.reportId}/narasi-terpadu/generate`, { bahasa: bahasa.value })
+    const { data } = await api.post(`/reports/${props.reportId}/narasi-terpadu/generate`, { bahasa: bahasa.value, force })
     emit('updated', data)
-    toast.push('Draft narasi terpadu berhasil dibuat.', 'success')
+    toast.push('Draft narasi terpadu sedang diproses di background.', 'success')
   } catch (e) {
+    if (e.response?.status === 409 && !force) {
+      if (confirm('Data skor belum berubah sejak generate terakhir. Tetap generate ulang?')) {
+        return generateDraft(true)
+      }
+      return
+    }
     toast.push(e.response?.data?.message ?? 'Gagal membuat draft narasi terpadu.')
   } finally {
-    generating.value = false
+    requesting.value = false
   }
 }
 
@@ -83,17 +117,24 @@ function markFinal() {
       Ini yang dikirim ke klien - deskriptif, mengalir, bukan daftar per-aspek. Breakdown Sindrom/Aspek/Indikator di
       bawah tetap ada sebagai bahan pengecekan internal, tidak lagi dikirim ke klien.
     </p>
+    <p v-if="narasiGenerationError" class="narasi-terpadu__error">
+      Generate terakhir gagal: {{ narasiGenerationError }}
+    </p>
+    <p v-if="narasiStatus === 'generating'" class="narasi-terpadu__generating-hint">
+      Draft sedang diproses AI di background (bisa 1-3 menit untuk laporan panjang) - halaman ini otomatis update
+      begitu selesai, tidak perlu di-reload.
+    </p>
 
     <div class="narasi-terpadu__controls">
       <label class="narasi-terpadu__bahasa">
         Bahasa
-        <select v-model="bahasa">
+        <select v-model="bahasa" :disabled="narasiStatus === 'generating'">
           <option value="id">Bahasa Indonesia</option>
           <option value="en">English</option>
         </select>
       </label>
-      <button type="button" class="btn" :disabled="generating" @click="generateDraft">
-        {{ generating ? 'Membuat draft...' : 'Generate Draft AI' }}
+      <button type="button" class="btn" :disabled="requesting || narasiStatus === 'generating'" @click="generateDraft(false)">
+        {{ narasiStatus === 'generating' ? 'Sedang diproses...' : 'Generate Draft AI' }}
       </button>
     </div>
 
@@ -101,14 +142,17 @@ function markFinal() {
       v-model="draft"
       class="narasi-terpadu__textarea"
       rows="14"
+      :disabled="narasiStatus === 'generating'"
       placeholder="Belum ada narasi. Klik 'Generate Draft AI' atau tulis manual di sini."
     ></textarea>
 
     <div class="narasi-terpadu__actions">
-      <button type="button" class="btn" :disabled="saving" @click="save('draft')">
+      <button type="button" class="btn" :disabled="saving || narasiStatus === 'generating'" @click="save('draft')">
         {{ saving ? 'Menyimpan...' : 'Simpan sebagai Draft' }}
       </button>
-      <button type="button" class="btn btn--primary" :disabled="saving" @click="markFinal">Tandai Final</button>
+      <button type="button" class="btn btn--primary" :disabled="saving || narasiStatus === 'generating'" @click="markFinal">
+        Tandai Final
+      </button>
     </div>
   </div>
 </template>
@@ -148,10 +192,25 @@ function markFinal() {
   background: var(--color-gold, #c9a227);
   color: #fff;
 }
+.narasi-terpadu__status--generating {
+  background: var(--color-seal);
+  color: #fff;
+}
 .narasi-terpadu__hint {
   font-size: 12.5px;
   color: var(--color-text-soft);
   margin: 6px 0 14px;
+}
+.narasi-terpadu__error {
+  font-size: 12.5px;
+  color: var(--color-seal);
+  margin: 0 0 10px;
+}
+.narasi-terpadu__generating-hint {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+  font-style: italic;
+  margin: 0 0 10px;
 }
 .narasi-terpadu__controls {
   display: flex;

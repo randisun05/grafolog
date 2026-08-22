@@ -574,6 +574,18 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `edit_narasi_terpadu` revision jenis as plain text (`revisionData[r.id]
   .narasi_terpadu`) instead of feeding it through `ReportDocument` (whose
   `{sindrom: [...]}` shape doesn't match this revision type's snapshot).
+  **Gained a 4th status, `generating`, 2026-08-22** (generate moved to a
+  queue job backend-side, see `guratan-api/CLAUDE.md`'s "Narasi terpadu -
+  optimalisasi") — while that status is active, the panel disables its
+  controls and polls `GET /reports/{id}` every 4s (plain `setInterval`,
+  cleared `onUnmounted` and whenever the status leaves `generating` via a
+  `watch`), no WebSocket/broadcasting needed given how infrequently this
+  fires (one grafolog click, not real traffic). A 409 from `/generate`
+  (dedup-guard — data unchanged since the last successful generate) is
+  caught and turned into a `window.confirm()`; confirming resends the same
+  request with `force: true`. `narasiGenerationError` prop (new) renders
+  inline when a background generate failed, so the panel isn't just stuck
+  looking idle with no explanation.
 
 ## Stack
 

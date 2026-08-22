@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\GenerateNarasiTerpaduJob;
 use App\Models\HandwritingSample;
 use App\Models\PersonalityReport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\SeedsGrafologiKb;
 use Tests\TestCase;
@@ -55,6 +57,21 @@ class NarasiTerpaduControllerTest extends TestCase
 
     private function fakeLlm(string $draftText): void
     {
+        $this->fakeLlmSequence([$draftText]);
+    }
+
+    /**
+     * Http::fake() merger stub baru DI BELAKANG stub lama untuk pola URL
+     * yang sama, dan resolusinya ambil kecocokan PERTAMA - jadi memanggil
+     * fakeLlm() dua kali dalam 1 test untuk 2 draft berbeda TIDAK akan
+     * pernah dapat draft ke-2 (stub pertama selalu menang). Test yang perlu
+     * >1 respons berbeda (regenerate/dedup-guard) harus pakai ini,
+     * Http::sequence(), bukan panggil fakeLlm() berulang.
+     *
+     * @param  array<int, string>  $draftTexts
+     */
+    private function fakeLlmSequence(array $draftTexts): void
+    {
         config([
             'services.llm.provider' => 'api',
             'services.llm.api_key' => 'test-key',
@@ -62,11 +79,12 @@ class NarasiTerpaduControllerTest extends TestCase
             'services.llm.model' => 'claude-test-model',
         ]);
 
-        Http::fake([
-            'api.anthropic.com/*' => Http::response([
-                'content' => [['type' => 'text', 'text' => $draftText]],
-            ]),
-        ]);
+        $sequence = Http::sequence();
+        foreach ($draftTexts as $draftText) {
+            $sequence->push(['content' => [['type' => 'text', 'text' => $draftText]]]);
+        }
+
+        Http::fake(['api.anthropic.com/*' => $sequence]);
     }
 
     // --- generate ---
@@ -113,17 +131,102 @@ class NarasiTerpaduControllerTest extends TestCase
         });
     }
 
-    public function test_generate_returns_clean_503_when_llm_unconfigured(): void
+    public function test_generate_job_records_error_and_reverts_status_when_llm_unconfigured(): void
     {
         $grafolog = User::factory()->create(['role' => 'grafolog']);
         $report = $this->completedReportFor($grafolog);
         // LLM_PROVIDER default 'none' di test env - sengaja tidak dikonfigurasi.
+        // QUEUE_CONNECTION=sync di phpunit.xml - job langsung jalan inline,
+        // jadi response POST ini sudah mencerminkan hasil AKHIR job, bukan
+        // status 'generating' sesaat (itu dites terpisah lewat Queue::fake()
+        // di bawah karena sync queue tidak menyisakan jendela untuk diamati).
 
         $response = $this->actingAs($grafolog, 'sanctum')
             ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id']);
 
-        $response->assertStatus(503);
-        $this->assertSame('belum_dibuat', $report->fresh()->narasi_status);
+        $response->assertOk();
+        $fresh = $report->fresh();
+        $this->assertSame('belum_dibuat', $fresh->narasi_status);
+        $this->assertNotNull($fresh->narasi_generation_error);
+        $this->assertNull($fresh->narasi_terpadu);
+    }
+
+    public function test_generate_sets_status_to_generating_and_dispatches_job(): void
+    {
+        Queue::fake();
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $report = $this->completedReportFor($grafolog);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id']);
+
+        $response->assertOk()->assertJsonPath('narasi_status', 'generating');
+
+        Queue::assertPushed(GenerateNarasiTerpaduJob::class, fn ($job) => $job->reportId === $report->id && $job->bahasa === 'id');
+    }
+
+    public function test_regenerate_with_unchanged_data_is_rejected_without_force(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $report = $this->completedReportFor($grafolog);
+        $this->fakeLlm('Draft pertama.');
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id'])
+            ->assertOk();
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id']);
+
+        $response->assertStatus(409);
+        $this->assertSame('Draft pertama.', $report->fresh()->narasi_terpadu);
+    }
+
+    public function test_regenerate_with_force_bypasses_dedup_guard(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $report = $this->completedReportFor($grafolog);
+        $this->fakeLlmSequence(['Draft pertama.', 'Draft kedua, ditulis ulang.']);
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id'])
+            ->assertOk();
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id', 'force' => true]);
+
+        $response->assertOk()->assertJsonPath('narasi_terpadu', 'Draft kedua, ditulis ulang.');
+    }
+
+    public function test_regenerate_after_score_correction_is_allowed_without_force(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $report = $this->completedReportFor($grafolog);
+        $this->fakeLlmSequence(['Draft pertama.', 'Draft setelah koreksi skor.']);
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id'])
+            ->assertOk();
+
+        // Skor berubah (mis. lewat ScoringController::correct) -> data.sindrom
+        // beda -> hash beda -> dedup-guard TIDAK menahan generate berikutnya
+        // walau tanpa force.
+        $data = $report->fresh()->data;
+        $data['sindrom'][0]['aspek'][0]['skor'] = 3;
+        $report->update(['data' => $data]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id']);
+
+        $response->assertOk()->assertJsonPath('narasi_terpadu', 'Draft setelah koreksi skor.');
+    }
+
+    public function test_generate_rejected_while_already_generating(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $report = $this->completedReportFor($grafolog);
+        $report->update(['narasi_status' => 'generating']);
+
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id'])
+            ->assertStatus(409);
     }
 
     public function test_stranger_grafolog_cannot_generate_narasi_terpadu(): void

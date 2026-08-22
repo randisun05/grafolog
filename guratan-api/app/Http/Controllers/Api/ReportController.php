@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Reporting\GenerateNarasiTerpaduRequest;
 use App\Http\Requests\Reporting\UpdateNarasiOverrideRequest;
 use App\Http\Requests\Reporting\UpdateNarasiTerpaduRequest;
+use App\Jobs\GenerateNarasiTerpaduJob;
 use App\Models\AuditLog;
 use App\Models\PersonalityReport;
 use App\Models\ReportRevision;
@@ -16,9 +17,7 @@ use App\Services\Reporting\ReportRevisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
@@ -26,7 +25,6 @@ class ReportController extends Controller
     public function __construct(
         private ReportPdfService $pdfService,
         private ReportRevisionService $reportRevisions,
-        private NarasiTerpaduService $narasiTerpadu,
     ) {}
 
     /**
@@ -102,11 +100,21 @@ class ReportController extends Controller
     }
 
     /**
-     * Buat draft narasi terpadu lewat LLM (1 call live, lihat
-     * NarasiTerpaduService docblock kenapa ini beda dari
-     * NarasiCacheService). Selalu jadi status 'draft' - TIDAK PERNAH
+     * Antre draft narasi terpadu lewat LLM di background
+     * (GenerateNarasiTerpaduJob - lihat docblocknya & NarasiTerpaduService
+     * kenapa ini beda dari NarasiCacheService, dan kenapa asinkron sejak
+     * 2026-08-22: laporan panjang bisa butuh 1-3 menit generate, terlalu
+     * lama untuk 1 request HTTP). Selalu jadi status 'draft' - TIDAK PERNAH
      * langsung 'final', grafolog wajib review/edit dulu lewat
      * updateNarasiTerpadu() sebelum klien bisa melihatnya.
+     *
+     * Dedup-guard: kalau data skor (`data.sindrom`) + bahasa PERSIS sama
+     * dengan generate terakhir yang berhasil (`narasi_input_hash`), tolak
+     * dengan 409 kecuali `force: true` - supaya klik ganda/generate ulang
+     * tanpa perubahan tidak membakar LLM call percuma. Ruang kombinasi skor
+     * (lihat CLAUDE.md) terlalu besar untuk di-cache permanen; ini cuma
+     * dedup pada level "1 laporan spesifik ini belum berubah", bukan
+     * caching lintas laporan.
      */
     public function generateNarasiTerpadu(GenerateNarasiTerpaduRequest $request, PersonalityReport $report): JsonResponse
     {
@@ -114,22 +122,19 @@ class ReportController extends Controller
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat membuat narasi terpadu.');
         abort_unless($report->sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($report->status !== 'completed', 422, 'Laporan belum selesai dibuat.');
+        abort_if($report->narasi_status === 'generating', 409, 'Narasi terpadu sedang diproses, tunggu sampai selesai.');
 
-        try {
-            $draft = $this->narasiTerpadu->generateDraft($report, $request->validated('bahasa'));
-        } catch (RuntimeException $e) {
-            Log::error('NarasiTerpaduService gagal generate draft', ['report_id' => $report->id, 'error' => $e->getMessage()]);
-            abort(503, 'Pembuatan narasi terpadu sedang tidak tersedia, coba lagi nanti.');
+        $bahasa = $request->validated('bahasa');
+        $hash = NarasiTerpaduService::inputHashFor($report, $bahasa);
+        $dataBelumBerubah = $report->narasi_input_hash === $hash && $report->narasi_status !== 'belum_dibuat';
+
+        if ($dataBelumBerubah && ! $request->boolean('force')) {
+            abort(409, 'Data skor belum berubah sejak generate terakhir. Kirim ulang dengan force untuk tetap generate.');
         }
 
-        $report->update([
-            'narasi_terpadu' => $draft,
-            'narasi_bahasa' => $request->validated('bahasa'),
-            'narasi_status' => 'draft',
-            'pdf_path_klien' => null,
-        ]);
+        $report->update(['narasi_status' => 'generating', 'narasi_generation_error' => null]);
 
-        AuditLog::record('generate_narasi_terpadu', PersonalityReport::class, $report->id, $user->id, $request->ip());
+        GenerateNarasiTerpaduJob::dispatch($report->id, $bahasa, $user->id, $hash);
 
         return response()->json($report->fresh());
     }

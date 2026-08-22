@@ -71,6 +71,7 @@ function onNarasiTerpaduUpdated(updatedReport) {
     narasi_terpadu: updatedReport.narasi_terpadu,
     narasi_bahasa: updatedReport.narasi_bahasa,
     narasi_status: updatedReport.narasi_status,
+    narasi_generation_error: updatedReport.narasi_generation_error,
   }
 }
 </script>
@@ -103,6 +104,7 @@ function onNarasiTerpaduUpdated(updatedReport) {
           :narasi-terpadu="report.narasi_terpadu"
           :narasi-bahasa="report.narasi_bahasa"
           :narasi-status="report.narasi_status"
+          :narasi-generation-error="report.narasi_generation_error"
           @updated="onNarasiTerpaduUpdated"
         />
 

@@ -23,6 +23,17 @@ use RuntimeException;
  */
 class NarasiTerpaduService
 {
+    /**
+     * 16000 (bukan 4000 seperti semula) - laporan lengkap 40 aspek + bukti
+     * Indikator bisa butuh output setara 20-40 halaman (~13.000-27.000
+     * token), 4000 token (~6-8 halaman) memotong draft di tengah kalimat
+     * tanpa error. Aman dipanggil non-streaming sekarang karena generate()
+     * dijalankan lewat queue job (GenerateNarasiTerpaduJob), bukan lagi
+     * langsung di request HTTP grafolog - tidak ada lagi risiko timeout
+     * request web untuk generate yang lama.
+     */
+    private const MAX_TOKENS = 16000;
+
     public function generateDraft(PersonalityReport $report, string $bahasa): string
     {
         $this->ensureConfigured();
@@ -51,13 +62,26 @@ class NarasiTerpaduService
           tanpa embel-embel/preamble.
         PROMPT;
 
+        // Timeout dinaikkan dari default Laravel (30s) - generate 16000 token
+        // output bisa makan 1-3 menit, dan sekarang berjalan di dalam queue
+        // job jadi tidak lagi terikat batas waktu request HTTP web.
         $response = Http::withHeaders([
             'x-api-key' => config('services.llm.api_key'),
             'anthropic-version' => '2023-06-01',
-        ])->post(config('services.llm.endpoint'), [
+        ])->timeout(300)->post(config('services.llm.endpoint'), [
             'model' => config('services.llm.model'),
-            'max_tokens' => 4000,
-            'system' => $systemPrompt,
+            'max_tokens' => self::MAX_TOKENS,
+            // System prompt-nya tetap sama persis di setiap generate (tidak
+            // menyertakan data laporan) - ditandai cache_control supaya
+            // Anthropic tidak memproses ulang dari nol tiap call, sedikit
+            // lebih cepat & lebih murah. Data laporan (yang genuinely unik
+            // tiap laporan) tetap di `messages`, TIDAK di-cache - benar,
+            // karena memang tidak akan pernah cache-hit.
+            'system' => [[
+                'type' => 'text',
+                'text' => $systemPrompt,
+                'cache_control' => ['type' => 'ephemeral'],
+            ]],
             'messages' => [[
                 'role' => 'user',
                 'content' => $ringkasan,
@@ -74,6 +98,20 @@ class NarasiTerpaduService
         }
 
         return $teks;
+    }
+
+    /**
+     * Fingerprint data yang dipakai untuk 1 generate - dipakai
+     * ReportController::generateNarasiTerpadu() untuk menolak generate
+     * ulang yang percuma (skor/bahasa belum berubah sejak generate
+     * terakhir) kecuali grafolog eksplisit minta `force`. Cuma dari
+     * `data.sindrom` (skor+narasi final) + bahasa - BUKAN dari
+     * narasi_terpadu/narasi_status sendiri, supaya tidak ikut berubah kalau
+     * grafolog cuma edit teks manual tanpa mengoreksi skor.
+     */
+    public static function inputHashFor(PersonalityReport $report, string $bahasa): string
+    {
+        return hash('sha256', json_encode($report->data['sindrom'] ?? []).'|'.$bahasa);
     }
 
     private function ensureConfigured(): void

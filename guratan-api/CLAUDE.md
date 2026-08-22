@@ -1582,9 +1582,67 @@ untuk di-passthrough (ini sintesis, bukan terjemahan).
   API-nya diverifikasi cocok dengan `ApiLlmProvider` yang sudah pernah
   dipakai produksi, bukan ditebak) dan `php artisan test`/`npm run build`/
   `npm run lint`. `.env` masih `LLM_PROVIDER=none` di semua environment
-  dev yang diketahui — generate draft akan gagal 503 sampai kredensial
-  Anthropic asli diisi. Perlu 1 sesi verifikasi manual lewat browser +
-  kredensial asli sebelum dianggap production-ready.
+  dev yang diketahui — generate draft akan gagal sampai kredensial
+  Anthropic asli diisi (sekarang gagalnya tercatat di `narasi_generation_
+  error`, bukan 503 langsung — lihat optimalisasi di bawah). Perlu 1 sesi
+  verifikasi manual lewat browser + kredensial asli sebelum dianggap
+  production-ready.
+
+### Narasi terpadu — optimalisasi 2026-08-22
+
+User bertanya: laporan asli bisa 20-40 halaman (40 aspek + bukti Indikator),
+apakah `max_tokens` cukup dan apakah generate-nya bisa "dijadikan database
+interpretasi semua kemungkinan skor" biar tidak selalu panggil AI? Dihitung
+dari data KB sungguhan proyek ini: ruang kombinasi narasi_level per laporan
+adalah **4^40 ≈ 1,2 septiliun** (40 aspek × 4 level, independen) — jauh di
+luar apa pun yang bisa di-pregenerate/cache penuh (beda kelas masalah dari
+`NarasiCacheService` yang cuma 160 kombinasi tetap). Keputusan: generate
+tetap 1 call live per-laporan (tidak berubah), tapi 3 optimisasi nyata yang
+memang bisa dikerjakan:
+
+1. **`NarasiTerpaduService::MAX_TOKENS` dinaikkan 4000 → 16000** — 4000
+   token (~6-8 halaman) memotong draft panjang di tengah kalimat tanpa
+   error; 16000 (~24 halaman) sesuai rekomendasi default non-streaming
+   Anthropic. `Http` client diberi `->timeout(300)` (dari default 30 detik)
+   karena generate segitu banyak token bisa makan 1-3 menit.
+2. **Generate dipindah ke queue job asinkron** (`App\Jobs\
+   GenerateNarasiTerpaduJob`, `QUEUE_CONNECTION=database` sama seperti
+   `SendReportCompletedNotification`) — dengan `max_tokens` yang lebih
+   besar, request sinkron 1-3 menit berisiko timeout PHP/web server.
+   `ReportController::generateNarasiTerpadu()` sekarang cuma set
+   `narasi_status = 'generating'` lalu `dispatch()`, return langsung (tidak
+   nunggu). Job yang benar-benar panggil `NarasiTerpaduService::
+   generateDraft()`; kalau gagal (LLM belum dikonfigurasi, dst), status
+   dikembalikan ke `draft` (kalau sebelumnya sudah ada draft — tidak
+   dihapus) atau `belum_dibuat` (kalau belum pernah berhasil sama sekali),
+   dan pesannya disimpan ke kolom baru `narasi_generation_error` supaya
+   grafolog tahu kenapa, bukan diam-diam macet di `generating` selamanya.
+   Frontend (`NarasiTerpaduPanel.vue`) polling `GET /reports/{id}` tiap 4
+   detik selama status `generating`, auto-update begitu selesai — tidak
+   perlu WebSocket/broadcasting, cukup polling sederhana karena frekuensi
+   generate sangat rendah (1 klik grafolog, bukan traffic tinggi).
+3. **Dedup-guard + Anthropic prompt caching** — kolom baru
+   `narasi_input_hash` (sha256 dari `data.sindrom` + bahasa) disimpan tiap
+   generate berhasil. Klik "Generate" lagi tanpa skor berubah ditolak 409
+   kecuali `force: true` (frontend menampilkan `confirm()`) — mencegah LLM
+   call percuma dari klik ganda/regenerate tanpa alasan. **Ini BUKAN cache
+   lintas-laporan** (mustahil, lihat perhitungan 4^40 di atas) — cuma
+   mencegah generate ulang PADA LAPORAN YANG SAMA kalau datanya belum
+   berubah. System prompt (instruksi tetap, tidak pernah menyertakan data
+   laporan) ditandai `cache_control: ephemeral` di request Anthropic —
+   Anthropic tidak proses ulang dari nol tiap call, sedikit lebih cepat/
+   murah; data laporan sendiri (di `messages`, genuinely unik tiap laporan)
+   sengaja TIDAK di-cache karena memang tidak akan pernah cache-hit.
+- Migrasi driver-aware baru: `narasi_status` enum dapat nilai ke-4
+  `generating`, kolom baru `narasi_input_hash`/`narasi_generation_error`.
+- 6 test baru (dispatch job via `Queue::fake()`, dedup-guard
+  ditolak/dilewati/reset-setelah-koreksi-skor, revert status + error
+  message saat job gagal) - 379 backend tests total (up from 373).
+  **Catatan testing**: `Http::fake()` MERGE stub baru DI BELAKANG yang
+  lama untuk pola URL sama dan ambil kecocokan pertama - test yang perlu
+  >1 respons berbeda dalam 1 test (regenerate) harus pakai
+  `Http::sequence()`, bukan panggil `Http::fake()` berulang (baru ketahuan
+  lewat 2 test gagal saat pertama ditulis pakai pola lama).
 
 ## Not built yet
 
