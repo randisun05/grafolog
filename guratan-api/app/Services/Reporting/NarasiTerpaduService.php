@@ -32,9 +32,12 @@ class NarasiTerpaduService
 
         $systemPrompt = <<<PROMPT
         Kamu adalah asisten penulisan laporan grafologi. Tugasmu merangkai data
-        skor & narasi per-aspek berikut menjadi SATU laporan deskriptif yang
-        mengalir dan komunikatif dalam {$namaBahasa}, seolah ditulis langsung
-        oleh seorang grafolog profesional untuk kliennya.
+        skor & narasi per-aspek berikut (beberapa aspek juga menyertakan bukti
+        tulisan tangan spesifik dari Indikator yang tercentang) menjadi SATU
+        laporan deskriptif yang mengalir dan komunikatif dalam {$namaBahasa},
+        seolah ditulis langsung oleh seorang grafolog profesional untuk
+        kliennya. Bukti Indikator boleh dipakai untuk memperkuat/mengkonkretkan
+        narasi aspek terkait, bukan didaftar terpisah.
 
         ATURAN KETAT:
         - JANGAN menambah klaim, contoh, atau interpretasi baru di luar data yang diberikan.
@@ -81,6 +84,13 @@ class NarasiTerpaduService
     }
 
     /**
+     * Sindrom -> Aspek -> Indikator, sama hierarki 3 level yang sudah dipakai
+     * di pdf.blade.php ("indikator_terkait" - lihat ScoringController::
+     * attachIndikatorNarasi()). Indikator cuma ada kalau sample diskor lewat
+     * Measurement Worksheet (mode manual tidak pernah punya
+     * sample_indikator_checks) - draft AI untuk laporan mode manual tetap
+     * jalan dengan 2 level saja, ini bukan syarat wajib.
+     *
      * @param  array<int, array<string, mixed>>  $sindromList
      */
     private function ringkasSindromAspek(array $sindromList): string
@@ -90,6 +100,12 @@ class NarasiTerpaduService
             $baris[] = "## {$sindrom['nama']} (rata-rata: {$sindrom['rata_rata_skor']}/10, {$sindrom['band_label_rata_rata']})";
             foreach ($sindrom['aspek'] as $aspek) {
                 $baris[] = "- {$aspek['nama']} (skor {$aspek['skor']}/10, {$aspek['band_label']}): {$aspek['narasi']}";
+                foreach ($aspek['indikator_terkait'] ?? [] as $indikator) {
+                    if (empty($indikator['keterangan'])) {
+                        continue;
+                    }
+                    $baris[] = "  - Bukti tulisan tangan ({$indikator['kode']} {$indikator['nama']}): {$indikator['keterangan']}";
+                }
             }
         }
 
