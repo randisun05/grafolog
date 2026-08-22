@@ -1784,6 +1784,85 @@ per-Aspek.
   root `ROADMAP.md` untuk item tertunda. Jangan isi data lewat tebakan/AI;
   tunggu file Excel atau contoh baris nyata dari user.
 
+## Narasi terpadu — alur tematik tetap, 2026-08-22
+
+User bertanya: laporan sebaiknya punya struktur yang sama tiap kali, atau
+boleh beda-beda? Dibahas 3 opsi (bebas total / template heading ketat /
+hybrid alur tematik tanpa heading), user pilih **hybrid**.
+`NarasiTerpaduService`'s system prompt sekarang menyertakan 4 urutan
+tematik tetap (gambaran umum → kekuatan utama → area perlu diperhatikan →
+catatan penutup reflektif) sebagai instruksi eksplisit, TANPA memaksa
+heading terpisah - tetap 1 dokumen mengalir, tapi alurnya predictable
+antar laporan (gampang di-QA grafolog, berguna kalau nanti dibandingkan
+antar kandidat B2B) tanpa terasa template-kotak seperti breakdown yang
+sengaja dihindari.
+
+## Topik (kategorisasi) — dibangun 2026-08-22
+
+User mengusulkan kategorisasi yang mengelompokkan interpretasi jadi 1
+kelompok (mis. "Karier", "Percintaan") - disebutkan bisa dipakai untuk
+tampilan report, chat interaktif, ATAU segmen khusus B2B (mis. HR minta
+laporan segmen Karier saja) - **tapi TIDAK memutuskan yang mana sekarang**.
+Instruksi eksplisit: "buat ini menjadi fungsi yang bisa di management...
+tapi mekanisme yang ada jangan dirubah, itu menjadi main product-nya, yang
+saya ceritakan ini hanya produk turunan". Jadi yang dibangun MURNI
+infrastruktur tagging + 1 contoh baca-saja (endpoint segmen) yang
+membuktikan datanya nyambung - BUKAN fitur chat, BUKAN endpoint/UI B2B
+lengkap, BUKAN perubahan apa pun ke `ScoringEngineService`/
+`NarasiCacheService`/`ChecklistEngineService`/`KombinasiTemuanService::
+evaluate()`/`NarasiTerpaduService`'s core generation - semua itu sengaja
+tidak disentuh.
+
+- **`topik`** (nama unik, deskripsi) + 2 pivot many-to-many:
+  **`aspek_topik`** dan **`kombinasi_temuan_topik`** - Aspek dipilih
+  sebagai unit tagging utama (bukan Sindrom yang terlalu luas, bukan
+  Indikator yang terlalu granular/704 baris - narasi per-level yang sudah
+  dicache ada di level Aspek), Kombinasi Temuan ikut ditag juga karena dia
+  juga menghasilkan teks interpretasi berdiri sendiri. **Pivot pertama di
+  codebase ini** yang pakai `belongsToMany` - sebelumnya semua relasi
+  eksplisit FK per-baris (pola `indikator_rules`), tapi tagging many-to-many
+  genuinely butuh bentuk ini.
+  **Gotcha yang kejadian & sudah diperbaiki**: model `Topik` awalnya lupa
+  `protected $table = 'topik'` eksplisit - Eloquent nebak `topiks` (plural
+  otomatis), langsung 4 test gagal `no such table: topiks` begitu
+  `AspekController`/`KombinasiTemuanController` eager-load relasi `topik`.
+  Semua model KB lain di proyek ini ('aspek', 'sindrom', 'indikator', dst)
+  memang butuh `$table` eksplisit karena tidak ikut konvensi pluralisasi
+  Inggris Eloquent - jangan lupa lagi kalau nambah model baru bertabel
+  Indonesia tanpa 's'.
+- **Admin CRUD `TopikController`** (`GET/POST/PUT/DELETE
+  /admin/knowledge/topik`) - tab ke-8 "Topik" di `AdminKnowledgeView.vue`,
+  inline (bukan komponen terpisah, CRUD-nya sesederhana Sindrom). **Sync
+  tagging** lewat 2 endpoint baru: `PUT /admin/knowledge/aspek/{aspek}/topik`
+  (`AspekController::syncTopik()`, checkbox multi-select baru di panel edit
+  Aspek yang sudah ada) dan `PUT /admin/knowledge/kombinasi/{kombinasiTemuan}/topik`
+  (`KombinasiTemuanController::syncTopik()`, checkbox serupa di
+  `KombinasiTemuanManager.vue`) - keduanya pakai `->sync()` (ganti seluruh
+  set tag sekaligus dari multi-select UI, bukan attach/detach 1-1).
+  `SyncTopikRequest` divalidasi `exists:topik,id` per elemen array.
+- **`App\Services\Reporting\TopikFilterService::filter(array $data, array
+  $topikIds): array`** - contoh konkret baca-saja: ambil `data.sindrom`/
+  `data.kombinasi_ditemukan` yang SUDAH TERSIMPAN di 1 laporan, saring ke
+  Aspek/Kombinasi Temuan yang ditag salah satu `$topikIds` (OR logic
+  antar-topik), Sindrom yang aspek-nya jadi kosong ikut dibuang. **Tidak
+  pernah memanggil ulang mesin skoring/AI apa pun** - murni transformasi
+  data yang sudah ada. Endpoint baru `GET /reports/{report}/segmen?topik_ids[]=N`
+  (`ReportController::segmen()`, staff-only - gate `isClientViewer()` yang
+  sama dengan breakdown internal biasa, klien tetap tidak pernah bisa
+  akses ini). `topik_ids` kosong = kembalikan semua tanpa filter (fallback
+  aman, bukan 0 hasil).
+- 22 test baru (`TopikControllerTest` - CRUD, unique-nama, sync ganti-set,
+  reject id tidak valid, cascade delete cuma lepas tag bukan hapus Aspek;
+  `ReportSegmenTest` - filter benar, kosong = unfiltered, sindrom-kosong
+  dibuang, klien & orang lain ditolak). 413 backend tests total (up from
+  399).
+- **Belum dipakai fitur konsumen manapun** (sengaja, sesuai instruksi
+  user) - tagging + endpoint segmen ini infrastruktur murni, menunggu
+  keputusan produk berikutnya soal yang mana dulu mau dibangun (tampilan
+  report bersegmen, chat, atau endpoint B2B formal). `narasi_terpadu`
+  (laporan klien) TIDAK menerima parameter topik apa pun - tetap selalu
+  laporan lengkap seperti sebelumnya.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

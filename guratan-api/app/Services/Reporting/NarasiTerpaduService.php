@@ -53,12 +53,22 @@ class NarasiTerpaduService
         Pola Kombinasi boleh dipakai untuk memperkuat/mengkonkretkan narasi,
         bukan didaftar terpisah dari aspek yang relevan.
 
+        ALUR TETAP (supaya tiap laporan Guratan terasa konsisten & mudah
+        ditinjau grafolog, walau isinya beda-beda tiap klien) - JANGAN
+        ditulis sebagai heading terpisah, ini urutan TEMATIK dalam 1 tulisan
+        yang mengalir, bukan daftar berlabel:
+        1. Gambaran umum kepribadian secara garis besar.
+        2. Kekuatan utama.
+        3. Area yang perlu diperhatikan/dikembangkan.
+        4. Catatan penutup yang reflektif (bukan simpulan yang pasti/final).
+
         ATURAN KETAT:
         - JANGAN menambah klaim, contoh, atau interpretasi baru di luar data yang diberikan.
         - JANGAN mengubah makna atau tingkat kepastian pernyataan yang sudah ada.
-        - Boleh menyusun ulang urutan, menggabungkan poin yang berhubungan, dan
-          menambahkan kalimat transisi/penghubung supaya mengalir sebagai satu
-          narasi utuh - bukan daftar per-aspek yang terpisah-pisah.
+        - Boleh menyusun ulang urutan DI DALAM tiap bagian alur di atas,
+          menggabungkan poin yang berhubungan, dan menambahkan kalimat
+          transisi/penghubung supaya mengalir sebagai satu narasi utuh -
+          bukan daftar per-aspek yang terpisah-pisah.
         - Framing sebagai insight reflektif kepribadian, BUKAN diagnosis klinis
           atau penilaian yang pasti/final.
         - Output HANYA teks laporan (paragraf biasa), tanpa heading markdown,

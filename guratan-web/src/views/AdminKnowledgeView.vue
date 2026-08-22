@@ -16,6 +16,7 @@ const tabs = [
   { key: 'band', label: 'Band Skor' },
   { key: 'peta', label: 'Peta Konsep' },
   { key: 'kombinasi', label: 'Kombinasi Temuan' },
+  { key: 'topik', label: 'Topik' },
 ]
 const activeTab = ref('sindrom')
 
@@ -112,6 +113,7 @@ function startEditAspek(a) {
     narasi_medium: a.narasi_medium ?? '',
     narasi_low: a.narasi_low ?? '',
   }
+  aspekTopikSelection.value = (a.topik ?? []).map((t) => t.id)
 }
 function cancelEditAspek() {
   expandedAspekId.value = null
@@ -512,11 +514,83 @@ async function loadBands() {
   bandList.value = data
 }
 
+// --- Topik (kategorisasi, 2026-08-22) - lihat CLAUDE.md -------------------
+const topikList = ref([])
+const topikForm = ref({ nama: '', deskripsi: '' })
+const topikErrors = ref({})
+const topikSubmitting = ref(false)
+const topikEditingId = ref(null)
+const topikEditForm = ref({ nama: '', deskripsi: '' })
+// Selection Topik untuk Aspek yang sedang dibuka editnya (dipisah dari
+// aspekEditForm - ini sync() terpisah, bukan field biasa yang ikut
+// tersimpan lewat saveAspek()).
+const aspekTopikSelection = ref([])
+const aspekTopikSaving = ref(false)
+
+function startEditTopik(t) {
+  topikEditingId.value = t.id
+  topikEditForm.value = { nama: t.nama, deskripsi: t.deskripsi ?? '' }
+}
+function cancelEditTopik() {
+  topikEditingId.value = null
+}
+async function createTopik() {
+  topikSubmitting.value = true
+  topikErrors.value = {}
+  try {
+    await api.post('/admin/knowledge/topik', topikForm.value)
+    toast.push('Topik berhasil dibuat.', 'success')
+    topikForm.value = { nama: '', deskripsi: '' }
+    await loadTopik()
+  } catch (e) {
+    topikErrors.value = e.response?.data?.errors ?? {}
+    toast.push(e.response?.data?.message ?? 'Gagal membuat Topik.')
+  } finally {
+    topikSubmitting.value = false
+  }
+}
+async function saveTopik(id) {
+  try {
+    await api.put(`/admin/knowledge/topik/${id}`, topikEditForm.value)
+    toast.push('Topik berhasil diubah.', 'success')
+    topikEditingId.value = null
+    await loadTopik()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah Topik.')
+  }
+}
+async function deleteTopik(t) {
+  if (!confirm(`Hapus Topik "${t.nama}"? Tag-nya di Aspek/Kombinasi Temuan ikut lepas.`)) return
+  try {
+    await api.delete(`/admin/knowledge/topik/${t.id}`)
+    toast.push('Topik dihapus.', 'success')
+    await loadTopik()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menghapus Topik.')
+  }
+}
+async function loadTopik() {
+  const { data } = await api.get('/admin/knowledge/topik')
+  topikList.value = data
+}
+async function saveAspekTopik(aspekId) {
+  aspekTopikSaving.value = true
+  try {
+    await api.put(`/admin/knowledge/aspek/${aspekId}/topik`, { topik_ids: aspekTopikSelection.value })
+    toast.push('Topik Aspek disimpan.', 'success')
+    await loadAspek()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menyimpan Topik Aspek.')
+  } finally {
+    aspekTopikSaving.value = false
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   loadError.value = ''
   try {
-    await Promise.all([loadSindrom(), loadAspek(), loadIndikator(1), loadVariables(), loadBands(), loadIndikatorOptions()])
+    await Promise.all([loadSindrom(), loadAspek(), loadIndikator(1), loadVariables(), loadBands(), loadIndikatorOptions(), loadTopik()])
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat knowledge base.'
   } finally {
@@ -663,6 +737,7 @@ onMounted(async () => {
             <span class="admin-km__variable-nama">{{ a.nama }}</span>
             <span class="admin-km__variable-axis">{{ a.sindrom.kode_romawi }} — {{ a.sindrom.nama }}</span>
             <span class="admin-km__variable-count">{{ a.indikator_count }} indikator</span>
+            <span v-if="a.topik?.length" class="admin-km__variable-count">{{ a.topik.map((t) => t.nama).join(', ') }}</span>
             <span class="admin-km__actions" @click.stop>
               <button type="button" class="btn" @click="expandedAspekId === a.id ? cancelEditAspek() : startEditAspek(a)">
                 {{ expandedAspekId === a.id ? 'Tutup' : 'Ubah' }}
@@ -714,6 +789,18 @@ onMounted(async () => {
               </button>
               <button type="button" class="btn" @click="cancelEditAspek">Batal</button>
             </div>
+
+            <label class="admin-km__field">Topik</label>
+            <div class="admin-km__topik-checkboxes">
+              <label v-for="t in topikList" :key="t.id" class="admin-km__topik-checkbox">
+                <input type="checkbox" :value="t.id" v-model="aspekTopikSelection" />
+                {{ t.nama }}
+              </label>
+              <p v-if="topikList.length === 0" class="admin-km__hint">Belum ada Topik - buat dulu di tab "Topik".</p>
+            </div>
+            <button type="button" class="btn" :disabled="aspekTopikSaving" @click="saveAspekTopik(a.id)">
+              {{ aspekTopikSaving ? 'Menyimpan...' : 'Simpan Topik' }}
+            </button>
           </div>
         </div>
       </section>
@@ -1131,6 +1218,65 @@ onMounted(async () => {
       <section v-if="activeTab === 'kombinasi'" class="admin-km__panel">
         <KombinasiTemuanManager />
       </section>
+
+      <!-- TOPIK -->
+      <section v-if="activeTab === 'topik'" class="admin-km__panel">
+        <p class="admin-km__note">
+          Kategori untuk mengelompokkan Aspek/Kombinasi Temuan (mis. Karier, Percintaan) - infrastruktur tagging
+          murni, belum dipakai fitur konsumen manapun secara default (lihat CLAUDE.md "Topik"). Tag ke Aspek lewat
+          tab Aspek, ke Kombinasi Temuan lewat tab Kombinasi Temuan.
+        </p>
+        <form class="admin-km__form" @submit.prevent="createTopik">
+          <label>
+            Nama
+            <input v-model="topikForm.nama" type="text" maxlength="100" placeholder="Karier" required />
+          </label>
+          <label>
+            Deskripsi (opsional)
+            <textarea v-model="topikForm.deskripsi" rows="2"></textarea>
+          </label>
+          <p v-if="topikErrors.nama" class="error">{{ topikErrors.nama[0] }}</p>
+          <button type="submit" class="btn btn--primary" :disabled="topikSubmitting">
+            {{ topikSubmitting ? 'Membuat...' : 'Tambah Topik' }}
+          </button>
+        </form>
+
+        <table class="admin-km__table">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Deskripsi</th>
+              <th># Aspek</th>
+              <th># Kombinasi</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="t in topikList" :key="t.id">
+              <template v-if="topikEditingId === t.id">
+                <td><input v-model="topikEditForm.nama" type="text" maxlength="100" /></td>
+                <td><input v-model="topikEditForm.deskripsi" type="text" maxlength="1000" /></td>
+                <td>{{ t.aspek_count }}</td>
+                <td>{{ t.kombinasi_temuan_count }}</td>
+                <td class="admin-km__actions">
+                  <button type="button" class="btn btn--primary" @click="saveTopik(t.id)">Simpan</button>
+                  <button type="button" class="btn" @click="cancelEditTopik">Batal</button>
+                </td>
+              </template>
+              <template v-else>
+                <td>{{ t.nama }}</td>
+                <td>{{ t.deskripsi }}</td>
+                <td>{{ t.aspek_count }}</td>
+                <td>{{ t.kombinasi_temuan_count }}</td>
+                <td class="admin-km__actions">
+                  <button type="button" class="btn" @click="startEditTopik(t)">Ubah</button>
+                  <button type="button" class="btn btn--danger" @click="deleteTopik(t)">Hapus</button>
+                </td>
+              </template>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     </template>
   </div>
 </template>
@@ -1349,6 +1495,19 @@ onMounted(async () => {
   padding: 12px 14px 16px;
   border-top: 1px solid var(--color-border);
   background: var(--color-paper-alt);
+}
+.admin-km__topik-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 8px;
+}
+.admin-km__topik-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: normal;
 }
 .admin-km__table--nested {
   margin-bottom: 12px;

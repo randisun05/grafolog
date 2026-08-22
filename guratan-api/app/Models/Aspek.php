@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Aspek extends Model
@@ -23,6 +24,11 @@ class Aspek extends Model
     public function indikator(): HasMany
     {
         return $this->hasMany(Indikator::class, 'aspek_id');
+    }
+
+    public function topik(): BelongsToMany
+    {
+        return $this->belongsToMany(Topik::class, 'aspek_topik');
     }
 
     /** Cari aspek berdasarkan kode asli dari file sumber (mis. '01'), bukan id database. */
