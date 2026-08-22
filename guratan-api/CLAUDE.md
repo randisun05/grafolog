@@ -1644,6 +1644,67 @@ memang bisa dikerjakan:
   `Http::sequence()`, bukan panggil `Http::fake()` berulang (baru ketahuan
   lewat 2 test gagal saat pertama ditulis pakai pola lama).
 
+### Narasi terpadu — 3 celah keselarasan/race-condition, ditutup 2026-08-22
+
+User bertanya lebih spesifik soal "sistem antriannya seperti apa, biar
+tidak terpotong/beradu" dan "saat perubahan nilai jangan sampai generate
+ulang otomatis". Investigasi ketemu 3 celah nyata di implementasi
+asinkron sebelumnya (bukan cuma pertanyaan teoretis):
+
+1. **Worker timeout 60 detik (default `queue:work`) lebih pendek dari
+   waktu generate (bisa 1-3 menit)** — job bisa dipaksa mati SIGALRM di
+   tengah panggilan Anthropic (biaya API tetap kepotong, hasil hilang,
+   laporan macet permanen di status `generating`).
+   `GenerateNarasiTerpaduJob::$timeout = 360` (margin di atas timeout HTTP
+   client 300s di `NarasiTerpaduService`) menimpa default itu KHUSUS untuk
+   job ini (Laravel baca properti publik ini lewat job payload -
+   dikonfirmasi lewat baca langsung source `Illuminate\Queue\Jobs\Job::
+   timeout()`, bukan ditebak).
+2. **`retry_after` default Laravel (90 detik) lebih pendek dari waktu
+   generate** — kalau 1 job belum selesai lebih dari 90 detik, worker LAIN
+   bisa menganggapnya "hilang" dan menjalankan ULANG job yang sama secara
+   BERSAMAAN (2 panggilan Anthropic untuk laporan yang sama, biaya dobel,
+   hasil menang acak siapa selesai duluan - "beradu" yang ditanyakan user).
+   `config/queue.php`'s koneksi `database` dinaikkan ke 400 detik
+   (`DB_QUEUE_RETRY_AFTER` env, fallback baru). **Ini connection-level**
+   (Laravel versi ini tidak punya per-job `retryAfter` override seperti
+   `$timeout` - dikonfirmasi lewat grep source, tidak ada) - aman untuk job
+   lain di koneksi yang sama (`SendReportCompletedNotification`) karena
+   cuma memperlambat deteksi "hilang", tidak memengaruhi job yang memang
+   cepat selesai.
+3. **Race condition klik-ganda** — `ReportController::generateNarasiTerpadu()`
+   sebelumnya baca status lalu tulis 'generating' sebagai 2 langkah
+   terpisah tanpa lock; 2 request nyaris bersamaan (klik ganda sebelum
+   tombol ke-disable di frontend) bisa dua-duanya lolos pengecekan SEBELUM
+   salah satu sempat commit. Diperbaiki dengan `DB::transaction()` +
+   `PersonalityReport::whereKey(...)->lockForUpdate()` - request kedua
+   menunggu (blocking row lock) sampai request pertama commit, baru baca
+   status TERBARU ('generating') dan ditolak dengan benar. Bekerja di
+   MySQL asli (row lock sungguhan); di sqlite test `lockForUpdate()` no-op
+   aman (grammar sqlite Laravel mengembalikan string kosong untuk lock
+   hint - tidak pernah error, cuma tidak benar-benar mengunci, tidak
+   masalah karena test PHPUnit tidak genuinely paralel).
+4. **Koreksi skor setelah narasi_terpadu sudah `final`** —
+   `ScoringController::correct()` menulis ulang `data` (breakdown) tapi
+   TIDAK pernah menyentuh `narasi_terpadu`, jadi kalau grafolog koreksi
+   skor SETELAH laporan narasi sudah ditandai final (sudah terlihat
+   klien), klien terus melihat narasi lama yang sudah tidak merefleksikan
+   skor terbaru, ditandai final seolah-olah masih valid. Diperbaiki: kalau
+   `narasi_status === 'final'` saat `correct()` dipanggil, diturunkan balik
+   ke `draft` (klien otomatis kehilangan akses ke versi basi lewat gating
+   `show()`/`pdf()` yang sudah ada) - teks `narasi_terpadu` LAMA
+   dipertahankan apa adanya, TIDAK ada panggilan AI otomatis (prinsip "LLM
+   cuma dipanggil lewat aksi eksplisit grafolog" tetap dijaga, sesuai
+   permintaan user eksplisit "jangan sampai generate ulang otomatis").
+   `narasi_input_hash` sengaja tidak disentuh - otomatis tidak cocok lagi
+   dengan hash data baru, jadi generate berikutnya (kapan pun grafolog
+   klik) tidak akan ketahan dedup-guard walau tanpa `force`.
+- 2 test baru di `ScoringCorrectionTest` (final→draft downgrade tanpa
+  panggilan AI - dijamin lewat TIDAK memasang `Http::fake()` sama sekali
+  di test itu, jadi kalau kode diam-diam memanggil LLM beneran, testnya
+  akan gagal karena percobaan koneksi keluar; draft tetap draft, tidak
+  berubah). 381 backend tests total (up from 379).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

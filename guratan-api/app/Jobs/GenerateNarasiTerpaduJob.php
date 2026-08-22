@@ -21,6 +21,17 @@ class GenerateNarasiTerpaduJob implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * Batas waktu worker mem-paksa-matikan job ini (SIGALRM) - default
+     * `queue:work` cuma 60 detik, jauh di bawah waktu generate laporan
+     * panjang (bisa 1-3 menit, lihat NarasiTerpaduService::MAX_TOKENS).
+     * Tanpa ini, worker akan membunuh proses PHP-nya di tengah panggilan
+     * Anthropic - biaya API tetap kepotong tapi hasilnya hilang, laporan
+     * macet di status 'generating'. 360 detik = margin di atas timeout
+     * HTTP client (300s) di NarasiTerpaduService.
+     */
+    public $timeout = 360;
+
     public function __construct(
         public int $reportId,
         public string $bahasa,

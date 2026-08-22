@@ -40,7 +40,13 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Default Laravel (90) lebih pendek dari waktu tempuh
+            // GenerateNarasiTerpaduJob (bisa 1-3 menit) - kalau lebih pendek
+            // dari itu, worker lain bisa menganggap job "hilang" dan
+            // menjalankannya ULANG sementara yang pertama masih jalan (2
+            // panggilan Anthropic bersamaan untuk laporan yang sama, biaya
+            // dobel). 400 = margin di atas $timeout job itu (360s).
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 400),
             'after_commit' => false,
         ],
 

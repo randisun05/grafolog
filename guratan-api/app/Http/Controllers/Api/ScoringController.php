@@ -155,6 +155,21 @@ class ScoringController extends Controller
             $data = $this->attachIndikatorNarasi($this->scoringEngine->generate($skorPerAspek), $sample);
             $report->update(['data' => $data, 'generated_at' => now()]);
 
+            // Skor berubah -> narasi_terpadu (kalau sudah pernah dibuat) bisa
+            // jadi tidak sinkron lagi dengan data baru. SENGAJA TIDAK
+            // auto-generate ulang lewat AI di sini (prinsip "LLM cuma
+            // dipanggil lewat aksi eksplisit grafolog", lihat CLAUDE.md) -
+            // teks lama tetap dipertahankan apa adanya. Tapi kalau statusnya
+            // 'final', turunkan balik ke 'draft' supaya klien TIDAK terus
+            // melihat narasi yang sudah tidak merefleksikan skor terkini
+            // sebagai final. `narasi_input_hash` tidak perlu disentuh -
+            // otomatis tidak cocok lagi dengan hash data baru, jadi generate
+            // berikutnya (kapan pun grafolog klik) tidak akan ketahan
+            // dedup-guard walau tanpa `force`.
+            if ($report->narasi_status === 'final') {
+                $report->update(['narasi_status' => 'draft', 'pdf_path_klien' => null]);
+            }
+
             AuditLog::record('koreksi_skor_laporan', PersonalityReport::class, $report->id, $user->id, $request->ip());
 
             return $report;

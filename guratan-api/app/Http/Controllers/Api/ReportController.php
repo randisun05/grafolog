@@ -115,6 +115,14 @@ class ReportController extends Controller
      * (lihat CLAUDE.md) terlalu besar untuk di-cache permanen; ini cuma
      * dedup pada level "1 laporan spesifik ini belum berubah", bukan
      * caching lintas laporan.
+     *
+     * Cek status + tulis 'generating' dibungkus `lockForUpdate()` dalam 1
+     * transaksi - tanpa ini, 2 request yang datang nyaris bersamaan (klik
+     * ganda sebelum tombol sempat ke-disable di frontend) bisa dua-duanya
+     * lolos pengecekan status SEBELUM salah satu sempat menulis
+     * 'generating' (race condition klasik) - dua job Anthropic jalan
+     * bersamaan untuk laporan yang sama. `lockForUpdate()` membuat request
+     * ke-2 menunggu request pertama commit dulu baru baca status terbaru.
      */
     public function generateNarasiTerpadu(GenerateNarasiTerpaduRequest $request, PersonalityReport $report): JsonResponse
     {
@@ -122,17 +130,30 @@ class ReportController extends Controller
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat membuat narasi terpadu.');
         abort_unless($report->sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($report->status !== 'completed', 422, 'Laporan belum selesai dibuat.');
-        abort_if($report->narasi_status === 'generating', 409, 'Narasi terpadu sedang diproses, tunggu sampai selesai.');
 
         $bahasa = $request->validated('bahasa');
+        $force = $request->boolean('force');
         $hash = NarasiTerpaduService::inputHashFor($report, $bahasa);
-        $dataBelumBerubah = $report->narasi_input_hash === $hash && $report->narasi_status !== 'belum_dibuat';
 
-        if ($dataBelumBerubah && ! $request->boolean('force')) {
-            abort(409, 'Data skor belum berubah sejak generate terakhir. Kirim ulang dengan force untuk tetap generate.');
-        }
+        $outcome = DB::transaction(function () use ($report, $hash, $force) {
+            $locked = PersonalityReport::whereKey($report->id)->lockForUpdate()->first();
 
-        $report->update(['narasi_status' => 'generating', 'narasi_generation_error' => null]);
+            if ($locked->narasi_status === 'generating') {
+                return 'already_generating';
+            }
+
+            $dataBelumBerubah = $locked->narasi_input_hash === $hash && $locked->narasi_status !== 'belum_dibuat';
+            if ($dataBelumBerubah && ! $force) {
+                return 'unchanged';
+            }
+
+            $locked->update(['narasi_status' => 'generating', 'narasi_generation_error' => null]);
+
+            return 'dispatched';
+        });
+
+        abort_if($outcome === 'already_generating', 409, 'Narasi terpadu sedang diproses, tunggu sampai selesai.');
+        abort_if($outcome === 'unchanged', 409, 'Data skor belum berubah sejak generate terakhir. Kirim ulang dengan force untuk tetap generate.');
 
         GenerateNarasiTerpaduJob::dispatch($report->id, $bahasa, $user->id, $hash);
 
