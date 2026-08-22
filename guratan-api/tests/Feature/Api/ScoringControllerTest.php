@@ -6,6 +6,7 @@ use App\Models\Aspek;
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
 use App\Models\Indikator;
+use App\Models\KombinasiTemuan;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Models\SampleIndikatorCheck;
@@ -85,6 +86,27 @@ class ScoringControllerTest extends TestCase
 
         $aspekWithoutChecks = collect($response->json('data.sindrom'))->pluck('aspek')->flatten(1)->firstWhere('kode', '02');
         $this->assertArrayNotHasKey('indikator_terkait', $aspekWithoutChecks);
+    }
+
+    public function test_submit_attaches_matched_kombinasi_temuan_to_report_data(): void
+    {
+        $this->seedMinimalAspek(3);
+        $aspek01 = Aspek::where('kode', '01')->firstOrFail();
+        $temuan = KombinasiTemuan::create(['nama' => 'Pola Uji', 'teks_interpretasi' => 'Sifat gabungan.', 'logika_gabung' => 'AND']);
+        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => $aspek01->id, 'kondisi' => 'high']); // skorPayload() semua skor 7 -> high
+
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = HandwritingSample::create([
+            'user_id' => User::factory()->create()->id, 'created_by' => $grafolog->id,
+            'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores", $this->skorPayload(3));
+
+        $response->assertCreated()
+            ->assertJsonPath('data.kombinasi_ditemukan.0.nama', 'Pola Uji')
+            ->assertJsonPath('data.kombinasi_ditemukan.0.teks_interpretasi', 'Sifat gabungan.');
     }
 
     public function test_incomplete_scores_are_rejected(): void

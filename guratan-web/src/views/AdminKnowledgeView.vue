@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ConceptMapExplorer from '@/components/admin/ConceptMapExplorer.vue'
+import KombinasiTemuanManager from '@/components/admin/KombinasiTemuanManager.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -14,6 +15,7 @@ const tabs = [
   { key: 'variabel', label: 'Variabel Ukur' },
   { key: 'band', label: 'Band Skor' },
   { key: 'peta', label: 'Peta Konsep' },
+  { key: 'kombinasi', label: 'Kombinasi Temuan' },
 ]
 const activeTab = ref('sindrom')
 
@@ -1123,6 +1125,11 @@ onMounted(async () => {
       <!-- PETA KONSEP -->
       <section v-if="activeTab === 'peta'" class="admin-km__panel">
         <ConceptMapExplorer />
+      </section>
+
+      <!-- KOMBINASI TEMUAN -->
+      <section v-if="activeTab === 'kombinasi'" class="admin-km__panel">
+        <KombinasiTemuanManager />
       </section>
     </template>
   </div>

@@ -83,6 +83,15 @@ async function saveEdit(kode) {
         </ul>
       </div>
     </section>
+
+    <section v-if="data.kombinasi_ditemukan?.length" class="report-document__kombinasi">
+      <h2>Pola Kombinasi Ditemukan</h2>
+      <p class="report-document__meta">Temuan dari kombinasi beberapa Aspek/Indikator/Sindrom sekaligus, bukan 1 aspek saja.</p>
+      <div v-for="temuan in data.kombinasi_ditemukan" :key="temuan.id" class="report-document__kombinasi-item">
+        <h3>{{ temuan.nama }}</h3>
+        <p>{{ temuan.teks_interpretasi }}</p>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -171,5 +180,29 @@ async function saveEdit(kode) {
   font-size: 11.5px;
   font-style: italic;
   line-height: 1.4;
+}
+.report-document__kombinasi {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 2px solid var(--color-border);
+}
+.report-document__kombinasi h2 {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+.report-document__kombinasi-item {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--color-gold, #c9a227);
+}
+.report-document__kombinasi-item h3 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.report-document__kombinasi-item p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+  margin: 0;
 }
 </style>

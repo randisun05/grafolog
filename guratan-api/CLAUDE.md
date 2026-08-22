@@ -1705,6 +1705,85 @@ asinkron sebelumnya (bukan cuma pertanyaan teoretis):
   akan gagal karena percobaan koneksi keluar; draft tetap draft, tidak
   berubah). 381 backend tests total (up from 379).
 
+## Kombinasi Temuan — manajemen dibangun 2026-08-22, data Excel TERTUNDA
+
+User bertanya: selain cascade "A tercentang → B ikut tercentang"
+(`indikator_rules` rule_type `indikator_checked`, sudah lama ada), apakah
+bisa kombinasi BEBERAPA Indikator/Aspek/Sindrom sekaligus menghasilkan 1
+sifat/interpretasi BARU (mis. "Indikator 3 tinggi + Indikator 6 rendah →
+sifat X", lintas Indikator/Aspek/Sindrom)? Dicek ke KB JSON sumber
+(`grafologi_knowledge_base.json`) — **struktur data ini TIDAK ADA di KB
+sekarang** (`indikator_cross_reference` cuma 1-ke-banyak pointer "bukti
+yang sama diperluas", bukan "kombinasi N kondisi → makna baru"; Sindrom
+cuma punya catatan polaritas, tidak ada narasi berjenjang). Dikonfirmasi
+user: kontennya ADA di referensi Excel asli grafolog (sama seperti 704
+Indikator/40 Aspek lain), **belum didigitalisasi** — user minta
+manajemennya (skema + admin UI + mesin evaluasi) dibangun DULUAN supaya
+begitu Excel-nya siap tinggal diinput, bukan nunggu Excel dulu baru mulai
+membangun.
+
+**Koreksi penting dari diskusi**: Indikator itu murni boolean (tercentang/
+tidak), TIDAK punya "level tinggi/rendah" sendiri — itu konsep Aspek
+(`narasi_level`, dari skor) dan Sindrom (dihitung sama dari rata-rata).
+Jadi syarat level Indikator cuma `tercentang`/`tidak_tercentang`; syarat
+level Aspek/Sindrom pakai 4 bucket `narasi_level` yang SUDAH ADA
+(low/medium/high/very_high, `ScoringEngineService::narasiLevelUntukSkor()`)
+— bukan skema baru, biar konsisten dengan bucket yang sudah dipakai narasi
+per-Aspek.
+
+- **`kombinasi_temuan`** (`nama`, `teks_interpretasi`, `logika_gabung`
+  AND/OR) + **`kombinasi_syarat`** (`level` indikator/aspek/sindrom, FK
+  eksplisit per-level — `indikator_id`/`aspek_id`/`sindrom_id`, cuma 1
+  terisi sesuai `level` — pola sama dengan `indikator_rules`'
+  `variable_a_id`/`variable_b_id`/`depends_on_indikator_id` eksplisit,
+  bukan polymorphic generic, `kondisi` string). Validasi lintas-field di
+  `StoreKombinasiSyaratRequest` (target wajib sesuai level, field level
+  lain terlarang, `kondisi` harus salah satu nilai valid untuk level itu).
+- **`App\Services\Scoring\KombinasiTemuanService::evaluate(array
+  $skorPerAspek, HandwritingSample $sample): array`** — dipanggil dari
+  `ScoringController::submit()` DAN `correct()` (post-processing, seperti
+  `attachIndikatorNarasi()`, `ScoringEngineService::generate()` sengaja
+  tidak disentuh), hasil ditulis ke `data.kombinasi_ditemukan` (top-level,
+  BUKAN nested per-Aspek — 1 temuan bisa merentang beberapa Aspek/Sindrom
+  sekaligus). Menghitung level Aspek dari skor input langsung (bukan baca
+  ulang `data` yang sudah jadi), level Sindrom dari rata-rata skor
+  Aspek-Aspek yang ADA di input ini (tolerate partial input, sama filosofi
+  `ScoringEngineService::generate()`), status Indikator dari
+  `sample->indikatorChecks()`. AND butuh SEMUA syarat true, OR cukup 1.
+  Temuan tanpa syarat sama sekali TIDAK PERNAH match (guard eksplisit,
+  bukan div-by-zero/vacuous-true accident).
+- **Ikut masuk ke narasi terpadu** — `NarasiTerpaduService` menambahkan
+  seksi "Pola Kombinasi" ke ringkasan yang dikirim ke LLM (grounding
+  tambahan, aturan "jangan tambah klaim baru" tetap berlaku sama seperti
+  bukti Indikator). Karena `kombinasi_ditemukan` murni fungsi dari skor +
+  status Indikator (keduanya sudah tercermin di `data.sindrom`),
+  `NarasiTerpaduService::inputHashFor()` (dedup-guard) TIDAK perlu diubah —
+  otomatis ikut berubah kalau kombinasi yang match berubah. **Batasan yang
+  disengaja**: kalau ADMIN mengubah/menambah rule Kombinasi TANPA skor
+  berubah, `data.kombinasi_ditemukan` pada laporan yang sudah ada tetap
+  versi lama sampai grafolog memanggil `correct()` lagi - sama persis
+  seperti narasi per-Aspek tidak retroactive kalau teks KB-nya diedit,
+  bukan inkonsistensi baru.
+- **Admin UI**: tab ke-7 "Kombinasi Temuan" di `AdminKnowledgeView.vue`,
+  komponen baru `KombinasiTemuanManager.vue` (self-contained, pola sama
+  dengan `ConceptMapExplorer.vue` — bukan ditambahkan langsung ke file
+  `AdminKnowledgeView.vue` yang sudah >1300 baris). Create/edit/delete
+  temuan + nested syarat builder (dropdown level → target sesuai level →
+  kondisi sesuai level).
+- Muncul di breakdown internal (`ReportDocument.vue` seksi baru "Pola
+  Kombinasi Ditemukan", `pdf.blade.php` internal PDF) - TIDAK pernah
+  dikirim ke klien (sama seperti breakdown lain, cuma lewat narasi terpadu
+  kalau grafolog generate ulang).
+- 18 test baru (`KombinasiTemuanServiceTest` unit - AND/OR, 3 level,
+  partial input, temuan-tanpa-syarat; `KombinasiTemuanControllerTest` -
+  auth, validasi, CRUD, cascade delete; 1 test baru di
+  `ScoringControllerTest` - `data.kombinasi_ditemukan` muncul di respons
+  submit()). 399 backend tests total (up from 381).
+- **BELUM ADA DATA** — tabel `kombinasi_temuan`/`kombinasi_syarat` kosong
+  di semua environment. Konten Excel asli belum diserahkan user - lihat
+  root `ROADMAP.md` untuk item tertunda. Jangan isi data lewat tebakan/AI;
+  tunggu file Excel atau contoh baris nyata dari user.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

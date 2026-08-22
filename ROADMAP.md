@@ -891,3 +891,39 @@ menampilkan 3 referensi keluar dengan benar. Detail teknis lengkap di
 2026-08-19): "if A checked -> B TIDAK checked" dibahas 2026-08-08, user
 eksplisit konfirmasi tidak diperlukan ("tidak perlu ada reverse seperti
 itu"). `indikator_checked` tetap inclusion-only sesuai desain.
+
+## Inisiatif — Narasi Terpadu & Kombinasi Temuan (2026-08-22)
+
+**Narasi Terpadu**: laporan klien sekarang narasi deskriptif mengalir
+(bukan breakdown Sindrom/Aspek/Indikator, itu jadi bahan internal grafolog
+saja) - AI generate draft (1 call live per-laporan, asinkron lewat queue
+job), grafolog wajib review/edit/finalize sebelum klien bisa lihat.
+Optimalisasi: dedup-guard (hash skor, cegah generate ulang percuma),
+prompt caching Anthropic, worker timeout & retry_after dinaikkan (cegah
+job terpotong/dobel jalan), koreksi skor menurunkan status final→draft
+otomatis (bukan auto-generate ulang). Detail teknis lengkap di
+`guratan-api/CLAUDE.md` "Narasi terpadu (laporan klien)" +
+"optimalisasi 2026-08-22" + "3 celah keselarasan/race-condition".
+
+**Kombinasi Temuan**: mekanisme baru untuk kombinasi BEBERAPA
+Indikator/Aspek/Sindrom sekaligus menghasilkan 1 interpretasi baru (beda
+dari cascade `indikator_checked` yang cuma memperluas bukti yang sama).
+Manajemennya (skema `kombinasi_temuan`/`kombinasi_syarat` + admin UI tab
+"Kombinasi Temuan" + mesin evaluasi `KombinasiTemuanService`, otomatis
+masuk ke breakdown internal & narasi terpadu) **sudah dibangun dan
+teruji** (399 backend tests total). Detail di `guratan-api/CLAUDE.md`
+"Kombinasi Temuan".
+
+### Belum dikerjakan / tertunda
+
+- **Data Kombinasi Temuan dari Excel asli** — user konfirmasi kontennya
+  ADA di referensi Excel profesional grafolog (sama seperti 704
+  Indikator/40 Aspek lain), belum diserahkan/didigitalisasi. Tabel
+  `kombinasi_temuan`/`kombinasi_syarat` masih KOSONG di semua environment.
+  Begitu file Excel-nya ada: ekstrak jadi seeder JSON (pola sama dengan
+  `GrafologiKnowledgeSeeder`), JANGAN isi data dengan tebakan/karangan AI -
+  ini melanggar prinsip inti proyek ("LLM tidak pernah mengarang
+  interpretasi psikologi").
+- Verifikasi manual narasi terpadu lewat browser + kredensial Anthropic
+  asli (`.env` masih `LLM_PROVIDER=none` di semua environment yang
+  diketahui).

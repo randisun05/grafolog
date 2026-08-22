@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockCo
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
+use App\Http\Controllers\Api\Admin\KombinasiSyaratController;
+use App\Http\Controllers\Api\Admin\KombinasiTemuanController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
@@ -154,6 +156,14 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/knowledge/concept-map', [ConceptMapController::class, 'overview']);
         Route::get('/knowledge/concept-map/aspek/{aspek}', [ConceptMapController::class, 'aspek']);
         Route::get('/knowledge/concept-map/indikator/{indikator}', [ConceptMapController::class, 'indikator']);
+
+        // Kombinasi Temuan (2026-08-22) - lihat CLAUDE.md.
+        Route::get('/knowledge/kombinasi', [KombinasiTemuanController::class, 'index']);
+        Route::post('/knowledge/kombinasi', [KombinasiTemuanController::class, 'store']);
+        Route::put('/knowledge/kombinasi/{kombinasiTemuan}', [KombinasiTemuanController::class, 'update']);
+        Route::delete('/knowledge/kombinasi/{kombinasiTemuan}', [KombinasiTemuanController::class, 'destroy']);
+        Route::post('/knowledge/kombinasi/{kombinasiTemuan}/syarat', [KombinasiSyaratController::class, 'store']);
+        Route::delete('/knowledge/kombinasi-syarat/{kombinasiSyarat}', [KombinasiSyaratController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

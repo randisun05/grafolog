@@ -13,6 +13,7 @@ use App\Models\PersonalityReport;
 use App\Models\ReportAspekScore;
 use App\Models\TokenCost;
 use App\Services\Reporting\ReportRevisionService;
+use App\Services\Scoring\KombinasiTemuanService;
 use App\Services\Scoring\ScoringEngineService;
 use App\Services\TokenWalletService;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,7 @@ class ScoringController extends Controller
         private ScoringEngineService $scoringEngine,
         private TokenWalletService $tokenWallet,
         private ReportRevisionService $reportRevisions,
+        private KombinasiTemuanService $kombinasiTemuan,
     ) {}
 
     /**
@@ -93,6 +95,7 @@ class ScoringController extends Controller
             }
 
             $data = $this->attachIndikatorNarasi($this->scoringEngine->generate($skorPerAspek), $sample);
+            $data['kombinasi_ditemukan'] = $this->kombinasiTemuan->evaluate($skorPerAspek, $sample);
 
             $report->update([
                 'status' => 'completed',
@@ -153,6 +156,7 @@ class ScoringController extends Controller
             }
 
             $data = $this->attachIndikatorNarasi($this->scoringEngine->generate($skorPerAspek), $sample);
+            $data['kombinasi_ditemukan'] = $this->kombinasiTemuan->evaluate($skorPerAspek, $sample);
             $report->update(['data' => $data, 'generated_at' => now()]);
 
             // Skor berubah -> narasi_terpadu (kalau sudah pernah dibuat) bisa
