@@ -556,6 +556,24 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   **not** search entities (Projects, candidates, reports) by name/content
   — that would need a search endpoint that doesn't exist; deliberately
   scoped to page navigation only, per the original Fase 07 ask.
+- **`NarasiTerpaduPanel.vue` added 2026-08-22** (`components/report/`,
+  see `guratan-api/CLAUDE.md`'s "Narasi terpadu (laporan klien)" for the
+  full backend picture) — bahasa dropdown (id/en), "Generate Draft AI"
+  button (`POST /reports/{id}/narasi-terpadu/generate`), textarea, "Simpan
+  sebagai Draft"/"Tandai Final" buttons (`PATCH /reports/{id}/narasi-terpadu`,
+  the latter behind a `window.confirm()` since it immediately unlocks client
+  visibility). **`ReportView.vue` now branches entirely on `auth.isClient`**:
+  a client renders `report.narasi_terpadu` as a plain flowing document (the
+  API response for that role never includes `data`/`aspek_scores` at all —
+  nothing to hide client-side, it's just not there); everyone else
+  (grafolog/admin/hr) gets `NarasiTerpaduPanel` plus the pre-existing
+  breakdown (`ReportCorrectionPanel`/`ReportDocument`/`ReportRevisionHistory`)
+  now under an explicit "Data Pengukuran (Internal)" heading. `narasi_status`
+  badge (belum_dibuat/draft/final) drives a small colored pill in the panel.
+  `ReportRevisionHistory.vue` gained a branch rendering the new
+  `edit_narasi_terpadu` revision jenis as plain text (`revisionData[r.id]
+  .narasi_terpadu`) instead of feeding it through `ReportDocument` (whose
+  `{sindrom: [...]}` shape doesn't match this revision type's snapshot).
 
 ## Stack
 

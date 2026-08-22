@@ -10,6 +10,7 @@ class PersonalityReport extends Model
 {
     protected $fillable = [
         'sample_id', 'tier', 'status', 'data', 'pdf_path', 'generated_at',
+        'narasi_terpadu', 'narasi_bahasa', 'narasi_status', 'pdf_path_klien',
     ];
 
     protected function casts(): array

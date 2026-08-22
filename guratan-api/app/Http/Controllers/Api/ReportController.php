@@ -3,16 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reporting\GenerateNarasiTerpaduRequest;
 use App\Http\Requests\Reporting\UpdateNarasiOverrideRequest;
+use App\Http\Requests\Reporting\UpdateNarasiTerpaduRequest;
 use App\Models\AuditLog;
 use App\Models\PersonalityReport;
 use App\Models\ReportRevision;
+use App\Models\User;
+use App\Services\Reporting\NarasiTerpaduService;
 use App\Services\Reporting\ReportPdfService;
 use App\Services\Reporting\ReportRevisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
@@ -20,13 +26,23 @@ class ReportController extends Controller
     public function __construct(
         private ReportPdfService $pdfService,
         private ReportRevisionService $reportRevisions,
+        private NarasiTerpaduService $narasiTerpadu,
     ) {}
 
+    /**
+     * Kolom dibatasi eksplisit - `data` (breakdown Sindrom/Aspek/Indikator)
+     * dan `narasi_terpadu` sengaja TIDAK disertakan di sini untuk siapa pun
+     * (frontend RiwayatView.vue cuma pakai id/tier/status), supaya klien
+     * tidak bisa mengintip breakdown internal lewat endpoint list meski
+     * show() sudah membatasinya - satu titik konsisten, bukan 2 aturan yang
+     * bisa drift.
+     */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
 
         $reports = PersonalityReport::query()
+            ->select(['id', 'sample_id', 'tier', 'status', 'narasi_status', 'generated_at', 'created_at'])
             ->whereHas('sample', function ($q) use ($user) {
                 $q->where('user_id', $user->id)
                     ->orWhere('created_by', $user->id)
@@ -39,9 +55,30 @@ class ReportController extends Controller
         return response()->json($reports);
     }
 
+    /**
+     * Klien (role: user - subjek tes, baik self-service maupun kandidat HR)
+     * HANYA menerima narasi_terpadu, dan hanya kalau sudah ditandai final
+     * oleh grafolog - breakdown Sindrom/Aspek/Indikator (data mentah
+     * pengukuran) sekarang jadi bahan kerja internal, tidak pernah dikirim
+     * ke klien sama sekali (keputusan produk 2026-08-22, lihat CLAUDE.md).
+     * Grafolog/admin/hr tetap dapat semuanya, termasuk draft yang belum final.
+     */
     public function show(Request $request, PersonalityReport $report): JsonResponse
     {
         $this->authorizeAccess($request, $report);
+
+        if ($this->isClientViewer($request->user())) {
+            abort_unless($report->narasi_status === 'final', 403, 'Laporan Anda belum final, belum bisa dilihat.');
+
+            return response()->json([
+                'id' => $report->id,
+                'tier' => $report->tier,
+                'status' => $report->status,
+                'generated_at' => $report->generated_at,
+                'narasi_terpadu' => $report->narasi_terpadu,
+                'narasi_bahasa' => $report->narasi_bahasa,
+            ]);
+        }
 
         return response()->json($report->load('sample', 'aspekScores.aspek'));
     }
@@ -51,9 +88,81 @@ class ReportController extends Controller
         $this->authorizeAccess($request, $report);
         abort_unless($report->status === 'completed', 422, 'Laporan belum selesai dibuat.');
 
+        if ($this->isClientViewer($request->user())) {
+            abort_unless($report->narasi_status === 'final', 403, 'Laporan Anda belum final, belum bisa diunduh.');
+
+            $path = $this->pdfService->generateKlien($report);
+
+            return Storage::disk('local')->download($path, "laporan-{$report->id}.pdf");
+        }
+
         $path = $this->pdfService->generate($report);
 
-        return Storage::disk('local')->download($path, "laporan-{$report->id}.pdf");
+        return Storage::disk('local')->download($path, "laporan-{$report->id}-internal.pdf");
+    }
+
+    /**
+     * Buat draft narasi terpadu lewat LLM (1 call live, lihat
+     * NarasiTerpaduService docblock kenapa ini beda dari
+     * NarasiCacheService). Selalu jadi status 'draft' - TIDAK PERNAH
+     * langsung 'final', grafolog wajib review/edit dulu lewat
+     * updateNarasiTerpadu() sebelum klien bisa melihatnya.
+     */
+    public function generateNarasiTerpadu(GenerateNarasiTerpaduRequest $request, PersonalityReport $report): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat membuat narasi terpadu.');
+        abort_unless($report->sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
+        abort_if($report->status !== 'completed', 422, 'Laporan belum selesai dibuat.');
+
+        try {
+            $draft = $this->narasiTerpadu->generateDraft($report, $request->validated('bahasa'));
+        } catch (RuntimeException $e) {
+            Log::error('NarasiTerpaduService gagal generate draft', ['report_id' => $report->id, 'error' => $e->getMessage()]);
+            abort(503, 'Pembuatan narasi terpadu sedang tidak tersedia, coba lagi nanti.');
+        }
+
+        $report->update([
+            'narasi_terpadu' => $draft,
+            'narasi_bahasa' => $request->validated('bahasa'),
+            'narasi_status' => 'draft',
+            'pdf_path_klien' => null,
+        ]);
+
+        AuditLog::record('generate_narasi_terpadu', PersonalityReport::class, $report->id, $user->id, $request->ip());
+
+        return response()->json($report->fresh());
+    }
+
+    /**
+     * Grafolog edit manual draft narasi terpadu (hasil AI atau tulisan
+     * sendiri dari nol) dan/atau menandainya final. Versi sebelumnya
+     * disimpan ke report_revisions - sama pola dengan updateNarasi() di
+     * bawah, method snapshot beda karena bentuk datanya beda.
+     */
+    public function updateNarasiTerpadu(UpdateNarasiTerpaduRequest $request, PersonalityReport $report): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat mengedit narasi terpadu.');
+        abort_unless($report->sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
+        abort_if($report->status !== 'completed', 422, 'Laporan belum selesai dibuat.');
+
+        $report = DB::transaction(function () use ($report, $request, $user) {
+            $this->reportRevisions->snapshotNarasiTerpaduBeforeChange($report, $user, $request->input('catatan'));
+
+            $report->update([
+                'narasi_terpadu' => $request->validated('narasi_terpadu'),
+                'narasi_bahasa' => $request->validated('bahasa'),
+                'narasi_status' => $request->validated('status'),
+                'pdf_path_klien' => null,
+            ]);
+
+            AuditLog::record('edit_narasi_terpadu', PersonalityReport::class, $report->id, $user->id, $request->ip());
+
+            return $report;
+        });
+
+        return response()->json($report->fresh());
     }
 
     /**
@@ -130,5 +239,17 @@ class ReportController extends Controller
     private function authorizeAccess(Request $request, PersonalityReport $report): void
     {
         abort_unless($report->sample->isViewableBy($request->user()), 403);
+    }
+
+    /**
+     * role 'user' selalu berarti subjek tes (klien self-service ATAUPUN
+     * kandidat HR - "Candidate" sengaja bukan model terpisah, lihat
+     * CLAUDE.md "HR: Company, Candidate import"), tidak pernah staf.
+     * Jadi pengecekan by-role di sini sudah cukup, tidak perlu tahu jalur
+     * mana sample-nya berasal.
+     */
+    private function isClientViewer(User $user): bool
+    {
+        return $user->role === 'user';
     }
 }

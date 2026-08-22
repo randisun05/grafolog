@@ -1492,6 +1492,100 @@ irregularity di atas):**
   any production deploy, or internal file paths and stack traces leak to
   anyone who triggers a 500. Already tracked under ROADMAP.md Fase 2.
 
+## Narasi terpadu (laporan klien) — added 2026-08-22
+
+User mengklarifikasi: breakdown Sindrom/Aspek/Indikator (`data` JSON,
+`ScoringEngineService::generate()`) itu sebenarnya bahan kerja/verifikasi
+pengukuran, BUKAN laporan yang seharusnya dikirim ke klien. Tugas grafolog
+adalah mendinamikakan data itu jadi laporan deskriptif yang komunikatif dan
+mengalir (Bahasa Indonesia atau Inggris). Dikonfirmasi lewat AskUserQuestion
+sebelum eksekusi (3 keputusan produk sekaligus membalik prinsip root
+CLAUDE.md "LLM tidak live per-user" yang sebelumnya dikunci):
+
+1. Narasi dibuat AI (draft, 1 call live per-laporan) lalu **wajib**
+   direview/diedit grafolog sebelum final — bukan grafolog menulis manual
+   dari nol, dan bukan juga langsung dikirim ke klien tanpa review.
+2. Breakdown Sindrom/Aspek/Indikator (`data`) jadi **internal-only**
+   (grafolog/admin/hr) — klien TIDAK PERNAH menerimanya lagi sama sekali,
+   bukan cuma disembunyikan di UI.
+3. Satu laporan = satu bahasa, dipilih grafolog per-laporan (bukan
+   dua-duanya sekaligus).
+
+**Kenapa ini beda dari `NarasiCacheService`/`LlmProviderInterface` yang
+sudah ada**: kontrak itu sengaja dibatasi per-aspek-per-level (40 aspek x 4
+level = 160 kombinasi tetap, bisa di-cache permanen selamanya — lihat
+docblock `LlmProviderInterface`). Narasi terpadu genuinely per-laporan
+(kombinasi 40 skor tiap klien unik, tidak bisa di-cache), jadi sengaja
+**tidak** lewat abstraksi itu — `NarasiTerpaduService` berdiri sendiri,
+manggil Anthropic langsung pakai `config('services.llm.*')` yang sama.
+Kalau `LLM_PROVIDER` masih `none` (default `.env.example`), generate akan
+gagal dengan 503 yang bersih (pola sama dengan `DokuService::
+ensureConfigured()`), bukan silent passthrough — beda dari
+`NullLlmProvider` karena di sini tidak ada "teks asli" yang masuk akal
+untuk di-passthrough (ini sintesis, bukan terjemahan).
+
+- **Migrasi**: `personality_reports` dapat `narasi_terpadu` (longText),
+  `narasi_bahasa` (enum id/en), `narasi_status` (enum belum_dibuat/draft/
+  final, default belum_dibuat), `pdf_path_klien` (cache PDF klien terpisah
+  dari `pdf_path` internal karena kontennya beda total). `report_revisions.
+  jenis` enum dapat nilai ke-3 `edit_narasi_terpadu` (migrasi driver-aware,
+  pola sama dengan `expand_users_role_enum.php` — raw ALTER untuk MySQL
+  asli, `Schema::table()->enum()->change()` untuk sqlite test).
+- **`App\Services\Reporting\NarasiTerpaduService::generateDraft()`** —
+  merangkai `data.sindrom[].aspek[].narasi` jadi 1 prompt, system prompt
+  eksplisit melarang menambah klaim baru di luar data yang diberikan
+  (aturan sama seperti `ApiLlmProvider`) dan mewajibkan framing insight
+  reflektif bukan diagnosis klinis.
+- **`ReportController::generateNarasiTerpadu()`** (`POST /reports/{id}/
+  narasi-terpadu/generate`, grafolog pemilik sample) — selalu jadi
+  `narasi_status: draft`, TIDAK PERNAH langsung `final`. **
+  `updateNarasiTerpadu()`** (`PATCH /reports/{id}/narasi-terpadu`) — grafolog
+  edit manual + set bahasa + tandai status (draft/final); snapshot versi
+  sebelumnya ke `report_revisions` lewat `ReportRevisionService::
+  snapshotNarasiTerpaduBeforeChange()` (method terpisah dari
+  `snapshotBeforeChange()` karena bentuk `data` beda — `{narasi_terpadu,
+  narasi_bahasa, narasi_status}`, bukan breakdown sindrom). Keduanya
+  me-null-kan `pdf_path_klien` supaya PDF klien tidak pernah basi dari
+  sebelum draft direvisi.
+- **Gating akses klien** — `ReportController::isClientViewer()`
+  (`$user->role === 'user'`, selalu berarti subjek tes baik self-service
+  maupun kandidat HR, lihat "Candidate is intentionally not a new
+  table/model" di atas) dipakai di `show()` dan `pdf()`:
+  - Klien: `abort_unless(narasi_status === 'final', 403, ...)`, respons
+    HANYA `{id, tier, status, generated_at, narasi_terpadu, narasi_bahasa}`
+    — TIDAK menyertakan `data`/`aspek_scores` sama sekali (bukan cuma
+    disembunyikan di frontend). PDF klien pakai `ReportPdfService::
+    generateKlien()` + `resources/views/reports/pdf-klien.blade.php`
+    (narasi_terpadu saja).
+  - Grafolog/admin/hr: tetap dapat semuanya (breakdown + narasi_terpadu draft
+    ataupun final) via `pdf.blade.php` yang sudah ada, sekarang berfungsi
+    sebagai PDF internal/verifikasi.
+  - **`index()` juga dibatasi eksplisit** (`->select([...])`, tidak
+    menyertakan `data`/`narasi_terpadu`) untuk SIAPA PUN, bukan cuma klien —
+    frontend `RiwayatView.vue` cuma pernah pakai id/tier/status, jadi ini
+    penyempitan aman yang sekaligus menutup celah endpoint list yang
+    tadinya mengirim breakdown penuh ke klien juga (ditemukan & diperbaiki
+    sesi yang sama, sebelum sempat jadi masalah nyata).
+- **Frontend**: `NarasiTerpaduPanel.vue` (baru) — bahasa dropdown, tombol
+  "Generate Draft AI", textarea, "Simpan sebagai Draft"/"Tandai Final".
+  `ReportView.vue` sekarang bercabang total by role: `auth.isClient` render
+  narasi polos saja (`report.narasi_terpadu`, tanpa breakdown karena
+  memang tidak pernah dikirim backend); staf render `NarasiTerpaduPanel` +
+  breakdown yang sudah ada di bawah heading "Data Pengukuran (Internal)".
+  `ReportRevisionHistory.vue` render snapshot `edit_narasi_terpadu` sebagai
+  teks polos (bukan lewat `ReportDocument`, bentuk datanya beda).
+- 12 test baru (`NarasiTerpaduControllerTest`) + fix `ReportControllerTest`
+  index-nya masih hijau tanpa perubahan (frontend tidak butuh kolom yang
+  dihapus). 373 backend tests total (up from 361).
+- **Belum diverifikasi lewat browser sungguhan / call Anthropic asli** —
+  sesi ini cuma testing lewat `Http::fake()` (kontrak request/response
+  API-nya diverifikasi cocok dengan `ApiLlmProvider` yang sudah pernah
+  dipakai produksi, bukan ditebak) dan `php artisan test`/`npm run build`/
+  `npm run lint`. `.env` masih `LLM_PROVIDER=none` di semua environment
+  dev yang diketahui — generate draft akan gagal 503 sampai kredensial
+  Anthropic asli diisi. Perlu 1 sesi verifikasi manual lewat browser +
+  kredensial asli sebelum dianggap production-ready.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
