@@ -1033,9 +1033,13 @@ awal (lihat di bawah). Ketiganya sudah selesai dikerjakan hari yang sama:
 
 14 test baru, 438 backend tests total (up from 424). Detail teknis
 lengkap di `guratan-api/CLAUDE.md` "Gap management ditutup" dan
-`guratan-web/CLAUDE.md`. Belum browser-verified (cuma test otomatis +
-build/lint) — perlu 1 sesi verifikasi manual lewat browser sebelum
-dianggap production-ready.
+`guratan-web/CLAUDE.md`. **Browser-verified 2026-08-23** lewat Playwright
+headless (9/9 pemeriksaan lolos, 0 error konsol nyata) — lihat
+`guratan-api/CLAUDE.md`'s entri yang sama untuk skenario lengkap. Sekalian
+menemukan & memperbaiki 1 bug produksi nyata yang tidak terkait langsung
+(config `backup.php`'s notification email crash total aplikasi begitu
+`ADMIN_EMAIL` dikosongkan - state yang sengaja didukung, lihat detail di
+`guratan-api/CLAUDE.md`).
 
 Sudah diketahui & didokumentasikan sebagai gap terpisah (BUKAN temuan
 baru, lihat "HR: Company, Candidate import, Assignment" di

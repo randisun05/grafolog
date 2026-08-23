@@ -261,7 +261,15 @@ return [
             // Default ke ADMIN_EMAIL (config/admin.php, sudah dipakai
             // AdministratorSeeder) - override lewat BACKUP_NOTIFICATION_EMAIL
             // kalau alert backup mau ke alamat ops yang beda dari akun admin.
-            'to' => env('BACKUP_NOTIFICATION_EMAIL', env('ADMIN_EMAIL', 'your@example.com')),
+            // SENGAJA pakai ?: bukan env()'s $default param kedua - ADMIN_EMAIL
+            // legitimately kosong (bukan unset) di .env fresh-clone (lihat
+            // config/admin.php "leave empty to skip seeding"), dan env()'s
+            // default kedua HANYA kepakai kalau key benar-benar tidak ada,
+            // bukan kalau nilainya empty string - tanpa ?: ini, 'to' jadi
+            // '' begitu ADMIN_EMAIL kosong, dan spatie/laravel-backup
+            // validasi email ini SAAT BOOT (bukan cuma saat backup jalan),
+            // jadi SETIAP request/artisan command di seluruh aplikasi crash.
+            'to' => env('BACKUP_NOTIFICATION_EMAIL') ?: (env('ADMIN_EMAIL') ?: 'your@example.com'),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),

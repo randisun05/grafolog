@@ -2060,9 +2060,38 @@ aplikasi tanpa API call manual.
   company tidak mencabut akses hr; `AuditLogControllerTest` baru - list,
   filter aksi, filter actor, forbidden untuk non-admin; `AuthControllerTest`
   - akun nonaktif ditolak login). 438 backend tests total (up from 424).
-- **Belum browser-verified** — cuma lewat `php artisan test`/
-  `vendor/bin/pint --test`/`npm run lint`/`npm run build`, belum click-through
-  Playwright.
+- **Browser-verified 2026-08-23** lewat Playwright headless (server sqlite
+  throwaway + AdministratorSeeder, dibersihkan setelah selesai) - alur
+  penuh: buat Company baru → dropdown Perusahaan di form buat-HR
+  terkonfirmasi TERISI data nyata (sebelumnya mustahil dites karena
+  memang tidak ada UI-nya) → buat akun HR dengan company itu → edit nama +
+  nonaktifkan akun itu lewat panel inline → coba login dengan akun itu di
+  sesi baru → ditolak 403 dengan pesan yang benar → login balik sebagai
+  admin → buka Log Audit → konfirmasi `buat_perusahaan`/`buat_akun_staf`/
+  `ubah_akun_staf` semua tercatat dengan aktor & waktu benar → filter
+  pencarian aksi "perusahaan" menyaring ke 1 entri yang benar. 9/9
+  pemeriksaan lolos, 0 error konsol nyata (beberapa `ERR_CONNECTION_RESET`
+  di konsol adalah artefak `php artisan serve` PHP built-in server,
+  dikonfirmasi bukan request gagal sungguhan - setiap endpoint yang
+  dipanggil tercatat sukses di log server, termasuk 403 yang MEMANG
+  diharapkan untuk percobaan login akun nonaktif).
+- **Bug produksi nyata ditemukan & diperbaiki saat verifikasi ini**:
+  `config/backup.php`'s notification `'to'` sebelumnya
+  `env('BACKUP_NOTIFICATION_EMAIL', env('ADMIN_EMAIL', 'your@example.com'))`
+  - kelihatan aman tapi SALAH, karena `env()`'s argumen default kedua
+  HANYA kepakai kalau key benar-benar tidak ada di `.env`, BUKAN kalau
+  nilainya string kosong. `ADMIN_EMAIL=` kosong itu STATE YANG SENGAJA
+  DIDUKUNG (lihat `config/admin.php` "leave empty to skip seeding") -
+  jadi begitu `ADMIN_EMAIL` kosong, `'to'` resolve jadi `''`, dan
+  `spatie/laravel-backup` VALIDASI FORMAT EMAIL ITU SAAT BOOT (bukan cuma
+  saat backup benar-benar jalan) - hasilnya SETIAP request/artisan
+  command di SELURUH aplikasi crash dengan `InvalidConfig` begitu
+  `ADMIN_EMAIL` dikosongkan. Ditemukan sesaat setelah `cp .env.example
+  .env` + `php artisan key:generate` gagal total di sesi verifikasi ini.
+  Fix: ganti jadi `env('BACKUP_NOTIFICATION_EMAIL') ?: (env('ADMIN_EMAIL')
+  ?: 'your@example.com')` - operator `?:` memperlakukan string kosong
+  sebagai falsy dan lanjut ke fallback berikutnya, beda dari `env()`'s
+  default kedua yang cuma reaktif terhadap key yang benar-benar tidak ada.
 
 ## Not built yet
 
