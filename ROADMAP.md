@@ -1047,3 +1047,25 @@ baru, lihat "HR: Company, Candidate import, Assignment" di
 Project/Report lintas perusahaan, tidak ada editor "Master Data" terpusat
 — keduanya disebut eksplisit di rencana MGA Fase 05/06 asli dan sengaja
 ditunda, bukan lupa.
+
+### Notifikasi/Pengumuman/Promo untuk grafolog/klien/B2B — 2026-08-23
+
+User minta ini dibangun. Ternyata pengumuman (`Announcement`, sudah bisa
+target per-role termasuk `hr`) dan kode diskon (`DiscountCode`) **sudah
+ada** sejak Commerce Fase B/F — dikonfirmasi ke user lewat
+AskUserQuestion, bukan dibangun ulang. Yang benar-benar baru: mekanisme
+bel notifikasi PERSISTEN per-user (`announcement_reads` — read/unread
+tersimpan di server, bukan cuma dismiss lokal-session yang hilang tiap
+reload seperti sebelumnya), ditempel global di navbar (bukan cuma
+halaman Dashboard). Untuk B2B: TIDAK membangun billing/subscription baru
+(itu keputusan bisnis besar, masih ditunda) — sebagai gantinya
+`Announcement`'s target-role `hr` yang sudah ada dipakai sebagai kanal
+promo B2B (pengumuman, bukan kode diskon transaksional, karena memang
+belum ada alur pembelian B2B untuk didiskon).
+
+Browser-verified 2026-08-23 (Playwright): 3 pengumuman dibuat (umum/
+grafolog/hr) → ketiga persona (grafolog/klien/hr) masing-masing melihat
+badge & isi notifikasi yang BENAR sesuai target role-nya, read-state
+terbukti persisten lewat reload halaman. 9/9 pemeriksaan lolos. Detail
+teknis lengkap di `guratan-api/CLAUDE.md` "Notifikasi/Pengumuman/Promo"
+dan `guratan-web/CLAUDE.md`. 444 backend tests total (up from 438).

@@ -665,6 +665,20 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `AdminKnowledgeView.vue`. First time any of the ~45 `AuditLog::record()`
   call sites across the backend are readable through the app at all.
 
+- **Notification bell added to `AppNavbar.vue`, 2026-08-23** (see
+  `guratan-api/CLAUDE.md`'s "Notifikasi/Pengumuman/Promo" for the full
+  picture) — replaces `DashboardView.vue`'s old session-local dismiss
+  banner entirely (that code is gone, not kept alongside). New
+  `composables/useNotifications.js` (module-level singleton, same pattern
+  as `useTheme.js`/`useToast.js`) holds `notifications`/`unreadCount`
+  shared across the app since `AppNavbar` is mounted once globally. A bell
+  icon (reuses `.app-navbar__theme`'s icon-button styling) shows a red
+  badge with the unread count, opens a dropdown panel on click (closed by
+  a document-level outside-click listener), and calls `markAllRead()` the
+  moment it opens — one action, not per-item toggling, kept deliberately
+  simple. `AdminAnnouncementsView.vue`'s intro copy updated to describe
+  the new bell-based behavior instead of the removed dashboard banner.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

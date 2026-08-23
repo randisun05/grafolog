@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
@@ -7,16 +7,6 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 const dashboard = ref(null)
 const loading = ref(true)
 const error = ref('')
-
-const announcements = ref([])
-const dismissedIds = ref([])
-const visibleAnnouncements = computed(() =>
-  announcements.value.filter((a) => !dismissedIds.value.includes(a.id)),
-)
-
-function dismissAnnouncement(id) {
-  dismissedIds.value = [...dismissedIds.value, id]
-}
 
 const statusLabel = {
   completed: 'Selesai',
@@ -47,31 +37,12 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-
-  try {
-    const { data } = await api.get('/announcements')
-    announcements.value = data
-  } catch {
-    // Pengumuman gagal dimuat bukan hal fatal - dashboard tetap tampil tanpa banner.
-  }
 })
 </script>
 
 <template>
   <div class="dashboard">
     <h1>Dashboard</h1>
-
-    <div v-if="visibleAnnouncements.length" class="dashboard__announcements">
-      <div v-for="a in visibleAnnouncements" :key="a.id" class="dashboard__announcement">
-        <div>
-          <strong>{{ a.title }}</strong>
-          <p>{{ a.body }}</p>
-        </div>
-        <button type="button" class="dashboard__announcement-close" aria-label="Tutup" @click="dismissAnnouncement(a.id)">
-          &times;
-        </button>
-      </div>
-    </div>
 
     <LoadingSpinner v-if="loading" label="Memuat dashboard..." />
     <p v-else-if="error" class="error">{{ error }}</p>
@@ -103,46 +74,6 @@ onMounted(async () => {
 <style scoped>
 .dashboard {
   max-width: 100%;
-}
-.dashboard__announcements {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 16px;
-}
-.dashboard__announcement {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--color-sage-soft);
-  border: 1px solid var(--color-sage);
-  border-radius: var(--radius-md);
-}
-.dashboard__announcement strong {
-  display: block;
-  font-family: var(--font-heading);
-  font-size: 14px;
-  margin-bottom: 2px;
-}
-.dashboard__announcement p {
-  font-size: 13px;
-  color: var(--color-ink-soft);
-  margin: 0;
-}
-.dashboard__announcement-close {
-  flex: 0 0 auto;
-  border: none;
-  background: transparent;
-  color: var(--color-ink-soft);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 4px;
-}
-.dashboard__announcement-close:hover {
-  color: var(--color-ink);
 }
 .dashboard__kpi {
   display: grid;

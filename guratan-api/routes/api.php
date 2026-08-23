@@ -62,6 +62,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::post('/pricing/preview', [PricingController::class, 'preview']);
     Route::get('/announcements', [AnnouncementController::class, 'index']);
+    Route::post('/announcements/read-all', [AnnouncementController::class, 'markAllRead']);
+    Route::post('/announcements/{announcement}/read', [AnnouncementController::class, 'markRead']);
 
     Route::get('/tokens/price', [TokenController::class, 'price']);
     Route::middleware('role:grafolog')->group(function () {

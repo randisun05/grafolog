@@ -85,8 +85,9 @@ onMounted(loadAnnouncements)
   <div class="admin-announcements">
     <h1>Kelola Pengumuman</h1>
     <p class="admin-announcements__note">
-      Pengumuman tampil sebagai banner di Dashboard — bisa ditutup pengguna per sesi, muncul lagi
-      di kunjungan berikutnya selama masih aktif.
+      Pengumuman tampil di bel notifikasi (ikon lonceng) di navbar setiap pengguna yang ditarget —
+      terlihat dari halaman manapun, status "sudah dibaca" tersimpan per pengguna, tidak muncul lagi
+      sebagai belum dibaca setelah bel dibuka.
     </p>
 
     <form class="admin-announcements__form" @submit.prevent="submit">

@@ -2093,6 +2093,66 @@ aplikasi tanpa API call manual.
   sebagai falsy dan lanjut ke fallback berikutnya, beda dari `env()`'s
   default kedua yang cuma reaktif terhadap key yang benar-benar tidak ada.
 
+## Notifikasi/Pengumuman/Promo — bel persisten per-user, 2026-08-23
+
+User minta "buat notifikasi, pemberitahuan, pengumuman, promo, diskon
+untuk grafolog, user dan b2b". Dicek dulu ke kode: `Announcement`
+(pengumuman, target per-role termasuk `hr`) dan `DiscountCode` (kode
+diskon comprehensive/master/token) **sudah ada dan berfungsi** sejak
+Commerce Fase B/F - tidak dibangun ulang. Dikonfirmasi lewat
+AskUserQuestion, user pilih ketiganya: (1) mekanisme notifikasi baru yang
+genuinely personal & persisten (bukan cuma banner dashboard yang dismiss
+lokal), (2) perkuat yang sudah ada, (3) buka jalur promo untuk B2B.
+
+**Keputusan penting soal #3 (B2B)**: TIDAK membangun sistem billing/
+subscription perusahaan baru - itu keputusan bisnis besar yang sengaja
+masih ditunda (lihat "Deferred on purpose" di bagian HR di atas), tidak
+bisa ditebak. Sebagai gantinya: `Announcement` SUDAH BISA ditarget ke
+role `hr` sejak awal (`target_roles: ['hr']`) - jadi "promo B2B" untuk
+sekarang direalisasikan sebagai kanal notifikasi/pengumuman ke HR (mis.
+"paket khusus perusahaan, hubungi kami"), bukan kode diskon dengan
+transaksi otomatis (karena memang belum ada alur pembelian B2B untuk
+didiskon). Ini genuinely menutup kebutuhan #3 tanpa menebak model harga.
+
+- **`announcement_reads`** (tabel baru, `announcement_id`+`user_id`+
+  `read_at`, unique pair) - per-user read state, MENGGANTIKAN
+  `dismissedIds` lokal-session lama di `DashboardView.vue` yang sengaja
+  tidak persisten (lihat catatan lama "jangan tambah persistence tanpa
+  keputusan produk eksplisit" - sekarang ADA keputusan eksplisit itu).
+- **`AnnouncementController::index()`** (rewrite) - respons sekarang
+  `{data: [...], unread_count: N}` (BUKAN array polos lagi - breaking
+  change API, semua konsumen diperbarui) - tiap item dapat `is_read`
+  dihitung dari `announcement_reads` milik user yang login.
+  **`markRead()`**/**`markAllRead()`** (baru, `POST /announcements/
+  {id}/read` dan `/announcements/read-all`) - `markRead` menolak 404
+  untuk pengumuman yang memang tidak visible untuk user itu (tidak bisa
+  "curi baca" pengumuman yang bukan haknya). Upsert (`updateOrCreate`)
+  jadi aman dipanggil berkali-kali tanpa duplikat/error.
+- **Frontend**: `useNotifications.js` (composable singleton module-level,
+  pola sama `useTheme.js`/`useToast.js`) menampung state notifikasi
+  bersama di seluruh app. `AppNavbar.vue` dapat ikon lonceng + badge count
+  + panel dropdown (klik di luar untuk tutup) - GLOBAL di navbar, bukan
+  cuma halaman Dashboard, jadi terlihat dari halaman manapun. Membuka
+  panel otomatis `markAllRead()` (satu aksi, bukan per-item toggle -
+  sengaja sederhana). `DashboardView.vue`'s banner+dismiss lama
+  **dihapus total**, digantikan bel ini sepenuhnya (tidak ada 2 UI
+  paralel untuk hal yang sama). `AdminAnnouncementsView.vue`'s teks
+  penjelasan diperbarui (sebelumnya bilang "banner di Dashboard, dismiss
+  per sesi" - sudah tidak akurat sejak perubahan ini).
+- 6 test baru + 2 test lama diperbarui shape-nya (`AnnouncementControllerTest`
+  - unread default true, mark-read mengubah count, mark-read dua kali
+  tidak duplikat, tidak bisa mark-read punya orang lain/tidak visible,
+  read-state per-user independen, mark-all-read). 444 backend tests total
+  (up from 438).
+- **Browser-verified 2026-08-23** lewat Playwright: admin buat 3
+  pengumuman (umum/khusus-grafolog/khusus-hr) → grafolog login lihat
+  badge=2 isi benar (umum+grafolog, BUKAN B2B) → buka bel → badge hilang
+  → **reload halaman → badge tetap 0** (membuktikan persisten di server,
+  bukan cuma state lokal) → klien login lihat badge=1 (cuma yang umum) →
+  HR login lihat badge=2 isi benar (umum+B2B, BUKAN grafolog) - kanal
+  promo B2B via Announcement terkonfirmasi bekerja end-to-end. 9/9
+  pemeriksaan lolos, 0 error konsol nyata.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
