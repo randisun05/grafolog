@@ -12,12 +12,19 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role', 'company_id', 'token_balance'])]
+#[Fillable(['name', 'email', 'password', 'role', 'company_id', 'token_balance', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    // is_active punya default DB true, tapi MySQL tidak refetch itu ke model
+    // in-memory setelah create() tanpa ini - gotcha yang sama seperti
+    // DiscountCode/Announcement, lihat guratan-api/CLAUDE.md.
+    protected $attributes = [
+        'is_active' => true,
+    ];
 
     public function company(): BelongsTo
     {
@@ -54,6 +61,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 }

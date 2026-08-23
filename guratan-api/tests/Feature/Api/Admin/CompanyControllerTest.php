@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Admin;
 
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -45,5 +46,31 @@ class CompanyControllerTest extends TestCase
 
         $this->actingAs($admin, 'sanctum')->postJson('/api/admin/companies', ['name' => 'PT Dup'])
             ->assertUnprocessable()->assertJsonValidationErrors('name');
+    }
+
+    public function test_administrator_can_update_company_name_and_active_state(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $company = Company::create(['name' => 'PT Lama']);
+
+        $response = $this->actingAs($admin, 'sanctum')->patchJson("/api/admin/companies/{$company->id}", [
+            'name' => 'PT Baru', 'is_active' => false,
+        ]);
+
+        $response->assertOk()->assertJsonPath('name', 'PT Baru')->assertJsonPath('is_active', false);
+        $this->assertDatabaseHas('audit_logs', ['aksi' => 'ubah_perusahaan', 'target_id' => $company->id]);
+    }
+
+    public function test_updating_company_keeps_hr_accounts_active(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $company = Company::create(['name' => 'PT Nonaktif']);
+        $hr = User::factory()->create(['role' => 'hr', 'company_id' => $company->id]);
+
+        $this->actingAs($admin, 'sanctum')->patchJson("/api/admin/companies/{$company->id}", [
+            'name' => $company->name, 'is_active' => false,
+        ])->assertOk();
+
+        $this->assertTrue($hr->fresh()->is_active);
     }
 }

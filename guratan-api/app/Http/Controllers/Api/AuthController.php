@@ -50,6 +50,14 @@ class AuthController extends Controller
 
         /** @var User $user */
         $user = Auth::user();
+
+        // Akun dinonaktifkan admin (lihat Admin\AdminUserController::update)
+        // - pesan berbeda dari "email/password salah" sengaja, akun staf
+        // dibuat administrator (bukan pendaftaran publik) jadi tidak ada
+        // risiko enumerasi berarti di sini, dan pesan jelas membantu grafolog/
+        // hr yang dinonaktifkan tahu ini BUKAN dia lupa kata sandi.
+        abort_if(! $user->is_active, 403, 'Akun Anda telah dinonaktifkan. Hubungi administrator.');
+
         $token = $user->createToken('guratan-web')->plainTextToken;
 
         return response()->json([

@@ -641,6 +641,30 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `guratan-api/CLAUDE.md`. Staff (`auth.isClient === false`) unaffected,
   still shows `report.status` as before.
 
+- **`AdminUsersView.vue` expanded + `AdminAuditLogView.vue` added, 2026-08-23**
+  (see `guratan-api/CLAUDE.md`'s "Gap management ditutup" for the full
+  backend picture and why — a user question "is management complete?" led
+  to a real audit). The user table gained Perusahaan/Status columns and an
+  "Ubah" button (staff accounts only — client accounts have their own flow
+  and don't get this button) that expands an inline edit panel below the
+  row (same expand-row convention as every KM tab — no modal component
+  exists in this codebase): name/email/role, a company dropdown (shown only
+  for role `hr`), an `is_active` checkbox (disabled when editing your own
+  account, matching the backend's self-deactivation guard), and an optional
+  password-reset pair. A brand-new **"Perusahaan" section** (create form +
+  table with an activate/deactivate toggle) was added to the same page —
+  this actually closes a bigger gap than originally scoped: `POST
+  /api/admin/companies` existed since MGA Fase 06 but had **never had a
+  frontend caller at all**, so an HR account (which requires `company_id`)
+  could not really be created through the app; the company dropdown in the
+  create-HR form now genuinely has options instead of being unreachable.
+  **`AdminAuditLogView.vue`** (new, `/admin/audit-logs`, nav link "Log
+  Audit" + `CommandPalette.vue` entry) — read-only paginated table
+  (aksi/target/actor/IP/waktu) with a 400ms-debounced aksi search and a
+  date-range filter, pagination pattern copied from the Indikator tab in
+  `AdminKnowledgeView.vue`. First time any of the ~45 `AuditLog::record()`
+  call sites across the backend are readable through the app at all.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

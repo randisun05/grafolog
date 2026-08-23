@@ -130,6 +130,22 @@ class AuthControllerTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
+    public function test_deactivated_account_cannot_login(): void
+    {
+        User::factory()->create([
+            'email' => 'nonaktif@example.com',
+            'password' => 'password123',
+            'is_active' => false,
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'nonaktif@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertForbidden()->assertJsonPath('message', 'Akun Anda telah dinonaktifkan. Hubungi administrator.');
+    }
+
     public function test_me_requires_authentication(): void
     {
         $this->getJson('/api/auth/me')->assertUnauthorized();

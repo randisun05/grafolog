@@ -1990,6 +1990,80 @@ config/langkah aktivasi ada di root `DEPLOYMENT.md`, ini ringkasannya:
 - 424 backend tests total (tidak berubah dari sebelumnya — perubahan ini
   murni infrastruktur/config, tidak ada logic aplikasi baru untuk diuji).
 
+## Gap management ditutup — audit log viewer + lifecycle akun staf/company, 2026-08-23
+
+User bertanya "apakah secara management sudah lengkap dan baik?" — dicek
+langsung ke kode, 2 gap konkret ditemukan dan dikonfirmasi user untuk
+dikerjakan (lihat ROADMAP.md "Kesiapan Publikasi" untuk daftar lengkap).
+Investigasi kedua juga menemukan gap ketiga yang lebih parah dari dugaan
+awal: **tidak ada UI perusahaan sama sekali** — `POST /api/admin/companies`
+sudah ada sejak MGA Fase 06 tapi tidak pernah punya frontend caller, jadi
+akun HR (butuh `company_id`) sebenarnya tidak bisa benar-benar dibuat lewat
+aplikasi tanpa API call manual.
+
+- **`users.is_active`/`companies.is_active`** (boolean, default `true`,
+  migrasi driver-agnostic - cuma `Schema::table()->boolean()`, tidak butuh
+  raw SQL/doctrine-dbal seperti migrasi enum sebelumnya). **Bukan
+  hard-delete** - riwayat `created_by`/`AuditLog`/`Assignment` yang mengacu
+  ke user/company itu tetap valid setelah dinonaktifkan. Gotcha DB-default-
+  tidak-refetch yang sama seperti `DiscountCode`/`Announcement` dimitigasi
+  dengan `protected $attributes = ['is_active' => true]` di kedua model.
+- **`AdminUserController::update()`** (`PATCH /admin/users/{user}`, baru) -
+  edit nama/email/role/company_id + toggle `is_active` + reset password
+  opsional, satu endpoint (bukan dipecah seperti `DiscountCodeController`'s
+  single-purpose toggle, karena kebutuhannya genuinely edit penuh + toggle
+  sekaligus). **404 kalau target akun bukan staf** (`role === 'user'`) -
+  endpoint ini tetap khusus akun staf, akun klien punya alurnya sendiri,
+  sama seperti batasan `StoreStaffUserRequest` yang sudah ada.
+  **Administrator tidak bisa menonaktifkan akun sendiri** (422) - guard
+  eksplisit, mencegah admin terkunci dari sistemnya sendiri. Menonaktifkan
+  (`is_active: false`) langsung `$user->tokens()->delete()` - bukan cuma
+  mencegah login BERIKUTNYA, sesi Sanctum yang sedang berjalan pun putus di
+  request berikutnya, bukan menunggu token itu sendiri kedaluwarsa (yang
+  memang tidak pernah kedaluwarsa, lihat "Open security findings").
+- **`AuthController::login()`** menolak akun `is_active=false` (403, pesan
+  eksplisit "Akun Anda telah dinonaktifkan..." - beda dari pesan generik
+  "email/password salah", sengaja karena akun staf dibuat administrator
+  bukan pendaftaran publik jadi tidak ada risiko enumerasi berarti).
+- **`CompanyController::update()`** (`PATCH /admin/companies/{company}`,
+  baru) - edit nama + toggle `is_active`. **Menonaktifkan company TIDAK
+  otomatis menonaktifkan akun hr yang sudah terikat ke sana** (keputusan
+  desain eksplisit, didokumentasikan di docblock + dikunci test) - cuma
+  mencegah company itu dipakai untuk akun hr BARU. Kalau perlu mencabut
+  akses hr terkait, itu tindakan terpisah lewat `AdminUserController::
+  update()` per akun - menghindari efek cascade implisit yang mengejutkan.
+- **`Api\Admin\AuditLogController::index()`** (`GET /admin/audit-logs`,
+  baru) - PERTAMA KALI 45 titik `AuditLog::record()` di seluruh aplikasi
+  bisa dibaca kembali lewat aplikasi, bukan cuma lewat query DB manual.
+  Paginated (25/halaman), filter `aksi` (partial match LIKE), `actor_user_id`
+  (exact), `from`/`to` (rentang tanggal `created_at`). Murni baca - tidak
+  ada `store`/`update`/`destroy`, log audit tidak boleh diedit/dihapus lewat
+  aplikasi (integritasnya justru dari situ).
+- Audit log: `buat_akun_staf`/`ubah_akun_staf`, `buat_perusahaan`/
+  `ubah_perusahaan` (perubahan pada mekanisme audit log itu sendiri juga
+  tercatat lewat mekanisme yang sama - konsisten, bukan pengecualian).
+- **Frontend**: `AdminUsersView.vue` diperluas signifikan - tabel user
+  dapat kolom Perusahaan/Status + tombol "Ubah" (khusus akun staf, akun
+  klien tidak dapat tombol ini) yang membuka panel edit inline (pola sama
+  dengan tab-tab KM: expand-row, bukan modal - tidak ada komponen modal di
+  codebase ini). **Section "Perusahaan" baru** (form buat + tabel dengan
+  toggle aktif/nonaktif) - MENUTUP gap company-tanpa-UI di atas, dan
+  dropdown company di form buat/edit HR sekarang benar-benar terisi dari
+  data nyata (sebelumnya field ini bahkan tidak ada di form create). Halaman
+  baru `AdminAuditLogView.vue` (`/admin/audit-logs`, nav link "Log Audit" +
+  entry `CommandPalette.vue`) - tabel read-only dengan filter aksi
+  (debounced 400ms) + rentang tanggal + pagination prev/next, pola sama
+  dengan tab Indikator di `AdminKnowledgeView.vue`.
+- 14 test baru (`AdminUserControllerTest` - edit field, deaktivasi+cabut
+  token, tolak nonaktifkan diri sendiri, reset password, tolak akun klien,
+  tolak non-admin; `CompanyControllerTest` - update nama+status, deaktivasi
+  company tidak mencabut akses hr; `AuditLogControllerTest` baru - list,
+  filter aksi, filter actor, forbidden untuk non-admin; `AuthControllerTest`
+  - akun nonaktif ditolak login). 438 backend tests total (up from 424).
+- **Belum browser-verified** — cuma lewat `php artisan test`/
+  `vendor/bin/pint --test`/`npm run lint`/`npm run build`, belum click-through
+  Playwright.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

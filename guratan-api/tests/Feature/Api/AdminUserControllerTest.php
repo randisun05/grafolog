@@ -160,4 +160,96 @@ class AdminUserControllerTest extends TestCase
 
         $response->assertUnprocessable()->assertJsonValidationErrors('role');
     }
+
+    // --- update ---
+
+    private function updatePayload(User $user, array $overrides = []): array
+    {
+        return array_merge([
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'company_id' => $user->company_id,
+            'is_active' => true,
+        ], $overrides);
+    }
+
+    public function test_administrator_can_edit_staff_account_fields(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'name' => 'Nama Lama']);
+
+        $response = $this->actingAs($admin, 'sanctum')->patchJson(
+            "/api/admin/users/{$grafolog->id}",
+            $this->updatePayload($grafolog, ['name' => 'Nama Baru', 'email' => 'baru@example.com'])
+        );
+
+        $response->assertOk()->assertJsonPath('name', 'Nama Baru');
+        $this->assertDatabaseHas('users', ['id' => $grafolog->id, 'name' => 'Nama Baru', 'email' => 'baru@example.com']);
+        $this->assertDatabaseHas('audit_logs', ['aksi' => 'ubah_akun_staf', 'target_id' => $grafolog->id]);
+    }
+
+    public function test_administrator_can_deactivate_staff_account_and_it_revokes_tokens(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $grafolog->createToken('guratan-web');
+        $this->assertSame(1, $grafolog->tokens()->count());
+
+        $response = $this->actingAs($admin, 'sanctum')->patchJson(
+            "/api/admin/users/{$grafolog->id}",
+            $this->updatePayload($grafolog, ['is_active' => false])
+        );
+
+        $response->assertOk()->assertJsonPath('is_active', false);
+        $this->assertSame(0, $grafolog->tokens()->count());
+    }
+
+    public function test_administrator_cannot_deactivate_own_account(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $response = $this->actingAs($admin, 'sanctum')->patchJson(
+            "/api/admin/users/{$admin->id}",
+            $this->updatePayload($admin, ['is_active' => false])
+        );
+
+        $response->assertStatus(422);
+        $this->assertTrue($admin->fresh()->is_active);
+    }
+
+    public function test_administrator_can_reset_staff_password(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'password' => 'password-lama123']);
+
+        $this->actingAs($admin, 'sanctum')->patchJson(
+            "/api/admin/users/{$grafolog->id}",
+            $this->updatePayload($grafolog, ['password' => 'password-baru123', 'password_confirmation' => 'password-baru123'])
+        )->assertOk();
+
+        $this->assertTrue(Hash::check('password-baru123', $grafolog->fresh()->password));
+    }
+
+    public function test_cannot_edit_client_account_via_staff_endpoint(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $client = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($admin, 'sanctum')->patchJson(
+            "/api/admin/users/{$client->id}",
+            ['name' => $client->name, 'email' => $client->email, 'role' => 'grafolog', 'is_active' => true]
+        )->assertNotFound();
+    }
+
+    public function test_non_administrator_cannot_update_staff_account(): void
+    {
+        $actor = User::factory()->create(['role' => 'grafolog']);
+        $target = User::factory()->create(['role' => 'grafolog']);
+
+        $this->actingAs($actor, 'sanctum')->patchJson(
+            "/api/admin/users/{$target->id}",
+            $this->updatePayload($target)
+        )->assertForbidden();
+    }
 }

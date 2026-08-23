@@ -8,7 +8,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
-    protected $fillable = ['name', 'created_by'];
+    protected $fillable = ['name', 'created_by', 'is_active'];
+
+    // Gotcha DB-default-tidak-refetch yang sama seperti User/DiscountCode/
+    // Announcement - lihat guratan-api/CLAUDE.md.
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
+    }
 
     public function creator(): BelongsTo
     {

@@ -1002,34 +1002,40 @@ backup") dan `guratan-web/CLAUDE.md`.
   `--only-files`) belum pernah dites lawan MySQL sungguhan, cuma lewat
   baca kode paket `spatie/db-dumper`.
 
-### Ditemukan 2026-08-23 — gap "management", belum dikerjakan
+### Gap "management" — ditemukan DAN ditutup 2026-08-23
 
 User bertanya "apakah secara management sudah lengkap dan baik?" — dicek
 langsung ke kode (routes/api.php + controller Admin\*), 2 gap konkret
-ditemukan, belum ada keputusan/instruksi user untuk mengerjakan:
+ditemukan, user konfirmasi "ya" untuk dikerjakan. Investigasi lanjutan
+saat mengerjakan gap #2 menemukan gap ketiga yang lebih parah dari dugaan
+awal (lihat di bawah). Ketiganya sudah selesai dikerjakan hari yang sama:
 
-- [ ] **Tidak ada viewer log audit sama sekali.** `AuditLog::record()`
-  dipanggil di **45 titik** across `Admin\*Controller`/`ScoringController`/
-  `ReportController`/dst (pricing, diskon, konten, token, KB, koreksi
-  skor, akses laporan, ...) — tapi TIDAK ADA satu pun route/endpoint
-  untuk membaca kembali, dan TIDAK ADA halaman admin untuk melihatnya.
-  Prinsip inti proyek ("keamanan & audit log bukan opsional", root
-  `CLAUDE.md`) cuma separuh terpenuhi — data terkumpul tapi tidak
-  bisa diinvestigasi kalau ada insiden/kecurigaan penyalahgunaan tanpa
-  query DB manual. Perbaikan yang masuk akal: `GET /admin/audit-logs`
-  (paginated, filter by aksi/actor/tanggal) + tab baru di admin, pola
-  sama dengan tab-tab KM yang sudah ada.
-- [ ] **Staff/company account tidak bisa diedit atau dinonaktifkan
-  setelah dibuat.** `Admin\AdminUserController` dan
-  `Admin\CompanyController` masing-masing CUMA punya `index()` (list) dan
-  `store()` (create) — tidak ada `update()`/`destroy()` sama sekali. Kalau
-  grafolog/hr/admin berhenti kerja, salah ketik email saat dibuat, atau
-  butuh reset password, TIDAK ADA jalan lewat aplikasi — cuma lewat query
-  DB manual, yang tidak sustainable untuk operasi nyata. Perbaikan yang
-  masuk akal: `User` perlu kolom `is_active` (bukan hard-delete — riwayat
-  `created_by`/audit log yang mengacu ke user itu harus tetap valid),
-  endpoint `PATCH /admin/users/{id}` (edit nama/email/role, toggle aktif,
-  reset password) + UI tombol di `AdminUsersView.vue` yang sudah ada.
+- [x] **Viewer log audit** — `Api\Admin\AuditLogController::index()`
+  (`GET /admin/audit-logs`, paginated, filter aksi/actor/tanggal) +
+  halaman `AdminAuditLogView.vue` (`/admin/audit-logs`). Pertama kalinya
+  45 titik `AuditLog::record()` di seluruh aplikasi bisa dibaca kembali
+  lewat aplikasi, bukan cuma query DB manual.
+- [x] **Staff account bisa diedit & dinonaktifkan** — kolom
+  `users.is_active` (bukan hard-delete), `PATCH /admin/users/{user}` (edit
+  nama/email/role/company_id, toggle aktif, reset password opsional),
+  tombol "Ubah" + panel edit inline di `AdminUsersView.vue`. Menonaktifkan
+  langsung mencabut semua token Sanctum aktif (bukan cuma blokir login
+  berikutnya). Admin tidak bisa menonaktifkan akun sendiri (guard 422).
+- [x] **Ditemukan saat mengerjakan #2, ternyata lebih parah dari dugaan:
+  tidak ada UI perusahaan SAMA SEKALI.** `POST /api/admin/companies` sudah
+  ada sejak MGA Fase 06 tapi tidak pernah punya frontend caller — akun HR
+  (wajib `company_id`) sebenarnya tidak bisa dibuat lewat aplikasi tanpa
+  API call manual, dropdown company di form buat-HR selama ini kosong tak
+  tersambung apa pun. Ditutup sekalian: `PATCH /admin/companies/{company}`
+  (edit nama + toggle aktif, TIDAK mencabut akses hr terkait secara
+  cascade — keputusan desain eksplisit) + section "Perusahaan" baru
+  (create form + tabel) di `AdminUsersView.vue`.
+
+14 test baru, 438 backend tests total (up from 424). Detail teknis
+lengkap di `guratan-api/CLAUDE.md` "Gap management ditutup" dan
+`guratan-web/CLAUDE.md`. Belum browser-verified (cuma test otomatis +
+build/lint) — perlu 1 sesi verifikasi manual lewat browser sebelum
+dianggap production-ready.
 
 Sudah diketahui & didokumentasikan sebagai gap terpisah (BUKAN temuan
 baru, lihat "HR: Company, Candidate import, Assignment" di
