@@ -17,6 +17,7 @@ class PaymentControllerTest extends TestCase
     use RefreshDatabase;
 
     private const CLIENT_ID = 'MCH-TEST-0001';
+
     private const SECRET_KEY = 'test-secret-key';
 
     protected function setUp(): void

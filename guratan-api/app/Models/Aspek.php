@@ -41,9 +41,9 @@ class Aspek extends Model
     {
         return [
             'very_high' => $this->narasi_very_high,
-            'high'      => $this->narasi_high,
-            'medium'    => $this->narasi_medium,
-            'low'       => $this->narasi_low,
+            'high' => $this->narasi_high,
+            'medium' => $this->narasi_medium,
+            'low' => $this->narasi_low,
         ];
     }
 }

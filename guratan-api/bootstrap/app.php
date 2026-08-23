@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\LogReportAccess;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,8 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'log.report_access' => \App\Http\Middleware\LogReportAccess::class,
-            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'log.report_access' => LogReportAccess::class,
+            'role' => EnsureUserHasRole::class,
         ]);
 
         // API-only app: no "login" route exists. Laravel's default middleware

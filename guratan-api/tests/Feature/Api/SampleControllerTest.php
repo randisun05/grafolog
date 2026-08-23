@@ -4,11 +4,9 @@ namespace Tests\Feature\Api;
 
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
-use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\SeedsGrafologiKb;
 use Tests\TestCase;
 

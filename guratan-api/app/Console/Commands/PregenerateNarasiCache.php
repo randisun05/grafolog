@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class PregenerateNarasiCache extends Command
 {
     protected $signature = 'narasi:pregenerate {--bahasa=id}';
+
     protected $description = 'Panggil LLM sekali untuk semua 40 aspek x 4 level (160 kombinasi), simpan ke narasi_cache permanen';
 
     public function handle(NarasiCacheService $service): int

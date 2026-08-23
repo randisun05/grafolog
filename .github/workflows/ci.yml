@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (guratan-api)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: guratan-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, pdo, pdo_sqlite, sqlite3, bcmath, dom, fileinfo, curl, tokenizer, xml
+          coverage: none
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: guratan-api/vendor
+          key: composer-${{ hashFiles('guratan-api/composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Check code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Run tests
+        run: php artisan test
+
+  frontend:
+    name: Frontend (guratan-web)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: guratan-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: guratan-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

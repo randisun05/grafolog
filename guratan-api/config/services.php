@@ -36,13 +36,13 @@ return [
     ],
 
     'llm' => [
-    'provider' => env('LLM_PROVIDER', 'none'),
-    'api_key' => env('LLM_API_KEY'),
-    'endpoint' => env('LLM_API_ENDPOINT'),
-    'model' => env('LLM_MODEL'),
-    'selfhosted_url' => env('LLM_SELFHOSTED_URL', 'http://localhost:11434'),
-    'selfhosted_model' => env('LLM_SELFHOSTED_MODEL', 'qwen2.5:14b'),
-],
+        'provider' => env('LLM_PROVIDER', 'none'),
+        'api_key' => env('LLM_API_KEY'),
+        'endpoint' => env('LLM_API_ENDPOINT'),
+        'model' => env('LLM_MODEL'),
+        'selfhosted_url' => env('LLM_SELFHOSTED_URL', 'http://localhost:11434'),
+        'selfhosted_model' => env('LLM_SELFHOSTED_MODEL', 'qwen2.5:14b'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

@@ -18,7 +18,9 @@ class DokuService
     private const CHECKOUT_PATH = '/checkout/v1/payment';
 
     private ?string $clientId;
+
     private ?string $secretKey;
+
     private ?string $baseUrl;
 
     public function __construct(?string $clientId = null, ?string $secretKey = null, ?string $baseUrl = null)
@@ -38,7 +40,7 @@ class DokuService
      * tahu bentuk model pemanggilnya.
      *
      * @throws RuntimeException kalau DOKU menolak request (kredensial belum
-     *         diisi, invoice_number dobel, dsb) - pesan asli DOKU diteruskan.
+     *                          diisi, invoice_number dobel, dsb) - pesan asli DOKU diteruskan.
      */
     public function createCheckout(
         string $invoiceNumber,

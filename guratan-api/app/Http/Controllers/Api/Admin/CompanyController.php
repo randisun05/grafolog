@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCompanyRequest;
 use App\Models\Company;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * Gated by 'role:administrator' on its routes (routes/api.php). Company must

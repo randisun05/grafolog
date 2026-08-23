@@ -25,6 +25,7 @@ class ScoringRuleBand extends Model
                 return $band->label;
             }
         }
+
         return $bands->last()->label ?? 'Tidak diketahui';
     }
 }

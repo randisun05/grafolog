@@ -6,6 +6,7 @@ use App\Models\Aspek;
 use App\Models\HandwritingSample;
 use App\Models\KombinasiSyarat;
 use App\Models\KombinasiTemuan;
+use Illuminate\Support\Collection;
 
 /**
  * Evaluasi "Kombinasi Temuan" - syarat lintas Indikator/Aspek/Sindrom yang
@@ -50,9 +51,8 @@ class KombinasiTemuanService
     }
 
     /**
-     * @return array{0: array<int,string>, 1: array<int,string>} [level per aspek_id, level per sindrom_id]
-     *
      * @param  array<string,int>  $skorPerAspek
+     * @return array{0: array<int,string>, 1: array<int,string>} [level per aspek_id, level per sindrom_id]
      */
     private function hitungLevel(array $skorPerAspek): array
     {
@@ -95,7 +95,7 @@ class KombinasiTemuanService
     /**
      * @param  array<int,string>  $levelByAspekId
      * @param  array<int,string>  $levelBySindromId
-     * @param  \Illuminate\Support\Collection<int,int>  $checkedIndikatorIds  hasil pluck('indikator_id')->flip() - dipakai isset() O(1)
+     * @param  Collection<int,int>  $checkedIndikatorIds  hasil pluck('indikator_id')->flip() - dipakai isset() O(1)
      */
     private function evaluateSyarat(KombinasiSyarat $syarat, array $levelByAspekId, array $levelBySindromId, $checkedIndikatorIds): bool
     {

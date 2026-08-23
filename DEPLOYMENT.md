@@ -37,7 +37,7 @@ bahwa deployment sudah terjadi.
    ```
 6. Daftarkan Notification URL production (`https://api.domain-anda.com/api/payments/notification`) di DOKU Back Office (akun production, bukan sandbox) — kalau tidak didaftarkan, DOKU tidak akan pernah memanggil endpoint ini dan status pembayaran tidak akan pernah ter-update dari `pending`.
 7. HTTPS wajib — Sanctum Bearer token dan data psikologis sensitif tidak boleh lewat HTTP polos.
-8. Jalankan `php artisan test` sekali lagi di environment yang mendekati production (PHP version yang sama) sebelum switch DNS/traffic.
+8. Jalankan `php artisan test` sekali lagi di environment yang mendekati production (PHP version yang sama) sebelum switch DNS/traffic. **CI otomatis ada sejak 2026-08-23** (`.github/workflows/ci.yml` — 2 job paralel: backend menjalankan `vendor/bin/pint --test` + `php artisan test` di PHP 8.3, frontend menjalankan `npm run lint` + `npm run build` di Node 22, keduanya trigger di tiap push/PR ke branch mana pun) — status hijau di GitHub sebelum merge sudah mengonfirmasi ini, langkah manual di atas jadi verifikasi tambahan terakhir, bukan satu-satunya jaring pengaman.
 
 ### Catatan email production
 

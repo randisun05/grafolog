@@ -14,9 +14,9 @@ class LlmServiceProvider extends ServiceProvider
     {
         $this->app->bind(LlmProviderInterface::class, function () {
             return match (config('services.llm.provider', 'none')) {
-                'api' => new ApiLlmProvider(),
-                'selfhosted' => new SelfHostedLlmProvider(),
-                default => new NullLlmProvider(), // MVP default - tanpa LLM
+                'api' => new ApiLlmProvider,
+                'selfhosted' => new SelfHostedLlmProvider,
+                default => new NullLlmProvider, // MVP default - tanpa LLM
             };
         });
     }

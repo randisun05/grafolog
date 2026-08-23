@@ -2,10 +2,12 @@
 
 namespace Tests\Unit;
 
+use App\Models\Aspek;
 use App\Models\HandwritingSample;
 use App\Models\Indikator;
 use App\Models\KombinasiTemuan;
 use App\Models\SampleIndikatorCheck;
+use App\Models\Sindrom;
 use App\Models\User;
 use App\Services\Scoring\KombinasiTemuanService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,8 +32,8 @@ class KombinasiTemuanServiceTest extends TestCase
     {
         $this->seedMinimalAspek(2); // aspek kode '01' dan '02', 1 sindrom sama
         $temuan = KombinasiTemuan::create(['nama' => 'Pola A', 'teks_interpretasi' => 'Sifat gabungan A.', 'logika_gabung' => 'AND']);
-        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => \App\Models\Aspek::where('kode', '01')->first()->id, 'kondisi' => 'high']);
-        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => \App\Models\Aspek::where('kode', '02')->first()->id, 'kondisi' => 'low']);
+        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => Aspek::where('kode', '01')->first()->id, 'kondisi' => 'high']);
+        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => Aspek::where('kode', '02')->first()->id, 'kondisi' => 'low']);
 
         $service = new KombinasiTemuanService;
         // 01 skor 8 -> high, 02 skor 2 -> low: kedua syarat AND terpenuhi.
@@ -46,8 +48,8 @@ class KombinasiTemuanServiceTest extends TestCase
     {
         $this->seedMinimalAspek(2);
         $temuan = KombinasiTemuan::create(['nama' => 'Pola A', 'teks_interpretasi' => 'x', 'logika_gabung' => 'AND']);
-        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => \App\Models\Aspek::where('kode', '01')->first()->id, 'kondisi' => 'high']);
-        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => \App\Models\Aspek::where('kode', '02')->first()->id, 'kondisi' => 'low']);
+        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => Aspek::where('kode', '01')->first()->id, 'kondisi' => 'high']);
+        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => Aspek::where('kode', '02')->first()->id, 'kondisi' => 'low']);
 
         $service = new KombinasiTemuanService;
         // 02 tidak 'low' (skor 8 -> high) - AND gagal, tidak boleh matched.
@@ -60,8 +62,8 @@ class KombinasiTemuanServiceTest extends TestCase
     {
         $this->seedMinimalAspek(2);
         $temuan = KombinasiTemuan::create(['nama' => 'Pola OR', 'teks_interpretasi' => 'y', 'logika_gabung' => 'OR']);
-        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => \App\Models\Aspek::where('kode', '01')->first()->id, 'kondisi' => 'very_high']);
-        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => \App\Models\Aspek::where('kode', '02')->first()->id, 'kondisi' => 'low']);
+        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => Aspek::where('kode', '01')->first()->id, 'kondisi' => 'very_high']);
+        $temuan->syarat()->create(['level' => 'aspek', 'aspek_id' => Aspek::where('kode', '02')->first()->id, 'kondisi' => 'low']);
 
         $service = new KombinasiTemuanService;
         $matched = $service->evaluate(['01' => 5, '02' => 1], $this->sample());
@@ -72,7 +74,7 @@ class KombinasiTemuanServiceTest extends TestCase
     public function test_sindrom_level_condition_uses_average_of_its_aspek(): void
     {
         $this->seedMinimalAspek(2); // keduanya 1 sindrom yang sama
-        $sindrom = \App\Models\Sindrom::first();
+        $sindrom = Sindrom::first();
         $temuan = KombinasiTemuan::create(['nama' => 'Pola Sindrom', 'teks_interpretasi' => 'z', 'logika_gabung' => 'AND']);
         $temuan->syarat()->create(['level' => 'sindrom', 'sindrom_id' => $sindrom->id, 'kondisi' => 'high']);
 
@@ -86,7 +88,7 @@ class KombinasiTemuanServiceTest extends TestCase
     public function test_indikator_level_condition_checks_sample_indikator_checks(): void
     {
         $this->seedMinimalAspek(1);
-        $aspek = \App\Models\Aspek::where('kode', '01')->first();
+        $aspek = Aspek::where('kode', '01')->first();
         $indikator = Indikator::create(['kode' => '01-1a', 'posisi' => 1, 'aspek_id' => $aspek->id, 'nama' => 'Indikator X']);
         $sample = $this->sample();
         SampleIndikatorCheck::create(['sample_id' => $sample->id, 'indikator_id' => $indikator->id, 'checked' => true, 'sumber' => 'manual']);
@@ -103,7 +105,7 @@ class KombinasiTemuanServiceTest extends TestCase
     public function test_indikator_level_tidak_tercentang_condition(): void
     {
         $this->seedMinimalAspek(1);
-        $aspek = \App\Models\Aspek::where('kode', '01')->first();
+        $aspek = Aspek::where('kode', '01')->first();
         $indikator = Indikator::create(['kode' => '01-1a', 'posisi' => 1, 'aspek_id' => $aspek->id, 'nama' => 'Indikator X']);
         $sample = $this->sample(); // tidak ada baris sample_indikator_checks sama sekali
 
