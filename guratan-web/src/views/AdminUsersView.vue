@@ -353,6 +353,10 @@ onMounted(async () => {
       <thead>
         <tr>
           <th>Nama</th>
+          <th>HR</th>
+          <th>Kandidat</th>
+          <th>Selesai</th>
+          <th>Rata-rata Durasi</th>
           <th>Status</th>
           <th></th>
         </tr>
@@ -360,6 +364,10 @@ onMounted(async () => {
       <tbody>
         <tr v-for="c in companies" :key="c.id">
           <td>{{ c.name }}</td>
+          <td>{{ c.hr_count }}</td>
+          <td>{{ c.total_candidates }}</td>
+          <td>{{ c.completed_reports }}</td>
+          <td>{{ c.avg_turnaround_days !== null ? `${c.avg_turnaround_days} hari` : '–' }}</td>
           <td>
             <span class="badge" :class="c.is_active ? 'badge--active' : 'badge--inactive'">
               {{ c.is_active ? 'Aktif' : 'Nonaktif' }}

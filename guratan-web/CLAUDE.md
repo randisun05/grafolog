@@ -679,6 +679,14 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   simple. `AdminAnnouncementsView.vue`'s intro copy updated to describe
   the new bell-based behavior instead of the removed dashboard banner.
 
+- **`AdminUsersView.vue`'s Perusahaan table gained 4 stat columns,
+  2026-08-23** (B2B Fase 1 — see `guratan-api/CLAUDE.md`'s matching
+  entry) — HR/Kandidat/Selesai/Rata-rata Durasi, sourced from
+  `CompanyController::index()`'s extended response. `toggleCompanyActive()`'s
+  existing `Object.assign(company, data)` safely leaves these new fields
+  untouched on a status toggle (the PATCH response doesn't include them,
+  and `Object.assign` only overwrites keys present in its source).
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

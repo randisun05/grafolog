@@ -1048,6 +1048,22 @@ Project/Report lintas perusahaan, tidak ada editor "Master Data" terpusat
 — keduanya disebut eksplisit di rencana MGA Fase 05/06 asli dan sengaja
 ditunda, bukan lupa.
 
+### 3 fitur B2B yang belum ada — dipecah 3 fase, 2026-08-23
+
+User tanya "apa saja fitur B2B" lalu minta ketiganya dijalankan setelah
+lihat dulu dipecah fase (dikonfirmasi lewat EnterPlanMode). Untuk fase 3,
+ditanya model harga lewat AskUserQuestion — user pilih **kontrak custom
+per perusahaan** (sales-led, sistem cuma mencatat, tidak menghitung
+tagihan otomatis).
+
+- [x] **Fase 1 — dashboard admin lintas-perusahaan** (statistik agregat
+  HR/kandidat/laporan selesai per company). Selesai — lihat
+  `guratan-api/CLAUDE.md` "B2B Fase 1".
+- [ ] **Fase 2 — laporan tersegmentasi per-Topik untuk B2B** (wire
+  `TopikFilterService`/`segmen()` yang sudah ada ke UI HR).
+- [ ] **Fase 3 — kontrak B2B** (`company_contracts`, record-only, admin
+  CRUD).
+
 ### Notifikasi/Pengumuman/Promo untuk grafolog/klien/B2B — 2026-08-23
 
 User minta ini dibangun. Ternyata pengumuman (`Announcement`, sudah bisa

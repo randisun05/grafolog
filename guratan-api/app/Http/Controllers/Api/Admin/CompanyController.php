@@ -7,7 +7,11 @@ use App\Http\Requests\Admin\StoreCompanyRequest;
 use App\Http\Requests\Admin\UpdateCompanyRequest;
 use App\Models\AuditLog;
 use App\Models\Company;
+use App\Models\HandwritingSample;
+use App\Models\PersonalityReport;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 
 /**
  * Gated by 'role:administrator' on its routes (routes/api.php). Company must
@@ -16,9 +20,60 @@ use Illuminate\Http\JsonResponse;
  */
 class CompanyController extends Controller
 {
+    /**
+     * Dashboard admin lintas-perusahaan (ROADMAP.md "Kesiapan Publikasi" -
+     * sebelumnya admin cuma lihat nama+status, tidak ada ringkasan aktivitas
+     * sama sekali). Tidak ada company_id langsung di Project/HandwritingSample
+     * - rantainya company -> user(role=hr) -> Project.created_by ->
+     * HandwritingSample, sama seperti yang dipakai HrCandidatesView/
+     * DashboardController::hrDashboard() per HR individual, di sini
+     * digabung per company (bisa lebih dari 1 akun hr per company).
+     */
     public function index(): JsonResponse
     {
-        return response()->json(Company::query()->latest()->paginate(20));
+        $companies = Company::query()->latest()->paginate(20);
+
+        $companies->getCollection()->transform(function (Company $company) {
+            $hrIds = User::where('company_id', $company->id)->where('role', 'hr')->pluck('id');
+            $sampleIds = HandwritingSample::whereHas('project', fn ($q) => $q->whereIn('created_by', $hrIds))
+                ->pluck('id');
+
+            $company->hr_count = $hrIds->count();
+            $company->total_candidates = $sampleIds->count();
+            $company->completed_reports = PersonalityReport::whereIn('sample_id', $sampleIds)
+                ->where('status', 'completed')->count();
+            $company->avg_turnaround_days = $this->avgTurnaroundDays($sampleIds);
+
+            return $company;
+        });
+
+        return response()->json($companies);
+    }
+
+    /**
+     * Duplikasi kecil dari DashboardController::avgTurnaroundDays() (private
+     * di sana, beda konteks agregasi - per company di sini, per user di
+     * sana) - diekstrak jadi helper bersama akan bikin coupling Admin\*
+     * controller ke controller non-admin untuk logika yang genuinely cuma
+     * ~10 baris, tidak sepadan.
+     */
+    private function avgTurnaroundDays(Collection $sampleIds): ?float
+    {
+        $reports = PersonalityReport::whereIn('sample_id', $sampleIds)
+            ->where('status', 'completed')
+            ->whereNotNull('generated_at')
+            ->with('sample:id,created_at')
+            ->get();
+
+        if ($reports->isEmpty()) {
+            return null;
+        }
+
+        $totalDays = $reports->sum(
+            fn (PersonalityReport $report) => $report->sample->created_at->diffInHours($report->generated_at) / 24
+        );
+
+        return round($totalDays / $reports->count(), 1);
     }
 
     public function store(StoreCompanyRequest $request): JsonResponse

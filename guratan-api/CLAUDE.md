@@ -2153,6 +2153,39 @@ didiskon). Ini genuinely menutup kebutuhan #3 tanpa menebak model harga.
   promo B2B via Announcement terkonfirmasi bekerja end-to-end. 9/9
   pemeriksaan lolos, 0 error konsol nyata.
 
+## B2B Fase 1 — dashboard admin lintas-perusahaan, 2026-08-23
+
+User minta daftar fitur B2B yang belum ada dipecah jadi 3 fase (lihat
+ROADMAP.md "Kesiapan Publikasi" untuk fase 2/3). Fase 1: admin sebelumnya
+cuma lihat nama+status tiap Company di `AdminUsersView.vue`'s section
+Perusahaan, tanpa ringkasan aktivitas sama sekali.
+
+- **`Api\Admin\CompanyController::index()`** diperluas — tiap Company di
+  respons sekarang dapat 4 field tambahan: `hr_count`, `total_candidates`,
+  `completed_reports`, `avg_turnaround_days`. **Tidak ada `company_id`
+  langsung di `Project`/`HandwritingSample`** (dikonfirmasi lewat
+  eksplorasi kode sebelum implementasi) — rantai query-nya
+  `Company` → `User` (`company_id`, `role=hr`) → `Project.created_by` →
+  `HandwritingSample`, sama seperti yang dipakai
+  `DashboardController::hrDashboard()` per akun HR individual, di sini
+  digabung per company (bisa >1 akun HR per company).
+- `avgTurnaroundDays()` **sengaja diduplikasi kecil** dari
+  `DashboardController` (bukan diekstrak ke helper bersama) — coupling
+  Admin\* controller ke controller non-admin untuk ~10 baris logika tidak
+  sepadan.
+- **Tidak ada endpoint baru** — `index()` yang sudah ada diperkaya,
+  konsumen lama otomatis dapat field baru tanpa breaking change.
+- Frontend: `AdminUsersView.vue`'s tabel Perusahaan dapat 4 kolom baru
+  (HR/Kandidat/Selesai/Rata-rata Durasi) — tidak dibuat halaman terpisah,
+  Company sudah punya satu rumah di situ.
+- 3 test baru (`CompanyControllerTest` — stats benar untuk company aktif,
+  semua-nol untuk company kosong, tidak bocor lintas-company). 447
+  backend tests total (up from 444).
+- **Browser-verified 2026-08-23**: seed 1 company + 1 HR + 2 kandidat (1
+  selesai 3 hari, 1 pending) → tabel Perusahaan tampilkan
+  HR=1/Kandidat=2/Selesai=1/Durasi=3 hari, semuanya cocok data seed. 2/2
+  pemeriksaan lolos.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
