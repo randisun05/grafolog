@@ -11,7 +11,7 @@
         Laporan kepribadian ({{ ucfirst($report->tier) }}) Anda telah selesai dianalisis dan siap untuk dilihat.
     </p>
     <p>
-        <a href="{{ config('app.frontend_url', config('app.url')) }}/reports/{{ $report->id }}">
+        <a href="{{ config('app.frontend_url') }}/reports/{{ $report->id }}">
             Lihat Laporan
         </a>
     </p>

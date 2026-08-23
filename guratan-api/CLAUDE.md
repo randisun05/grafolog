@@ -1863,6 +1863,26 @@ tidak disentuh.
   (laporan klien) TIDAK menerima parameter topik apa pun - tetap selalu
   laporan lengkap seperti sebelumnya.
 
+## Guard biaya AI — added 2026-08-23
+
+`POST /reports/{report}/narasi-terpadu/generate` sekarang punya
+`throttle:20,60` sendiri, DI ATAS `throttle:60,1` grup umum yang sudah ada
+(dua middleware throttle independen bertumpuk pada 1 route — pola yang
+sudah ada di route lain seperti `/auth/register`, bukan pola baru). Ini
+satu-satunya endpoint yang memanggil Anthropic (biaya nyata per klik) —
+`throttle:60,1` terlalu longgar untuk itu. 20/jam per grafolog cukup untuk
+pemakaian wajar (generate awal + beberapa kali regenerate per laporan)
+tapi menutup risiko klik berulang/`force: true` berulang membakar biaya
+tanpa sengaja. Dedup-guard (`narasi_input_hash`, lihat "Narasi terpadu —
+optimalisasi" di atas) sudah menutup regenerate-tanpa-perubahan-data;
+throttle ini menutup celah yang tersisa — `force: true` sengaja
+melewati dedup-guard, jadi tanpa batas terpisah, klik berulang dengan
+`force: true` bisa memanggil Anthropic tanpa batas.
+`NarasiTerpaduControllerTest::test_generate_endpoint_is_rate_limited_
+separately_from_general_throttle` mengunci ini (20 request lolos, request
+ke-21 dalam jam yang sama dapat 429) — 420 backend tests total (up from
+419).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

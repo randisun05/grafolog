@@ -56,6 +56,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | URL SPA Vue (guratan-web), dipakai untuk membangun link di email
+    | (laporan selesai, reset password) - BUKAN URL API ini sendiri. Sengaja
+    | didaftarkan di sini (bukan `env('FRONTEND_URL')` langsung di kode
+    | pemanggil) supaya kompatibel dengan `config:cache` di produksi.
+    | Sebelumnya email laporan selesai memanggil `config('app.frontend_url')`
+    | padahal key ini belum pernah didaftarkan - diam-diam selalu fallback
+    | ke `app.url` (API), bukan frontend. Ditemukan & diperbaiki 2026-08-22.
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

@@ -42,6 +42,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:20,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 });
 
 // DOKU memanggil ini server-to-server, tidak punya token Sanctum kita -
@@ -91,7 +93,14 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/reports/{report}/segmen', [ReportController::class, 'segmen']);
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
     Route::patch('/reports/{report}/aspek/{kode}/narasi', [ReportController::class, 'updateNarasi']);
-    Route::post('/reports/{report}/narasi-terpadu/generate', [ReportController::class, 'generateNarasiTerpadu']);
+    // Throttle tambahan KHUSUS endpoint ini, di atas throttle:60,1 grup di
+    // atas - itu terlalu longgar untuk endpoint yang memanggil Anthropic
+    // (biaya nyata per klik). 20/jam per grafolog cukup untuk pemakaian
+    // wajar (generate + beberapa kali regenerate wajar per laporan) tapi
+    // menutup risiko klik berulang/force berulang membakar biaya tanpa
+    // sengaja - lihat CLAUDE.md "Guard biaya AI".
+    Route::post('/reports/{report}/narasi-terpadu/generate', [ReportController::class, 'generateNarasiTerpadu'])
+        ->middleware('throttle:20,60');
     Route::patch('/reports/{report}/narasi-terpadu', [ReportController::class, 'updateNarasiTerpadu']);
     Route::get('/reports/{report}/revisions', [ReportController::class, 'revisions']);
     Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);

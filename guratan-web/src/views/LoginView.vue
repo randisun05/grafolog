@@ -43,6 +43,7 @@ async function submit() {
       <button type="submit" class="btn btn--primary" :disabled="loading">
         {{ loading ? 'Memproses...' : 'Masuk' }}
       </button>
+      <RouterLink to="/lupa-password" class="auth-form__link">Lupa kata sandi?</RouterLink>
     </form>
   </div>
 </template>
@@ -74,5 +75,11 @@ label {
 .btn--primary {
   width: 100%;
   padding: 11px;
+}
+.auth-form__link {
+  display: block;
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
 }
 </style>

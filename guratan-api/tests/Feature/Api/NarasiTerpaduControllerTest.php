@@ -251,6 +251,30 @@ class NarasiTerpaduControllerTest extends TestCase
             ->assertForbidden();
     }
 
+    /**
+     * Guard biaya AI - throttle:20,60 KHUSUS endpoint ini (lebih ketat dari
+     * throttle:60,1 grup umum), lihat CLAUDE.md "Guard biaya AI". Queue::fake()
+     * supaya 20 percobaan ini tidak benar-benar mengeksekusi job (QUEUE_CONNECTION
+     * sync di phpunit.xml akan menjalankannya inline kalau tidak di-fake) - yang
+     * diuji di sini murni perilaku throttle middleware, bukan hasil generate-nya.
+     */
+    public function test_generate_endpoint_is_rate_limited_separately_from_general_throttle(): void
+    {
+        Queue::fake();
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $report = $this->completedReportFor($grafolog);
+
+        for ($i = 0; $i < 20; $i++) {
+            $this->actingAs($grafolog, 'sanctum')
+                ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id', 'force' => true]);
+        }
+
+        $response = $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id', 'force' => true]);
+
+        $response->assertStatus(429);
+    }
+
     // --- update / finalize ---
 
     public function test_owner_grafolog_can_edit_and_finalize_narasi_terpadu(): void
