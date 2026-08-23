@@ -2211,6 +2211,50 @@ sekarang disambungkan untuk B2B.
   centang filter "Karier" → cuma narasi Karier tampil, narasi Lain hilang
   → uncheck → breakdown penuh kembali. 4/4 pemeriksaan lolos.
 
+## B2B Fase 3 — kontrak custom per perusahaan (record-only), 2026-08-23
+
+Fase terakhir dari 3-fase B2B (lihat Fase 1/2 di atas). Model harga B2B
+ditanya ke user lewat AskUserQuestion sebelum implementasi — dipilih
+**kontrak custom per perusahaan** (sales-led): sistem CUMA mencatat
+kesepakatan yang sudah dinegosiasikan manual, TIDAK menghitung tagihan
+otomatis, TIDAK menyentuh payment gate/flow apa pun yang sudah ada.
+
+- **`company_contracts`** (`judul`, `catatan` teks bebas — sengaja bukan
+  field terstruktur per item karena tiap kontrak hasil negosiasi beda-beda,
+  `nilai_kontrak` decimal nullable **murni referensi internal admin, TIDAK
+  dipakai kalkulasi apa pun**, `mulai_at`, `berakhir_at` nullable — null =
+  tanpa batas waktu, `status` enum draft/aktif/dihentikan diubah manual
+  oleh admin — **TIDAK auto-transisi via cron**, `created_by`).
+  `CompanyContract belongsTo Company`, `Company` dapat relasi `contracts()`
+  baru.
+- **`Api\Admin\CompanyContractController`** (nested di bawah Company, pola
+  sama persis `MeasurementCategoryController`/`MeasurementVariableController`) -
+  `store()`/`update()`/`destroy()`, tidak ada `index()` terpisah,
+  `CompanyController::index()` sekarang `with('contracts')` supaya
+  dashboard Fase 1 langsung dapat riwayat kontrak tanpa request kedua.
+  **Route alias diperlukan** (`CompanyContractController` vs
+  `CompanyController` import) - Pint mengurutkan alfabetis otomatis,
+  "CompanyContract..." < "CompanyController" secara leksikal jadi
+  urutannya benar tanpa perlu diatur manual.
+- **Gotcha ditemukan & diperbaiki saat browser-verify**: cast Eloquent
+  `'mulai_at' => 'date'` polos men-serialize ke JSON sebagai timestamp ISO
+  penuh (`"2026-01-01T00:00:00.000000Z"`), bukan tanggal bersih - frontend
+  menampilkan itu apa adanya, jelek. Fix: `'date:Y-m-d'` (format eksplisit)
+  di `CompanyContract`'s cast - field ini genuinely tanggal, bukan waktu.
+- Audit log: `buat_kontrak_b2b`/`ubah_kontrak_b2b`/`hapus_kontrak_b2b`.
+- 8 test baru (`CompanyContractControllerTest` - CRUD, auth non-admin
+  ditolak, validasi `berakhir_at >= mulai_at`, cascade delete saat Company
+  dihapus, `CompanyController::index()` menyertakan kontrak). 459 backend
+  tests total (up from 451).
+- **Browser-verified 2026-08-23**: admin buka panel "Kontrak" di baris
+  perusahaan → catat kontrak (judul/status Aktif/tanggal/nilai/catatan) →
+  muncul di riwayat dengan format tanggal bersih + badge status "Aktif" di
+  baris utama tabel Perusahaan → hapus kontrak → hilang dari daftar. 4/4
+  pemeriksaan lolos, 0 error konsol nyata.
+- **Menutup seluruh rencana 3-fase B2B** dari ROADMAP.md "Kesiapan
+  Publikasi" — dashboard admin lintas-perusahaan, laporan tersegmentasi
+  per-Topik, dan kontrak B2B semuanya selesai dikerjakan hari yang sama.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

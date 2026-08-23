@@ -31,7 +31,7 @@ class CompanyController extends Controller
      */
     public function index(): JsonResponse
     {
-        $companies = Company::query()->latest()->paginate(20);
+        $companies = Company::query()->with('contracts')->latest()->paginate(20);
 
         $companies->getCollection()->transform(function (Company $company) {
             $hrIds = User::where('company_id', $company->id)->where('role', 'hr')->pluck('id');

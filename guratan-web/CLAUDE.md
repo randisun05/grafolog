@@ -699,6 +699,19 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   (`segmentedData` ref reset to `null`) — pure client-side view state, no
   server-side data is ever touched by this filter.
 
+- **`AdminUsersView.vue`'s Perusahaan table gained a Kontrak column +
+  expand panel, 2026-08-23** (B2B Fase 3 — see `guratan-api/CLAUDE.md`'s
+  matching entry). Same expand-row convention as the existing staff edit
+  panel on the same page: a "Kontrak" button toggles a panel below the
+  company row showing contract history (`company.contracts`, eager-loaded
+  from Fase 1's extended `CompanyController::index()`) plus a small
+  create form (judul/status/tanggal mulai-berakhir/nilai opsional/catatan
+  bebas). The main row's badge shows the latest contract's status
+  (`badge--contract-draft/aktif/dihentikan`), plus a separate "Kadaluarsa"
+  badge computed purely client-side when `status === 'aktif'` but
+  `berakhir_at` has already passed — a display signal only, never writes
+  back to the record.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

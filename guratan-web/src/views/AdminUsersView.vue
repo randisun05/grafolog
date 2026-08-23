@@ -172,6 +172,70 @@ async function toggleCompanyActive(company) {
 onMounted(async () => {
   await Promise.all([loadUsers(), loadCompanies()])
 })
+
+// --- kontrak B2B (Fase 3 - record-only, lihat guratan-api/CLAUDE.md
+// "B2B Fase 3") - sales-led, sistem cuma mencatat kesepakatan, TIDAK
+// menghitung tagihan otomatis. ---
+
+const expandedCompanyId = ref(null)
+const contractForm = ref({})
+const contractErrors = ref({})
+const contractSubmitting = ref(false)
+const contractDeletingId = ref(null)
+
+function emptyContractForm() {
+  return { judul: '', catatan: '', nilai_kontrak: '', mulai_at: '', berakhir_at: '', status: 'draft' }
+}
+
+function toggleCompanyExpand(company) {
+  if (expandedCompanyId.value === company.id) {
+    expandedCompanyId.value = null
+    return
+  }
+  expandedCompanyId.value = company.id
+  contractForm.value = emptyContractForm()
+  contractErrors.value = {}
+}
+
+function latestContract(company) {
+  return company.contracts?.length ? company.contracts[company.contracts.length - 1] : null
+}
+
+function isContractExpired(contract) {
+  return contract.status === 'aktif' && contract.berakhir_at && new Date(contract.berakhir_at) < new Date()
+}
+
+const contractStatusLabel = { draft: 'Draft', aktif: 'Aktif', dihentikan: 'Dihentikan' }
+
+async function submitContract(company) {
+  contractSubmitting.value = true
+  contractErrors.value = {}
+  try {
+    const payload = { ...contractForm.value, nilai_kontrak: contractForm.value.nilai_kontrak || null, berakhir_at: contractForm.value.berakhir_at || null }
+    const { data } = await api.post(`/admin/companies/${company.id}/contracts`, payload)
+    company.contracts = [...(company.contracts ?? []), data]
+    contractForm.value = emptyContractForm()
+    toast.push('Kontrak berhasil dicatat.', 'success')
+  } catch (e) {
+    contractErrors.value = e.response?.data?.errors ?? {}
+    toast.push(e.response?.data?.message ?? 'Gagal mencatat kontrak.')
+  } finally {
+    contractSubmitting.value = false
+  }
+}
+
+async function deleteContract(company, contract) {
+  contractDeletingId.value = contract.id
+  try {
+    await api.delete(`/admin/company-contracts/${contract.id}`)
+    company.contracts = company.contracts.filter((c) => c.id !== contract.id)
+    toast.push('Kontrak dihapus.', 'success')
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menghapus kontrak.')
+  } finally {
+    contractDeletingId.value = null
+  }
+}
 </script>
 
 <template>
@@ -357,28 +421,128 @@ onMounted(async () => {
           <th>Kandidat</th>
           <th>Selesai</th>
           <th>Rata-rata Durasi</th>
+          <th>Kontrak</th>
           <th>Status</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="c in companies" :key="c.id">
-          <td>{{ c.name }}</td>
-          <td>{{ c.hr_count }}</td>
-          <td>{{ c.total_candidates }}</td>
-          <td>{{ c.completed_reports }}</td>
-          <td>{{ c.avg_turnaround_days !== null ? `${c.avg_turnaround_days} hari` : '–' }}</td>
-          <td>
-            <span class="badge" :class="c.is_active ? 'badge--active' : 'badge--inactive'">
-              {{ c.is_active ? 'Aktif' : 'Nonaktif' }}
-            </span>
-          </td>
-          <td>
-            <button type="button" class="btn" :disabled="companyTogglingId === c.id" @click="toggleCompanyActive(c)">
-              {{ c.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
-            </button>
-          </td>
-        </tr>
+        <template v-for="c in companies" :key="c.id">
+          <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ c.hr_count }}</td>
+            <td>{{ c.total_candidates }}</td>
+            <td>{{ c.completed_reports }}</td>
+            <td>{{ c.avg_turnaround_days !== null ? `${c.avg_turnaround_days} hari` : '–' }}</td>
+            <td>
+              <template v-if="latestContract(c)">
+                <span class="badge" :class="`badge--contract-${latestContract(c).status}`">
+                  {{ contractStatusLabel[latestContract(c).status] }}
+                </span>
+                <span v-if="isContractExpired(latestContract(c))" class="badge badge--inactive">Kadaluarsa</span>
+              </template>
+              <span v-else class="admin-users__hint-inline">Belum ada kontrak</span>
+            </td>
+            <td>
+              <span class="badge" :class="c.is_active ? 'badge--active' : 'badge--inactive'">
+                {{ c.is_active ? 'Aktif' : 'Nonaktif' }}
+              </span>
+            </td>
+            <td class="admin-users__actions">
+              <button type="button" class="btn" :disabled="companyTogglingId === c.id" @click="toggleCompanyActive(c)">
+                {{ c.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+              </button>
+              <button type="button" class="btn" @click="toggleCompanyExpand(c)">
+                {{ expandedCompanyId === c.id ? 'Tutup' : 'Kontrak' }}
+              </button>
+            </td>
+          </tr>
+          <tr v-if="expandedCompanyId === c.id" class="admin-users__edit-row">
+            <td colspan="8">
+              <div class="admin-users__edit-panel">
+                <h4>Riwayat Kontrak — {{ c.name }}</h4>
+                <p class="admin-users__hint">
+                  Kontrak custom sales-led, dicatat manual — sistem tidak menghitung tagihan otomatis
+                  dari sini.
+                </p>
+
+                <p v-if="!c.contracts || c.contracts.length === 0" class="admin-users__hint">
+                  Belum ada kontrak tercatat.
+                </p>
+                <ul v-else class="admin-users__contract-list">
+                  <li v-for="k in c.contracts" :key="k.id" class="admin-users__contract-item">
+                    <div>
+                      <strong>{{ k.judul }}</strong>
+                      <span class="badge" :class="`badge--contract-${k.status}`">{{ contractStatusLabel[k.status] }}</span>
+                      <span v-if="isContractExpired(k)" class="badge badge--inactive">Kadaluarsa</span>
+                      <p class="admin-users__hint">
+                        {{ k.mulai_at }} – {{ k.berakhir_at ?? 'tanpa batas' }}
+                        <template v-if="k.nilai_kontrak"> · Rp {{ Number(k.nilai_kontrak).toLocaleString('id-ID') }}</template>
+                      </p>
+                      <p v-if="k.catatan" class="admin-users__hint">{{ k.catatan }}</p>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn"
+                      :disabled="contractDeletingId === k.id"
+                      @click="deleteContract(c, k)"
+                    >
+                      Hapus
+                    </button>
+                  </li>
+                </ul>
+
+                <h4>Tambah Kontrak</h4>
+                <div class="admin-users__row">
+                  <label>
+                    Judul
+                    <input v-model="contractForm.judul" type="text" placeholder="mis. Kontrak Tahunan 2026" required />
+                  </label>
+                  <label>
+                    Status
+                    <select v-model="contractForm.status">
+                      <option value="draft">Draft</option>
+                      <option value="aktif">Aktif</option>
+                      <option value="dihentikan">Dihentikan</option>
+                    </select>
+                  </label>
+                </div>
+                <p v-if="contractErrors.judul" class="error">{{ contractErrors.judul[0] }}</p>
+
+                <div class="admin-users__row">
+                  <label>
+                    Mulai
+                    <input v-model="contractForm.mulai_at" type="date" required />
+                  </label>
+                  <label>
+                    Berakhir (opsional)
+                    <input v-model="contractForm.berakhir_at" type="date" />
+                  </label>
+                  <label>
+                    Nilai Kontrak (opsional, referensi internal)
+                    <input v-model="contractForm.nilai_kontrak" type="number" min="0" placeholder="Rp" />
+                  </label>
+                </div>
+                <p v-if="contractErrors.mulai_at" class="error">{{ contractErrors.mulai_at[0] }}</p>
+                <p v-if="contractErrors.berakhir_at" class="error">{{ contractErrors.berakhir_at[0] }}</p>
+
+                <label>
+                  Catatan Ketentuan (opsional)
+                  <textarea v-model="contractForm.catatan" rows="2" placeholder="Ketentuan hasil negosiasi sales"></textarea>
+                </label>
+
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  :disabled="contractSubmitting"
+                  @click="submitContract(c)"
+                >
+                  {{ contractSubmitting ? 'Menyimpan...' : 'Catat Kontrak' }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
     <p class="admin-users__hint">
@@ -500,5 +664,51 @@ onMounted(async () => {
   font-size: 12.5px;
   color: var(--color-text-soft);
   margin-top: 10px;
+}
+.admin-users__hint-inline {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+}
+.admin-users__actions {
+  display: flex;
+  gap: 6px;
+}
+.badge--contract-draft {
+  background: var(--color-paper-alt);
+  color: var(--color-text-soft);
+}
+.badge--contract-aktif {
+  background: var(--color-sage-soft);
+  color: var(--color-sage);
+}
+.badge--contract-dihentikan {
+  background: var(--color-seal-soft);
+  color: var(--color-seal);
+}
+.admin-users__edit-panel h4 {
+  font-size: 13.5px;
+  margin: 16px 0 8px;
+}
+.admin-users__edit-panel h4:first-child {
+  margin-top: 0;
+}
+.admin-users__contract-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-users__contract-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  background: var(--color-paper-alt);
+  border-radius: var(--radius-sm);
+}
+.admin-users__contract-item strong {
+  margin-right: 8px;
 }
 </style>

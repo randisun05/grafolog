@@ -1062,8 +1062,16 @@ tagihan otomatis).
 - [x] **Fase 2 — laporan tersegmentasi per-Topik untuk B2B** (wire
   `TopikFilterService`/`segmen()` yang sudah ada ke UI HR). Selesai —
   lihat `guratan-api/CLAUDE.md` "B2B Fase 2".
-- [ ] **Fase 3 — kontrak B2B** (`company_contracts`, record-only, admin
-  CRUD).
+- [x] **Fase 3 — kontrak B2B** (`company_contracts`, record-only, admin
+  CRUD). Selesai — lihat `guratan-api/CLAUDE.md` "B2B Fase 3".
+
+**Seluruh rencana 3-fase B2B selesai 2026-08-23** (459 backend tests
+total, up from 447 sebelum fase 1 dimulai). Fitur B2B yang MASIH belum
+ada, sengaja bukan bagian rencana ini (lihat "HR: Company, Candidate
+import, Assignment" di `guratan-api/CLAUDE.md`): editor "Master Data"
+terpusat lintas-entitas, dan kalkulasi tagihan otomatis dari kontrak
+(sengaja tidak dibangun — user pilih model record-only sales-led, bukan
+kalkulasi otomatis).
 
 ### Notifikasi/Pengumuman/Promo untuk grafolog/klien/B2B — 2026-08-23
 

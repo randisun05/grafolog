@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\AuditLogController;
+use App\Http\Controllers\Api\Admin\CompanyContractController;
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
@@ -122,6 +123,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/companies', [CompanyController::class, 'index']);
         Route::post('/companies', [CompanyController::class, 'store']);
         Route::patch('/companies/{company}', [CompanyController::class, 'update']);
+        Route::post('/companies/{company}/contracts', [CompanyContractController::class, 'store']);
+        Route::patch('/company-contracts/{companyContract}', [CompanyContractController::class, 'update']);
+        Route::delete('/company-contracts/{companyContract}', [CompanyContractController::class, 'destroy']);
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
