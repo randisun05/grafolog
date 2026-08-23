@@ -927,3 +927,113 @@ teruji** (399 backend tests total). Detail di `guratan-api/CLAUDE.md`
 - Verifikasi manual narasi terpadu lewat browser + kredensial Anthropic
   asli (`.env` masih `LLM_PROVIDER=none` di semua environment yang
   diketahui).
+
+## Inisiatif — Kesiapan Publikasi (checklist, dimulai 2026-08-23)
+
+User bertanya "apalagi yang perlu dikembangkan/diperkuat supaya siap
+publikasi, secara sistem handal sesuai prosedur dan konsumen experience
+baik (end user/grafolog/B2B)". Checklist ini konsolidasi jawabannya
+supaya persisten lintas sesi (bukan cuma di riwayat chat) — update
+langsung di sini begitu satu item selesai atau ada temuan baru.
+
+### Selesai (tidak butuh kredensial/keputusan bisnis) — 2026-08-23
+
+- [x] **Lupa password** — flow reset via email, token 60 menit,
+  anti-enumeration. Sekalian ketemu & fix `config('app.frontend_url')`
+  yang belum pernah terdaftar (link email report-completed mengarah ke
+  URL API, bukan frontend).
+- [x] **Guard biaya AI** — `throttle:20,60` khusus endpoint generate
+  narasi terpadu, menutup celah `force: true` bypass dedup-guard.
+- [x] **CI otomatis** — `.github/workflows/ci.yml`, test+lint+build tiap
+  push/PR. Sekalian bersihkan pelanggaran gaya kode Pint yang sudah lama
+  ada.
+- [x] **UX gap 3 persona** — dashboard HR yang sebelumnya rusak total
+  (KPI selalu 0), status laporan klien yang salah sinyal (badge "Selesai"
+  padahal narasi belum final), peringatan token grafolog sebelum isi
+  form 40 aspek.
+- [x] **Monitoring (Sentry)** — `sentry/sentry-laravel` terpasang &
+  terhubung, mati total sampai `SENTRY_LARAVEL_DSN` diisi (scaffolding
+  selesai, aktivasi butuh akun Sentry — lihat kredensial di bawah).
+- [x] **Backup database** — `spatie/laravel-backup` dikonfigurasi &
+  dijadwalkan, jalur file terverifikasi end-to-end, jalur `mysqldump`
+  belum bisa dites di sandbox dev (scaffolding selesai, verifikasi
+  server nyata masih di bawah).
+- [x] **Patch keamanan dependensi** — `guzzlehttp/guzzle`/
+  `league/commonmark` (transitif `laravel/framework`) dibawa ke versi
+  yang menambal 8 advisory (beberapa severity tinggi), ditemukan lewat
+  `composer audit` saat mengerjakan item backup di atas.
+
+Detail teknis lengkap tiap item di `guratan-api/CLAUDE.md` (cari
+"Forgot Password"/"Guard biaya AI"/"UX gaps per persona"/"Monitoring &
+backup") dan `guratan-web/CLAUDE.md`.
+
+### Tertunda — butuh kredensial pihak ketiga
+
+- [ ] **Kredensial Anthropic asli** — narasi terpadu masih
+  `LLM_PROVIDER=none`, belum pernah dites generate sungguhan.
+- [ ] **SMTP production** — masih `MAIL_MAILER=log`/Gmail pribadi (lihat
+  `DEPLOYMENT.md` "Catatan email production").
+- [ ] **Verifikasi DOKU sandbox** — payment gateway belum pernah dites
+  lawan notifikasi sungguhan dari DOKU.
+
+### Tertunda — butuh keputusan bisnis
+
+- [ ] **Privacy Policy/ToS** — masih draft, belum ditinjau legal &
+  dipublikasikan sebagai halaman (`DEPLOYMENT.md` "Sebelum benar-benar
+  go-live").
+- [ ] **Kebijakan retensi data** — placeholder di Privacy Policy.
+- [ ] **Verifikasi role "grafolog"** — self-declared saat registrasi,
+  cukup untuk MVP atau perlu verifikasi manual?
+- [ ] **Akses gambar rapid-tier lama** — masih di disk publik tanpa
+  ownership check (risiko rendah, tier sudah pensiun 2026-08-01) —
+  pindah ke private atau biarkan?
+- [ ] **Masa berlaku token Sanctum** — sekarang tidak pernah expired.
+
+### Tertunda — operasional produksi (butuh server nyata untuk dieksekusi)
+
+- [ ] **`APP_DEBUG=false`** — sudah didokumentasikan di `DEPLOYMENT.md`,
+  tinggal dijalankan saat deploy.
+- [ ] **Queue worker supervision** (Supervisor/systemd) — contoh config
+  sudah ada di `DEPLOYMENT.md`.
+- [ ] **Cron scheduler untuk backup** — `* * * * * php artisan
+  schedule:run`, tanpa ini jadwal backup terdaftar tapi tidak pernah
+  jalan sendiri.
+- [ ] **Verifikasi jalur `mysqldump`** — `backup:run` penuh (bukan
+  `--only-files`) belum pernah dites lawan MySQL sungguhan, cuma lewat
+  baca kode paket `spatie/db-dumper`.
+
+### Ditemukan 2026-08-23 — gap "management", belum dikerjakan
+
+User bertanya "apakah secara management sudah lengkap dan baik?" — dicek
+langsung ke kode (routes/api.php + controller Admin\*), 2 gap konkret
+ditemukan, belum ada keputusan/instruksi user untuk mengerjakan:
+
+- [ ] **Tidak ada viewer log audit sama sekali.** `AuditLog::record()`
+  dipanggil di **45 titik** across `Admin\*Controller`/`ScoringController`/
+  `ReportController`/dst (pricing, diskon, konten, token, KB, koreksi
+  skor, akses laporan, ...) — tapi TIDAK ADA satu pun route/endpoint
+  untuk membaca kembali, dan TIDAK ADA halaman admin untuk melihatnya.
+  Prinsip inti proyek ("keamanan & audit log bukan opsional", root
+  `CLAUDE.md`) cuma separuh terpenuhi — data terkumpul tapi tidak
+  bisa diinvestigasi kalau ada insiden/kecurigaan penyalahgunaan tanpa
+  query DB manual. Perbaikan yang masuk akal: `GET /admin/audit-logs`
+  (paginated, filter by aksi/actor/tanggal) + tab baru di admin, pola
+  sama dengan tab-tab KM yang sudah ada.
+- [ ] **Staff/company account tidak bisa diedit atau dinonaktifkan
+  setelah dibuat.** `Admin\AdminUserController` dan
+  `Admin\CompanyController` masing-masing CUMA punya `index()` (list) dan
+  `store()` (create) — tidak ada `update()`/`destroy()` sama sekali. Kalau
+  grafolog/hr/admin berhenti kerja, salah ketik email saat dibuat, atau
+  butuh reset password, TIDAK ADA jalan lewat aplikasi — cuma lewat query
+  DB manual, yang tidak sustainable untuk operasi nyata. Perbaikan yang
+  masuk akal: `User` perlu kolom `is_active` (bukan hard-delete — riwayat
+  `created_by`/audit log yang mengacu ke user itu harus tetap valid),
+  endpoint `PATCH /admin/users/{id}` (edit nama/email/role, toggle aktif,
+  reset password) + UI tombol di `AdminUsersView.vue` yang sudah ada.
+
+Sudah diketahui & didokumentasikan sebagai gap terpisah (BUKAN temuan
+baru, lihat "HR: Company, Candidate import, Assignment" di
+`guratan-api/CLAUDE.md`): tidak ada dashboard admin untuk lihat semua
+Project/Report lintas perusahaan, tidak ada editor "Master Data" terpusat
+— keduanya disebut eksplisit di rencana MGA Fase 05/06 asli dan sengaja
+ditunda, bukan lupa.
