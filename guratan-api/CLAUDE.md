@@ -1946,6 +1946,50 @@ bisnis baru:
   dengan data kandidat sungguhan dan peringatan token dengan
   `TokenCost` sungguhan diaktifkan.
 
+## Monitoring & backup — added 2026-08-23
+
+Item 14/15 dari daftar kesiapan publikasi ("apalagi yang perlu dikembangkan
+supaya siap publikasi") — dua-duanya bisa dikerjakan tanpa keputusan bisnis
+baru, aktivasi penuhnya menunggu server production nyata. Detail lengkap
+config/langkah aktivasi ada di root `DEPLOYMENT.md`, ini ringkasannya:
+
+- **`sentry/sentry-laravel`** (error monitoring) — terpasang & terhubung ke
+  `bootstrap/app.php`'s exception handler lewat `Integration::handles()`,
+  tapi mati total (tidak ada request keluar sama sekali) sampai
+  `SENTRY_LARAVEL_DSN` diisi di `.env` — `config('sentry.dsn')` default
+  `null`, SDK-nya sendiri no-op kalau DSN kosong. Aman didaftarkan
+  unconditional di semua environment.
+- **`spatie/laravel-backup`** (backup database + storage/app) —
+  dikonfigurasi (`config/backup.php`) dan dijadwalkan
+  (`routes/console.php`: `backup:clean` 01:00, `backup:run` 01:30,
+  `backup:monitor` 10:00 setiap hari) tapi **jadwal ini tidak jalan sendiri**
+  — butuh cron 1x/menit memanggil `schedule:run` di server production (lihat
+  `DEPLOYMENT.md`). `source.files.include` SENGAJA dipersempit dari default
+  paket (`base_path()`, seluruh direktori aplikasi) jadi cuma `storage/app`
+  — kode sudah aman di git, dan `base_path()` ikut menyeret `.env`
+  (kredensial DB/DOKU/SMTP/Anthropic) ke arsip backup, riskan kalau
+  `BACKUP_DESTINATION_DISK` diarahkan ke cloud storage. Notifikasi cuma
+  untuk kegagalan/tidak-sehat (bukan email "sukses" harian yang jadi
+  noise), tujuan default `ADMIN_EMAIL` (dipakai ulang dari
+  `config/admin.php`).
+- **Verifikasi sesi ini**: jalur file backup (`backup:run --only-files`,
+  `list`, `monitor`, `clean`) dijalankan sungguhan lawan DB sqlite di
+  sandbox ini — sukses end-to-end, artefak uji coba sudah dibersihkan.
+  Jalur database dump (`backup:run` penuh, butuh `mysqldump`) **belum bisa
+  dites di sandbox ini** (tidak ada binary `mysqldump`/`sqlite3` terpasang)
+  — perlu diverifikasi sekali begitu ada akses ke server dengan
+  `mysqldump` di PATH-nya, sebelum dianggap production-ready. `php artisan
+  schedule:list` dikonfirmasi mendaftarkan ketiga jadwal dengan benar.
+- **Bonus temuan, sudah diperbaiki**: `composer audit` menemukan 8 advisory
+  keamanan (beberapa `high`) di `guzzlehttp/guzzle`/`league/commonmark` —
+  dependensi transitif `laravel/framework` sendiri, bukan dari kode
+  proyek ini. Di-patch dengan `composer update guzzlehttp/guzzle
+  league/commonmark --with-dependencies` (murni dalam batas constraint
+  yang sudah ada di `composer.json`, tidak mengubah versi Laravel
+  itu sendiri) — `composer audit` sekarang bersih, 424 test tetap lolos.
+- 424 backend tests total (tidak berubah dari sebelumnya — perubahan ini
+  murni infrastruktur/config, tidak ada logic aplikasi baru untuk diuji).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

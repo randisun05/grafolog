@@ -6,6 +6,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Sentry\Laravel\Integration;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -30,4 +31,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Sentry\Laravel\Integration::handles() itu sendiri no-op kalau
+        // SENTRY_LARAVEL_DSN kosong (config/sentry.php default null) - jadi
+        // wiring ini aman didaftarkan tanpa syarat, tidak diam-diam
+        // mengirim apa pun sampai admin mengisi DSN production sungguhan.
+        Integration::handles($exceptions);
     })->create();

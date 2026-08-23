@@ -39,6 +39,88 @@ bahwa deployment sudah terjadi.
 7. HTTPS wajib — Sanctum Bearer token dan data psikologis sensitif tidak boleh lewat HTTP polos.
 8. Jalankan `php artisan test` sekali lagi di environment yang mendekati production (PHP version yang sama) sebelum switch DNS/traffic. **CI otomatis ada sejak 2026-08-23** (`.github/workflows/ci.yml` — 2 job paralel: backend menjalankan `vendor/bin/pint --test` + `php artisan test` di PHP 8.3, frontend menjalankan `npm run lint` + `npm run build` di Node 22, keduanya trigger di tiap push/PR ke branch mana pun) — status hijau di GitHub sebelum merge sudah mengonfirmasi ini, langkah manual di atas jadi verifikasi tambahan terakhir, bukan satu-satunya jaring pengaman.
 
+### Monitoring (Sentry) — ditambahkan 2026-08-23
+
+`sentry/sentry-laravel` sudah terpasang & terhubung
+(`bootstrap/app.php`'s `Integration::handles($exceptions)`), tapi **mati
+total sampai `SENTRY_LARAVEL_DSN` diisi** — `config('sentry.dsn')` default
+`null`, dan SDK-nya sendiri no-op kalau DSN kosong (tidak ada request keluar
+sama sekali, aman dibiarkan kosong di dev/staging tanpa akun Sentry).
+
+1. Buat project di [sentry.io](https://sentry.io) (atau instance self-hosted),
+   pilih platform Laravel, salin DSN-nya.
+2. Isi di `.env` production: `SENTRY_LARAVEL_DSN=...`,
+   `SENTRY_ENVIRONMENT=production` (default `"${APP_ENV}"` — otomatis benar
+   kalau langkah `APP_ENV=production` di atas sudah dilakukan),
+   `SENTRY_TRACES_SAMPLE_RATE=0.1` (10% - naikkan kalau butuh tracing
+   performa lebih detail, cuma memengaruhi transaction tracing bukan error
+   capture yang selalu 100%).
+3. Tidak ada langkah kode tambahan - exception yang lolos ke handler global
+   otomatis terkirim begitu DSN terisi. Verifikasi dengan
+   `php artisan tinker` → `throw new Exception('test sentry')` (atau endpoint
+   uji manapun) lalu cek dashboard Sentry.
+
+### Backup database — ditambahkan 2026-08-23
+
+`spatie/laravel-backup` sudah terpasang, dikonfigurasi
+(`config/backup.php`), dan dijadwalkan (`routes/console.php`: `backup:clean`
+01:00, `backup:run` 01:30, `backup:monitor` 10:00 setiap hari) — **tapi
+jadwal ini TIDAK JALAN SENDIRI**. Laravel scheduler butuh SATU proses/cron
+yang benar-benar memanggilnya setiap menit di server production:
+
+```
+* * * * * cd /path/to/guratan-api && php artisan schedule:run >> /dev/null 2>&1
+```
+
+(atau `php artisan schedule:work` di bawah Supervisor kalau tidak ada akses
+cron sistem — pola sama dengan queue worker di atas).
+
+- **Yang dibackup**: `storage/app` saja (bukan seluruh direktori aplikasi,
+  lihat komentar di `config/backup.php` kenapa — kode sudah aman di git,
+  membackup ulang berisiko ikut menyeret `.env`/kredensial ke arsip) plus
+  database (`DB_CONNECTION` — otomatis `mysql` di production).
+  `mysqldump` **harus ada di PATH server production** (paket standar
+  `mysql-client`/`default-mysql-client`) — tanpa itu `backup:run` gagal.
+- **Ke mana disimpan**: `BACKUP_DESTINATION_DISK` (default `local` — disk
+  yang SAMA dengan server aplikasi, cukup untuk uji coba tapi **bukan
+  disaster-recovery sungguhan**, kalau server hilang backupnya ikut
+  hilang). Untuk production sungguhan, buat disk S3 (atau kompatibel) di
+  `config/filesystems.php` (kredensial `AWS_*` sudah ada slotnya di
+  `.env.example`) dan set `BACKUP_DESTINATION_DISK` ke nama disk itu.
+- **Enkripsi**: isi `BACKUP_ARCHIVE_PASSWORD` di production — data yang
+  dibackup adalah data psikologis sensitif (lihat root `CLAUDE.md`), arsip
+  backup tanpa password sama riskannya dengan tabel database itu sendiri
+  tanpa enkripsi.
+- **Notifikasi**: cuma kegagalan/tidak-sehat yang kirim email (disengaja,
+  lihat komentar di `config/backup.php` — email "sukses" harian cuma jadi
+  noise). Tujuan default `ADMIN_EMAIL` (dipakai ulang dari provisioning
+  admin di atas), override lewat `BACKUP_NOTIFICATION_EMAIL` kalau alert
+  backup mau ke alamat ops yang beda.
+- **Restore** (belum ada perintah otomatis, paket ini cuma backup/monitor
+  bukan restore — lakukan manual saat genuinely dibutuhkan):
+  1. Ambil arsip zip terbaru dari disk backup (`php artisan backup:list`
+     untuk lihat yang tersedia).
+  2. Extract (`unzip`, masukkan `BACKUP_ARCHIVE_PASSWORD` kalau
+     terenkripsi) — isinya file dump database (`db-dumps/...sql` atau
+     `.gz`) + isi `storage/app` apa adanya.
+  3. Database: `mysql -u ... -p ... nama_db < dump.sql` (decompress dulu
+     kalau `.gz`: `gunzip dump.sql.gz`).
+  4. Files: copy isi `storage/app` hasil extract kembali ke
+     `storage/app` server tujuan, lalu `php artisan storage:link` ulang
+     (lihat catatan symlink dangling di atas).
+  5. **Uji proses restore ini SEKALI di lingkungan staging sebelum
+     benar-benar butuh** — backup yang belum pernah dicoba di-restore
+     bukan backup yang bisa diandalkan.
+- **Belum bisa diverifikasi penuh end-to-end di sesi pengembangan ini** —
+  sandbox tidak punya binary `mysqldump`/`sqlite3` terpasang. Jalur file
+  (`backup:run --only-files`, `backup:list`, `backup:monitor`,
+  `backup:clean`) sudah diverifikasi jalan bersih end-to-end lawan DB
+  sqlite sungguhan; jalur database dump (yang butuh `mysqldump` di
+  production) baru terverifikasi lewat baca kode paket
+  (`spatie/db-dumper`, dipakai luas & sudah teruji upstream), belum lewat
+  eksekusi nyata lawan MySQL — verifikasi ini begitu ada akses ke server
+  dengan `mysqldump` terpasang.
+
 ### Catatan email production
 
 Kredensial Gmail personal (`MAIL_MAILER=smtp`) yang dipakai saat development
