@@ -19,7 +19,7 @@ use App\Http\Controllers\Api\Admin\ScoringRuleBandController;
 use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
-use App\Http\Controllers\Api\Admin\TopikController;
+use App\Http\Controllers\Api\Admin\TopikController as AdminTopikController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\ScoringController;
 use App\Http\Controllers\Api\SindromController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TokenPurchaseController;
+use App\Http\Controllers\Api\TopikController;
 use App\Http\Controllers\Api\UserLookupController;
 use Illuminate\Support\Facades\Route;
 
@@ -109,6 +110,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);
 
     Route::get('/sindrom', [SindromController::class, 'index']);
+    Route::get('/topik', [TopikController::class, 'index']);
     Route::middleware('throttle:15,1')->get('/users/lookup', [UserLookupController::class, 'byEmail']);
     Route::post('/clients', [UserLookupController::class, 'store']);
     Route::middleware('role:hr,administrator')->get('/grafologs', [UserLookupController::class, 'grafologs']);
@@ -185,10 +187,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::put('/knowledge/kombinasi/{kombinasiTemuan}/topik', [KombinasiTemuanController::class, 'syncTopik']);
 
         // Topik / kategorisasi (2026-08-22) - lihat CLAUDE.md "Topik (kategorisasi)".
-        Route::get('/knowledge/topik', [TopikController::class, 'index']);
-        Route::post('/knowledge/topik', [TopikController::class, 'store']);
-        Route::put('/knowledge/topik/{topik}', [TopikController::class, 'update']);
-        Route::delete('/knowledge/topik/{topik}', [TopikController::class, 'destroy']);
+        Route::get('/knowledge/topik', [AdminTopikController::class, 'index']);
+        Route::post('/knowledge/topik', [AdminTopikController::class, 'store']);
+        Route::put('/knowledge/topik/{topik}', [AdminTopikController::class, 'update']);
+        Route::delete('/knowledge/topik/{topik}', [AdminTopikController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

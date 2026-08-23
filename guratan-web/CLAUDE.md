@@ -687,6 +687,18 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   untouched on a status toggle (the PATCH response doesn't include them,
   and `Object.assign` only overwrites keys present in its source).
 
+- **`ReportView.vue` gained a Topik segment filter for HR, 2026-08-23**
+  (B2B Fase 2 — see `guratan-api/CLAUDE.md`'s matching entry). When
+  `auth.isHr` and at least one `Topik` exists (`GET /topik`), a "Filter
+  Segmen Topik" checkbox panel appears above `ReportDocument`. Selecting
+  1+ topics calls `GET /reports/{id}/segmen?topik_ids[]=...` and swaps
+  `ReportDocument`'s `:data` to the filtered result (also forces
+  `:editable="false"` while a filter is active — editing narasi against a
+  filtered subset doesn't make sense, editing always happens against the
+  full breakdown). Deselecting all topics reverts to `report.data`
+  (`segmentedData` ref reset to `null`) — pure client-side view state, no
+  server-side data is ever touched by this filter.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

@@ -1059,8 +1059,9 @@ tagihan otomatis).
 - [x] **Fase 1 — dashboard admin lintas-perusahaan** (statistik agregat
   HR/kandidat/laporan selesai per company). Selesai — lihat
   `guratan-api/CLAUDE.md` "B2B Fase 1".
-- [ ] **Fase 2 — laporan tersegmentasi per-Topik untuk B2B** (wire
-  `TopikFilterService`/`segmen()` yang sudah ada ke UI HR).
+- [x] **Fase 2 — laporan tersegmentasi per-Topik untuk B2B** (wire
+  `TopikFilterService`/`segmen()` yang sudah ada ke UI HR). Selesai —
+  lihat `guratan-api/CLAUDE.md` "B2B Fase 2".
 - [ ] **Fase 3 — kontrak B2B** (`company_contracts`, record-only, admin
   CRUD).
 

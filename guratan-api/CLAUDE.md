@@ -2186,6 +2186,31 @@ Perusahaan, tanpa ringkasan aktivitas sama sekali.
   HR=1/Kandidat=2/Selesai=1/Durasi=3 hari, semuanya cocok data seed. 2/2
   pemeriksaan lolos.
 
+## B2B Fase 2 — laporan tersegmentasi per-Topik, 2026-08-23
+
+Lanjutan Fase 1 (lihat di atas). Infrastruktur Topik/`TopikFilterService`/
+`ReportController::segmen()` sudah dibangun lengkap sejak "Topik
+(kategorisasi)" (2026-08-22) tapi sengaja tanpa UI konsumen sama sekali -
+sekarang disambungkan untuk B2B.
+
+- **`Api\TopikController::index()`** baru (`GET /topik`, staff-only —
+  `abort_if(role === 'user')`, BUKAN `role:administrator`) — bacaan
+  ringan `{id, nama}`. Beda dari `Api\Admin\TopikController` (CRUD penuh,
+  admin-only) yang sudah ada - HR bukan administrator, tidak bisa pukul
+  `/admin/knowledge/topik`, tapi tetap perlu tahu daftar Topik untuk
+  memilih filter. **Route alias diperlukan** (`AdminTopikController`) di
+  `routes/api.php` - nama class `TopikController` sudah dipakai controller
+  admin, collision kalau tidak dialiaskan (ditemukan lewat `php -l` error
+  "Cannot use ... TopikController because the name is already in use").
+- **`ReportController::segmen()` TIDAK diubah** - sudah benar sejak awal,
+  cuma butuh pemakai frontend.
+- 4 test baru (`TopikControllerTest` - guest ditolak, klien ditolak,
+  HR/grafolog bisa akses). 451 backend tests total (up from 447).
+- **Browser-verified 2026-08-23**: seed 1 Sindrom/2 Aspek/1 Topik (Aspek
+  "Karier" ditag, Aspek "Lain" tidak), laporan HR nyata dengan keduanya →
+  centang filter "Karier" → cuma narasi Karier tampil, narasi Lain hilang
+  → uncheck → breakdown penuh kembali. 4/4 pemeriksaan lolos.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

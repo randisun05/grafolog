@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import api from '@/lib/api'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportCorrectionPanel from '@/components/report/ReportCorrectionPanel.vue'
@@ -39,6 +39,48 @@ async function load() {
 }
 
 onMounted(load)
+
+// Laporan tersegmentasi per-Topik (B2B Fase 2, lihat guratan-api/CLAUDE.md
+// "B2B Fase 2") - HR bisa lihat breakdown difilter ke Topik tertentu (mis.
+// "Karier" saja) alih-alih breakdown penuh. Murni tampilan baca - tidak ada
+// PATCH/edit di sini (ReportDocument dipasang editable=false), dan tidak
+// mengubah data laporan yang tersimpan sama sekali.
+const topikOptions = ref([])
+const selectedTopikIds = ref([])
+const segmentedData = ref(null)
+const segmenLoading = ref(false)
+
+async function loadTopikOptions() {
+  try {
+    const { data } = await api.get('/topik')
+    topikOptions.value = data
+  } catch {
+    // Gagal muat daftar Topik bukan fatal - filter cuma tidak muncul,
+    // breakdown penuh tetap tampil seperti biasa.
+  }
+}
+
+watch(selectedTopikIds, async (ids) => {
+  if (ids.length === 0) {
+    segmentedData.value = null
+    return
+  }
+  segmenLoading.value = true
+  try {
+    const params = new URLSearchParams()
+    ids.forEach((id) => params.append('topik_ids[]', id))
+    const { data } = await api.get(`/reports/${props.id}/segmen?${params.toString()}`)
+    segmentedData.value = data
+  } catch {
+    toast.push('Gagal memuat laporan tersegmentasi.')
+  } finally {
+    segmenLoading.value = false
+  }
+})
+
+onMounted(() => {
+  if (auth.isHr) loadTopikOptions()
+})
 
 async function downloadPdf() {
   downloading.value = true
@@ -120,10 +162,25 @@ function onNarasiTerpaduUpdated(updatedReport) {
           @corrected="onCorrected"
         />
 
+        <div v-if="auth.isHr && topikOptions.length > 0" class="report-view__segmen">
+          <h3>Filter Segmen Topik</h3>
+          <p class="report-view__segmen-hint">
+            Pilih satu atau lebih topik untuk melihat laporan yang difilter (mis. cuma bagian Karier) —
+            kosongkan pilihan untuk kembali ke breakdown penuh. Filter ini murni tampilan, tidak mengubah
+            laporan yang tersimpan.
+          </p>
+          <div class="report-view__segmen-options">
+            <label v-for="t in topikOptions" :key="t.id">
+              <input v-model="selectedTopikIds" type="checkbox" :value="t.id" /> {{ t.nama }}
+            </label>
+          </div>
+          <p v-if="segmenLoading" class="report-view__segmen-hint">Memuat...</p>
+        </div>
+
         <ReportDocument
           v-if="report.data"
-          :data="report.data"
-          :editable="canEdit"
+          :data="segmentedData ?? report.data"
+          :editable="canEdit && !segmentedData"
           :report-id="report.id"
           @narasi-updated="onNarasiUpdated"
         />
@@ -164,5 +221,36 @@ function onNarasiTerpaduUpdated(updatedReport) {
   font-size: 12.5px;
   color: var(--color-text-soft);
   margin: 4px 0 16px;
+}
+.report-view__segmen {
+  margin: 20px 0;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.report-view__segmen h3 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.report-view__segmen-hint {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+  margin: 0 0 10px;
+}
+.report-view__segmen-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+.report-view__segmen-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.report-view__segmen-options input {
+  width: auto;
+  margin: 0;
 }
 </style>
