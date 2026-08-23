@@ -623,6 +623,24 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   inline when a background generate failed, so the panel isn't just stuck
   looking idle with no explanation.
 
+- **`PortalGrafologView` gained a token-balance warning, 2026-08-23** (see
+  `guratan-api/CLAUDE.md`'s "UX gaps per persona" for the full picture of
+  all 3 fixes across end user/grafolog/B2B). Loads `GET /tokens/wallet`
+  once on mount (`wallet` ref, fails silently — non-fatal, the form still
+  works without it), computes `tokensRequired`/`insufficientTokens` off the
+  new `wallet.costs[tier]` field. A ⚠ banner + "Beli token" link
+  (`RouterLink to="/token-saya"`) appears in step 1 (right after picking a
+  tier, before creating the sample) and again in step 2 (alongside the
+  existing "progres tidak tersimpan otomatis" warning) — the point is
+  catching this BEFORE a grafolog spends time filling all 40 aspek, not
+  just at the existing 402 on submit.
+- **`RiwayatView.vue` gained client-aware status display, 2026-08-23** — for
+  `auth.isClient`, the status badge now reads `report.narasi_status`
+  (final → "Selesai", else → "Diproses") instead of `report.status`
+  (breakdown-internal completion) — see the matching backend fix in
+  `guratan-api/CLAUDE.md`. Staff (`auth.isClient === false`) unaffected,
+  still shows `report.status` as before.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

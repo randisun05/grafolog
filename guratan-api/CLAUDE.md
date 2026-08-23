@@ -1883,6 +1883,69 @@ separately_from_general_throttle` mengunci ini (20 request lolos, request
 ke-21 dalam jam yang sama dapat 429) — 420 backend tests total (up from
 419).
 
+## UX gaps per persona (end user, grafolog, B2B) — fixed 2026-08-23
+
+User meminta audit gap UX untuk 3 persona (end user/klien, grafolog, B2B/HR).
+Ditemukan 3 gap konkret lewat pembacaan kode langsung (bukan spekulasi),
+semuanya dampak nyata, semuanya bisa diperbaiki tanpa kredensial/keputusan
+bisnis baru:
+
+1. **Dashboard HR benar-benar rusak (B2B).** `DashboardController::index()`
+   sebelumnya `$user->isGrafolog() ? grafologDashboard() : clientDashboard()`
+   — HR bukan grafolog, jatuh ke `clientDashboard()`, yang scope sample-nya
+   lewat `user_id = $user->id` (HR bukan pernah jadi SUBJEK tes). Hasilnya:
+   KPI HR SELALU 0 dan activity SELALU kosong, walau HR sudah impor puluhan
+   kandidat sungguhan (`HrCandidatesView` sendiri, yang scope lewat
+   `created_by`, menunjukkan datanya ada). Karena router mengarahkan semua
+   role ke `/dashboard` setelah login, ini adalah halaman PERTAMA yang
+   dilihat HR — rusak sejak awal. Fix: `hrDashboard()` baru, scope
+   `created_by` (sama seperti `HrCandidatesView`/`SampleController::index`),
+   KPI `total_candidates`/`unassigned` (belum ditugaskan grafolog & belum
+   selesai)/`completed`/`avg_turnaround_days`.
+2. **KPI + activity "Selesai" klien salah sinyal (end user).** `clientDashboard()`
+   dan `RiwayatView.vue` sebelumnya memakai `PersonalityReport.status`/
+   `HandwritingSample.status` (breakdown internal sudah dihitung) untuk
+   menentukan "Selesai" — tapi klien cuma BENAR-BENAR bisa buka laporan
+   kalau `narasi_status === 'final'` (lihat `ReportController::show`,
+   "Narasi terpadu" di atas). Sebelum fix ini klien bisa lihat badge
+   "Selesai" di Riwayat/Dashboard lalu begitu diklik dapat 403 "laporan
+   belum final" — status yang ditampilkan tidak mencerminkan apa yang
+   sungguh bisa mereka akses. Fix: `clientDashboard()`'s KPI `completed`
+   sekarang hitung `narasi_status='final'` (bukan `sample.status`);
+   `recentActivity()` dapat parameter `bool $clientView` — kalau true,
+   label/status per-item dihitung dari `narasi_status` lewat
+   `clientFacingStatus()` (final→'completed', selain itu→'generating'),
+   bukan `report.status` mentah. `RiwayatView.vue` (frontend) melakukan hal
+   sama secara lokal via `displayStatus()`, memakai `report.narasi_status`
+   yang sudah ada di respons `index()` (sudah di-select sejak fitur narasi
+   terpadu, cuma belum pernah dipakai frontend). **Grafolog/admin/hr TIDAK
+   terkena perubahan ini** — mereka boleh lihat status breakdown internal
+   apa adanya, cuma klien yang gatingnya beda.
+3. **Grafolog bisa habiskan waktu isi 40 aspek lalu baru ketahuan token
+   tidak cukup (grafolog).** Gate token (`TokenCost`/`TokenWalletService`,
+   lihat "Token system" di atas) baru dicek `ScoringController::submit()`
+   di akhir — tidak ada sinyal apa pun di `PortalGrafologView` sebelum itu.
+   Fitur ini sengaja off-by-default (`TokenCost::activeTokensFor()` null =
+   tidak ada gate) jadi dampaknya baru terasa begitu admin mengaktifkan
+   biaya token untuk suatu tier. Fix: `TokenController::wallet()` dapat
+   field baru `costs: {comprehensive, master}` (dari
+   `TokenCost::activeTokensFor()` per tier, null kalau belum dikonfigurasi
+   admin — bukan endpoint baru, extend yang sudah ada). `PortalGrafologView`
+   memuat wallet sekali di `onMounted` (gagal senyap, non-fatal — bukan
+   endpoint kritikal), tampilkan peringatan ⚠ + link "Beli token" di step 1
+   (sebelum sample dibuat) DAN step 2 (pengingat selama isi form) kalau
+   `wallet.balance < costs[tier]`.
+- 5 test baru (`TokenControllerTest` — field `costs` muncul di wallet;
+  `DashboardControllerTest` — HR dashboard scope benar, klien
+  completed/sample-completed-tapi-narasi-belum-final dihitung sebagai
+  in_progress, activity klien pakai narasi_status). 424 backend tests total
+  (up from 420).
+- **Belum browser-verified** — sesi ini cuma lewat `php artisan test`/
+  `vendor/bin/pint --test`/`npm run lint`/`npm run build`, belum click-through
+  Playwright. Kalau ada waktu sesi berikutnya, verifikasi dashboard HR
+  dengan data kandidat sungguhan dan peringatan token dengan
+  `TokenCost` sungguhan diaktifkan.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

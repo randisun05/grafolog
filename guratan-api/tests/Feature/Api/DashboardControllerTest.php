@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Assignment;
 use App\Models\HandwritingSample;
 use App\Models\PersonalityReport;
 use App\Models\Project;
@@ -30,14 +31,18 @@ class DashboardControllerTest extends TestCase
         ]);
     }
 
-    private function completeReport(HandwritingSample $sample, DateTimeInterface $generatedAt): PersonalityReport
-    {
+    private function completeReport(
+        HandwritingSample $sample,
+        DateTimeInterface $generatedAt,
+        ?string $narasiStatus = null,
+    ): PersonalityReport {
         return PersonalityReport::create([
             'sample_id' => $sample->id,
             'tier' => $sample->tier,
             'status' => 'completed',
             'generated_at' => $generatedAt,
             'data' => ['sindrom' => []],
+            ...($narasiStatus !== null ? ['narasi_status' => $narasiStatus] : []),
         ]);
     }
 
@@ -84,7 +89,7 @@ class DashboardControllerTest extends TestCase
         $sample = $this->makeSample($project, $client, $grafolog, 'completed');
         $sample->created_at = now()->subDay();
         $sample->save();
-        $this->completeReport($sample, now());
+        $this->completeReport($sample, now(), narasiStatus: 'final');
 
         // Data milik user lain, tidak boleh bocor ke KPI client ini.
         $strangerProject = $this->makeProject($stranger, 'client');
@@ -100,6 +105,28 @@ class DashboardControllerTest extends TestCase
         $this->assertSame(0, $kpi['in_progress']['value']);
     }
 
+    /**
+     * sample.status='completed' berarti breakdown internal sudah dihitung,
+     * BUKAN berarti klien sudah bisa melihat laporannya - itu baru terjadi
+     * begitu narasi_status='final' (lihat ReportController::show). Sebelum
+     * fix ini, KPI "Selesai" klien memakai sample.status dan bisa
+     * menampilkan "Selesai" untuk laporan yang begitu diklik malah 403.
+     */
+    public function test_client_dashboard_treats_completed_sample_without_final_narasi_as_in_progress(): void
+    {
+        $client = User::factory()->create();
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $project = $this->makeProject($grafolog, 'grafolog');
+        $sample = $this->makeSample($project, $client, $grafolog, 'completed');
+        $this->completeReport($sample, now(), narasiStatus: 'draft');
+
+        $response = $this->actingAs($client, 'sanctum')->getJson('/api/dashboard');
+
+        $kpi = collect($response->json('kpi'))->keyBy('key');
+        $this->assertSame(0, $kpi['completed']['value']);
+        $this->assertSame(1, $kpi['in_progress']['value']);
+    }
+
     public function test_activity_feed_lists_recent_completed_reports(): void
     {
         $grafolog = User::factory()->create(['role' => 'grafolog']);
@@ -113,5 +140,47 @@ class DashboardControllerTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(1, 'activity')
             ->assertJsonPath('activity.0.status', 'completed');
+    }
+
+    public function test_client_activity_feed_reflects_narasi_status_not_internal_status(): void
+    {
+        $client = User::factory()->create();
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $project = $this->makeProject($grafolog, 'grafolog');
+        $sample = $this->makeSample($project, $client, $grafolog, 'completed');
+        $this->completeReport($sample, now(), narasiStatus: 'draft');
+
+        $response = $this->actingAs($client, 'sanctum')->getJson('/api/dashboard');
+
+        $response->assertOk()->assertJsonPath('activity.0.status', 'generating');
+    }
+
+    public function test_hr_dashboard_reflects_own_created_candidates(): void
+    {
+        $hr = User::factory()->create(['role' => 'hr']);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $stranger = User::factory()->create(['role' => 'hr']);
+
+        $project = $this->makeProject($hr, 'hr');
+        $unassigned = $this->makeSample($project, User::factory()->create(), $hr, 'pending');
+        $assigned = $this->makeSample($project, User::factory()->create(), $hr, 'pending');
+        Assignment::create(['sample_id' => $assigned->id, 'grafolog_id' => $grafolog->id, 'assigned_by' => $hr->id, 'status' => 'assigned']);
+        $done = $this->makeSample($project, User::factory()->create(), $hr, 'completed');
+        $done->created_at = now()->subDays(3);
+        $done->save();
+        $this->completeReport($done, now());
+
+        // Kandidat HR lain tidak boleh bocor ke KPI HR ini.
+        $strangerProject = $this->makeProject($stranger, 'hr');
+        $this->makeSample($strangerProject, User::factory()->create(), $stranger, 'pending');
+
+        $response = $this->actingAs($hr, 'sanctum')->getJson('/api/dashboard');
+
+        $response->assertOk()->assertJsonPath('role', 'hr');
+        $kpi = collect($response->json('kpi'))->keyBy('key');
+
+        $this->assertSame(3, $kpi['total_candidates']['value']);
+        $this->assertSame(1, $kpi['unassigned']['value']);
+        $this->assertSame(1, $kpi['completed']['value']);
     }
 }

@@ -17,9 +17,11 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        return response()->json(
-            $user->isGrafolog() ? $this->grafologDashboard($user) : $this->clientDashboard($user)
-        );
+        return response()->json(match (true) {
+            $user->isGrafolog() => $this->grafologDashboard($user),
+            $user->isHr() => $this->hrDashboard($user),
+            default => $this->clientDashboard($user),
+        });
     }
 
     private function grafologDashboard(User $user): array
@@ -68,7 +70,13 @@ class DashboardController extends Controller
     private function clientDashboard(User $user): array
     {
         $sampleIds = HandwritingSample::where('user_id', $user->id)->pluck('id');
-        $completed = HandwritingSample::whereIn('id', $sampleIds)->where('status', 'completed')->count();
+        // "Selesai" dari sudut pandang klien berarti narasi_status='final' (yang
+        // benar-benar bisa mereka lihat), BUKAN sample.status='completed' (cuma
+        // berarti breakdown internal sudah dihitung) - dua hal itu sengaja beda
+        // sejak narasi terpadu wajib direview grafolog dulu sebelum final, lihat
+        // guratan-api/CLAUDE.md "Narasi terpadu (laporan klien)".
+        $completed = PersonalityReport::whereIn('sample_id', $sampleIds)
+            ->where('narasi_status', 'final')->count();
 
         return [
             'role' => 'client',
@@ -76,6 +84,40 @@ class DashboardController extends Controller
                 ['key' => 'total_assessments', 'label' => 'Total Assessment', 'value' => $sampleIds->count()],
                 ['key' => 'completed', 'label' => 'Selesai', 'value' => $completed],
                 ['key' => 'in_progress', 'label' => 'Sedang Diproses', 'value' => $sampleIds->count() - $completed],
+                [
+                    'key' => 'avg_turnaround_days',
+                    'label' => 'Rata-rata Durasi (hari)',
+                    'value' => $this->avgTurnaroundDays($sampleIds),
+                ],
+            ],
+            'activity' => $this->recentActivity($sampleIds, clientView: true),
+        ];
+    }
+
+    /**
+     * HR sebelumnya jatuh ke clientDashboard() (bukan grafolog -> default
+     * branch) - salah total, karena HR TIDAK PERNAH punya sample dengan
+     * user_id=dirinya sendiri (HR bukan subjek tes) - KPI-nya selalu 0 dan
+     * activity-nya selalu kosong meski HR sudah impor puluhan kandidat.
+     * Scoping yang benar (created_by, sama seperti HrCandidatesView.vue
+     * pakai lewat GET /api/samples) - lihat SampleController::index.
+     */
+    private function hrDashboard(User $user): array
+    {
+        $sampleIds = HandwritingSample::where('created_by', $user->id)->pluck('id');
+        $samples = HandwritingSample::whereIn('id', $sampleIds)->get(['id', 'status']);
+        $completed = $samples->where('status', 'completed')->count();
+        $unassignedActive = HandwritingSample::whereIn('id', $sampleIds)
+            ->where('status', '!=', 'completed')
+            ->whereDoesntHave('assignment')
+            ->count();
+
+        return [
+            'role' => 'hr',
+            'kpi' => [
+                ['key' => 'total_candidates', 'label' => 'Total Kandidat', 'value' => $samples->count()],
+                ['key' => 'unassigned', 'label' => 'Menunggu Penugasan', 'value' => $unassignedActive],
+                ['key' => 'completed', 'label' => 'Selesai', 'value' => $completed],
                 [
                     'key' => 'avg_turnaround_days',
                     'label' => 'Rata-rata Durasi (hari)',
@@ -105,19 +147,36 @@ class DashboardController extends Controller
         return round($totalDays / $reports->count(), 1);
     }
 
-    private function recentActivity(Collection $sampleIds): array
+    /**
+     * $clientView=true (klien saja) memakai narasi_status, bukan status,
+     * untuk label+badge - klien cuma pernah bisa lihat laporan begitu
+     * narasi_status='final' (lihat ReportController::show), jadi status
+     * breakdown internal ('completed') menyesatkan buat mereka: sample bisa
+     * saja 'completed' sementara narasi masih draft/belum dibuat, klien
+     * lihat badge "Selesai" tapi begitu diklik malah 403 "belum final".
+     */
+    private function recentActivity(Collection $sampleIds, bool $clientView = false): array
     {
         return PersonalityReport::whereIn('sample_id', $sampleIds)
             ->latest('generated_at')
             ->take(5)
-            ->get(['id', 'sample_id', 'tier', 'status', 'generated_at'])
-            ->map(fn (PersonalityReport $report) => [
-                'id' => $report->id,
-                'label' => "Laporan #{$report->id} ({$report->tier}) {$this->statusLabel($report->status)}",
-                'status' => $report->status,
-                'occurred_at' => $report->generated_at,
-            ])
+            ->get(['id', 'sample_id', 'tier', 'status', 'narasi_status', 'generated_at'])
+            ->map(function (PersonalityReport $report) use ($clientView) {
+                $status = $clientView ? $this->clientFacingStatus($report->narasi_status) : $report->status;
+
+                return [
+                    'id' => $report->id,
+                    'label' => "Laporan #{$report->id} ({$report->tier}) {$this->statusLabel($status)}",
+                    'status' => $status,
+                    'occurred_at' => $report->generated_at,
+                ];
+            })
             ->all();
+    }
+
+    private function clientFacingStatus(string $narasiStatus): string
+    {
+        return $narasiStatus === 'final' ? 'completed' : 'generating';
     }
 
     private function statusLabel(string $status): string

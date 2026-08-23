@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\DiscountCode;
+use App\Models\TokenCost;
 use App\Models\TokenLedgerEntry;
 use App\Models\TokenPrice;
 use App\Models\User;
@@ -53,7 +54,22 @@ class TokenControllerTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('balance', 7)
             ->assertJsonPath('price_per_token', 5000)
+            ->assertJsonPath('costs.comprehensive', null)
+            ->assertJsonPath('costs.master', null)
             ->assertJsonCount(2, 'transactions');
+    }
+
+    public function test_wallet_includes_active_token_cost_per_tier(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        TokenCost::setTokensFor('comprehensive', 5, $admin);
+        TokenCost::setTokensFor('master', 10, $admin);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+
+        $this->actingAs($grafolog, 'sanctum')->getJson('/api/tokens/wallet')
+            ->assertOk()
+            ->assertJsonPath('costs.comprehensive', 5)
+            ->assertJsonPath('costs.master', 10);
     }
 
     public function test_preview_computes_final_amount_with_valid_discount(): void

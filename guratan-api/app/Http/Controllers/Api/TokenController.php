@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PreviewTokenPurchaseRequest;
 use App\Models\DiscountCode;
+use App\Models\TokenCost;
 use App\Models\TokenLedgerEntry;
 use App\Models\TokenPrice;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,14 @@ class TokenController extends Controller
         return response()->json([
             'balance' => $user->token_balance,
             'price_per_token' => TokenPrice::current(),
+            // Ditambahkan supaya UI Portal Grafolog bisa peringatkan "token
+            // tidak cukup" SEBELUM grafolog mulai isi form 40 aspek, bukan
+            // baru ketahuan setelah submit gagal 402 - null berarti gate
+            // belum dikonfigurasi admin untuk tier itu (tidak ada batasan).
+            'costs' => [
+                'comprehensive' => TokenCost::activeTokensFor('comprehensive'),
+                'master' => TokenCost::activeTokensFor('master'),
+            ],
             'transactions' => TokenLedgerEntry::where('user_id', $user->id)
                 ->latest()
                 ->take(20)

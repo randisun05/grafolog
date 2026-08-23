@@ -60,9 +60,30 @@ let previewTimer = null
 const resuming = ref(false)
 const resumeError = ref('')
 
+// Saldo + biaya token per tier - dimuat sekali di awal supaya bisa
+// peringatkan grafolog SEBELUM dia menghabiskan waktu isi form 40 aspek
+// (lihat portal-grafolog__token-warning di bawah), bukan baru ketahuan
+// token tidak cukup setelah klik submit dan dapat 402 di ScoringController.
+const wallet = ref(null)
+const tokensRequired = computed(() => wallet.value?.costs?.[tier.value] ?? 0)
+const insufficientTokens = computed(
+  () => tokensRequired.value > 0 && wallet.value.balance < tokensRequired.value,
+)
+
+async function loadWallet() {
+  try {
+    const { data } = await api.get('/tokens/wallet')
+    wallet.value = data
+  } catch {
+    // Gagal muat saldo bukan hal fatal - form tetap bisa diisi, cuma
+    // peringatan token tidak akan muncul (submit tetap tergerbang di backend).
+  }
+}
+
 onMounted(async () => {
   const { data } = await api.get('/sindrom')
   sindromList.value = data
+  loadWallet()
 
   if (route.query.sampleId) {
     await resumeSample(route.query.sampleId)
@@ -293,6 +314,12 @@ function viewReport() {
           {{ creatingSample ? 'Membuat...' : 'Buat Sample & Mulai Isi Skor' }}
         </button>
       </div>
+
+      <p v-if="client && insufficientTokens" class="portal-grafolog__warning">
+        ⚠ Token Anda tidak cukup untuk tier ini ({{ wallet.balance }} / {{ tokensRequired }} dibutuhkan) —
+        laporan tidak akan bisa dibuat sampai token ditambah.
+        <RouterLink to="/token-saya">Beli token</RouterLink>
+      </p>
     </section>
 
     <section v-else-if="!submittedReport" class="portal-grafolog__step">
@@ -300,6 +327,11 @@ function viewReport() {
       <p class="portal-grafolog__warning">
         ⚠ Progres tidak tersimpan otomatis — hindari refresh atau menutup halaman sebelum submit,
         isian skor akan hilang.
+      </p>
+      <p v-if="insufficientTokens" class="portal-grafolog__warning">
+        ⚠ Token Anda tidak cukup untuk tier {{ tier }} ({{ wallet.balance }} / {{ tokensRequired }}
+        dibutuhkan) — isian ini tidak akan bisa disubmit sampai token ditambah.
+        <RouterLink to="/token-saya">Beli token</RouterLink>
       </p>
 
       <div class="portal-grafolog__mode">
