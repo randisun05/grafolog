@@ -742,6 +742,31 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `/kebijakan-privasi` all reflect the new values on next navigation with
   zero console errors.
 
+- **Google Analytics (GA4) wired up, 2026-08-30** — new
+  `src/lib/analytics.js` (no npm dependency added, hand-rolled `gtag.js`
+  injection, same minimal-dependency philosophy as `useTheme.js`/
+  `useToast.js`): `initAnalytics()` called once from `main.js` after
+  mount; `trackPageview()` called from a new `router.afterEach()` hook
+  in `router/index.js` (pageviews must be sent manually per-navigation
+  in a SPA — `gtag('config', ..., { send_page_view: false })` disables
+  GA's own automatic pageview on script load). **Both functions are a
+  total no-op when `VITE_GA_MEASUREMENT_ID` is empty** — no script tag
+  injected, `window.gtag` never defined — so this ships safely with no
+  real Measurement ID configured yet. New env var
+  `VITE_GA_MEASUREMENT_ID` added to `.env.development` (empty by
+  default, same "prepare the placeholder, don't invent the value"
+  pattern as `legal_entity_name` in `guratan-api/CLAUDE.md`'s ContentBlock
+  entry — an admin fills the real GA4 Measurement ID later; production
+  needs its own env var set at deploy time, no `.env.production` exists
+  in this repo). `PrivacyPolicyView.vue`'s "Berbagi Data ke Pihak Ketiga"
+  section gained a bullet disclosing Google Analytics usage. **No
+  cookie-consent banner was built** — explicit user instruction was
+  "pasang saja" (just install it), no consent flow requested; revisit if
+  a legal review later requires one. Browser-verified: confirmed zero
+  GA script tags / `window.gtag === undefined` with the empty default
+  key (true no-op, not just visually inert), and confirmed the privacy
+  policy page renders the new disclosure text.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

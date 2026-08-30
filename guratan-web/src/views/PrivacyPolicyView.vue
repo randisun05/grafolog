@@ -87,6 +87,11 @@ const contactEmail = computed(() => content.value.legal_contact_email || content
           Untuk laporan yang dibuat lewat perusahaan (rekrutmen B2B): hasil laporan dapat diakses oleh tim HR
           perusahaan yang mengundang Anda mengikuti proses tersebut.
         </li>
+        <li>
+          <strong>Google Analytics</strong>: kami menggunakan layanan ini untuk memahami pola kunjungan ke
+          situs (halaman yang dibuka, durasi kunjungan) - data yang dikirim bersifat statistik penggunaan
+          situs, <strong>bukan</strong> skor kepribadian atau isi laporan Anda.
+        </li>
         <li>Kami <strong>tidak menjual</strong> data pribadi Anda ke pihak mana pun.</li>
       </ul>
     </section>

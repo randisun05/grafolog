@@ -1067,8 +1067,22 @@ menunggu satu input untuk dieksekusi.
 - [ ] **Uji coba mobile & lintas-browser** — semua verifikasi Playwright
   sesi ini di viewport desktop Chromium saja, belum pernah dicek di HP
   atau Firefox/Safari.
-- [ ] **Web analytics** (mis. Plausible/GA) — tidak ada pelacakan
-  perilaku pengguna/funnel konversi sama sekali.
+- [x] **Web analytics (Google Analytics)** — 2026-08-30. Terpasang di
+  `guratan-web` (`src/lib/analytics.js`, gtag.js diinjeksi manual tanpa
+  dependency npm baru, pageview dikirim manual lewat
+  `router.afterEach()` karena ini SPA). **Sengaja tidak aktif sampai
+  admin isi Measurement ID sungguhan** — `VITE_GA_MEASUREMENT_ID` di
+  `guratan-web/.env.development` default kosong, kode no-op total kalau
+  kosong (tidak ada script GA diinjeksi, tidak ada `window.gtag`) —
+  konsisten dengan pola placeholder `legal_entity_name` di atas: siap
+  dipasang, tapi butuh admin mengisi Measurement ID GA4 sungguhan
+  sebelum benar-benar melacak. Untuk production, `VITE_GA_MEASUREMENT_ID`
+  perlu diisi via env var deployment (tidak ada `.env.production` di
+  repo ini). Kebijakan Privasi (`/kebijakan-privasi`) sudah diperbarui
+  mengungkap pemakaian Google Analytics di section "Berbagi Data ke
+  Pihak Ketiga". **Belum ada cookie-consent banner** — user minta
+  "pasang saja" tanpa consent flow tambahan; kalau nanti dianggap perlu
+  secara hukum (UU PDP), itu keputusan/pekerjaan terpisah.
 
 **Keamanan tambahan:**
 - [ ] **2FA untuk akun staf/admin** — data psikologis sensitif + akses
