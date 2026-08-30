@@ -1002,6 +1002,54 @@ backup") dan `guratan-web/CLAUDE.md`.
   `--only-files`) belum pernah dites lawan MySQL sungguhan, cuma lewat
   baca kode paket `spatie/db-dumper`.
 
+### Tertunda — di luar kode aplikasi (legal, infrastruktur, produk) — 2026-08-30
+
+User tanya "selain [daftar sebelumnya] apa lagi untuk bisa go public" —
+kategori ini belum pernah disebut sepanjang sesi-sesi sebelumnya karena
+di luar scope kode murni. Sengaja dipisah dari 3 kategori "Tertunda" di
+atas (kredensial/keputusan bisnis/operasional server) karena butuh
+keahlian/keputusan yang beda (legal, bisnis go-to-market), bukan sekadar
+menunggu satu input untuk dieksekusi.
+
+**Legal & kepatuhan (spesifik Indonesia):**
+- [ ] **Kepatuhan UU PDP (Pelindungan Data Pribadi)** — data psikologis
+  kemungkinan "data pribadi bersifat spesifik" berisiko tinggi menurut
+  UU PDP: butuh consent eksplisit terpisah dari ToS umum, mekanisme klien
+  minta hapus/ekspor data miliknya (belum ada endpoint/UI untuk ini sama
+  sekali), dan kemungkinan penunjukan penanggung jawab perlindungan data.
+- [ ] **Disclosure penggunaan AI ke klien** — narasi terpadu dihasilkan
+  AI (walau wajib direview grafolog dulu) - perlu dinyatakan eksplisit ke
+  klien penerima laporan, bukan cuma terkubur di Privacy Policy.
+- [ ] **Status legal jasa grafologi** — cek apakah butuh izin usaha/
+  lisensi tertentu di Indonesia, terutama untuk pemakaian B2B dalam
+  keputusan rekrutmen (root `CLAUDE.md` sudah framing sebagai "insight
+  reflektif bukan diagnosis klinis" - perlu dipastikan framing ini cukup
+  secara hukum, bukan cuma copy produk).
+
+**Infrastruktur & operasional:**
+- [ ] **Domain + SSL** — belum ada domain nyata terdaftar/dikonfigurasi.
+- [ ] **CDN** untuk aset statis (build Vite).
+- [ ] **Uptime monitoring eksternal** (mis. UptimeRobot/Pingdom) - beda
+  dari Sentry (error tracking) yang sudah ada, ini soal "situs mati total"
+  ketika bahkan Sentry sendiri tidak bisa lapor.
+- [ ] **Staging environment** terpisah dari dev untuk uji config
+  production sebelum benar-benar live.
+- [ ] **Load testing** — belum pernah diuji lawan traffic bersamaan yang
+  realistis (semua verifikasi sesi-sesi ini pakai 1 browser headless).
+
+**Produk & UX:**
+- [ ] **Kanal dukungan pelanggan** — belum ada cara klien/grafolog
+  menghubungi support (email/chat/help center) dari dalam aplikasi.
+- [ ] **Uji coba mobile & lintas-browser** — semua verifikasi Playwright
+  sesi ini di viewport desktop Chromium saja, belum pernah dicek di HP
+  atau Firefox/Safari.
+- [ ] **Web analytics** (mis. Plausible/GA) — tidak ada pelacakan
+  perilaku pengguna/funnel konversi sama sekali.
+
+**Keamanan tambahan:**
+- [ ] **2FA untuk akun staf/admin** — data psikologis sensitif + akses
+  ke sistem pembayaran, sekarang cuma dilindungi password.
+
 ### Gap "management" — ditemukan DAN ditutup 2026-08-23
 
 User bertanya "apakah secara management sudah lengkap dan baik?" — dicek
