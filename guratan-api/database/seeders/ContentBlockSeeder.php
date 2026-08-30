@@ -65,6 +65,17 @@ class ContentBlockSeeder extends Seeder
 
             'landing_cta_band_heading' => 'Penasaran apa kata tulisan tangan Anda?',
             'landing_cta_band_subtext' => 'Hasil disusun grafolog bersertifikat, harga transparan sejak awal.',
+
+            // Dukungan pelanggan - lihat ContentBlock::EDITABLE_KEYS.
+            'support_email' => 'support@guratan.id',
+            'support_whatsapp' => '',
+            'support_hours' => 'Senin-Jumat, 09.00-17.00 WIB',
+            'support_note' => 'Ada pertanyaan soal laporan, pembayaran, atau akun Anda? Tim kami siap membantu.',
+
+            // Entitas hukum/biro psikologi - sengaja kosong, lihat catatan
+            // di ContentBlock::EDITABLE_KEYS kenapa bukan placeholder.
+            'legal_entity_name' => '',
+            'legal_contact_email' => '',
         ];
 
         foreach ($defaults as $key => $value) {

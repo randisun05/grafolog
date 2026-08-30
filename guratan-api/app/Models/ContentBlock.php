@@ -43,6 +43,22 @@ class ContentBlock extends Model
         'landing_signup_heading',
         'landing_cta_band_heading',
         'landing_cta_band_subtext',
+
+        // Dukungan pelanggan (/bantuan) - 2026-08-30. Admin isi lewat panel,
+        // bukan hardcode, supaya kontak support bisa diganti tanpa deploy.
+        'support_email',
+        'support_whatsapp',
+        'support_hours',
+        'support_note',
+
+        // Entitas hukum/mitra pengawas (mis. biro psikologi) yang dirujuk di
+        // footer + halaman Kebijakan Privasi/Ketentuan Layanan - 2026-08-30.
+        // Sengaja default kosong (bukan placeholder ber-kurung-siku) supaya
+        // tidak tampil janggal ke publik kalau belum diisi admin - lihat
+        // PrivacyPolicyView.vue/TermsOfServiceView.vue/AppFooter.vue, semua
+        // menyembunyikan baris ini kalau kosong.
+        'legal_entity_name',
+        'legal_contact_email',
     ];
 
     public const LIST_KEYS = [

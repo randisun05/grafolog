@@ -2255,6 +2255,61 @@ otomatis, TIDAK menyentuh payment gate/flow apa pun yang sudah ada.
   Publikasi" — dashboard admin lintas-perusahaan, laporan tersegmentasi
   per-Topik, dan kontrak B2B semuanya selesai dikerjakan hari yang sama.
 
+## Perlindungan data (simpel) + dukungan pelanggan + placeholder legal — 2026-08-30
+
+User minta "perlindungan data yg simpel saja, tidak perlu ada disclaimer
+AI, legal saya ada di biro psikologi siapkan aja tempatnya, buat dukungan
+pelanggan yang managementnya bisa diatur." Sengaja **reuse** infrastruktur
+CMS `ContentBlock` yang sudah ada (lihat "Homepage CMS" di atas) daripada
+membangun sistem admin baru — persis memenuhi "managementnya agar bisa
+diatur" dengan hampir nol permukaan backend baru.
+
+- **6 key baru di `ContentBlock::EDITABLE_KEYS`** (total sekarang 27,
+  ingat: update `EDITABLE_KEYS` DAN `ContentBlockSeeder.php` bersamaan,
+  keduanya tidak saling derive):
+  - `support_email`, `support_whatsapp`, `support_hours`, `support_note`
+    — dikonsumsi halaman `/bantuan` baru (`guratan-web`'s `HelpView.vue`).
+  - `legal_entity_name`, `legal_contact_email` — entitas hukum/mitra
+    pengawas (mis. biro psikologi) yang dirujuk di footer + Kebijakan
+    Privasi/Ketentuan Layanan. **Sengaja default string kosong, BUKAN
+    placeholder ber-kurung-siku** — user menyatakan legitimasi hukum
+    produk berasal dari sebuah biro psikologi tapi belum menyebutkan
+    namanya, dan Claude sengaja TIDAK mengarang nama entitas ini. Setiap
+    halaman publik yang merujuk field ini menyembunyikan barisnya
+    sepenuhnya (`v-if`) kalau masih kosong — supaya tidak tampil janggal
+    ke publik sebelum admin mengisi lewat panel `/admin/content` yang
+    sudah ada.
+  - Tidak ada endpoint/tabel baru sama sekali — 6 key ini lewat
+    `GET /api/content` (public) dan `PUT /api/admin/content/{key}`
+    (admin) yang sudah ada apa adanya.
+- **AI disclosure ke klien SENGAJA TIDAK dibangun** — item ini sempat
+  masuk daftar tertunda di `ROADMAP.md`, dicoret eksplisit atas instruksi
+  user ("tidak perlu ada disclaimer AI"). Jangan tambahkan kembali tanpa
+  keputusan baru dari user.
+- **Tidak ada dashboard self-service ekspor/hapus data** — mekanisme
+  disederhanakan jadi: permintaan hak data-subjek (salinan/koreksi/hapus
+  data, sesuai UU PDP) diarahkan lewat kanal dukungan pelanggan di
+  `/bantuan`, bukan lewat UI khusus. Kebijakan Privasi menyatakan retensi
+  data tetap 30 hari kerja pasca penghapusan akun.
+- Privacy Policy/ToS draft lama di `legal/privacy-policy.md`/
+  `legal/terms-of-service.md` (berlabel "JANGAN publikasikan sebelum
+  ditinjau") **tetap ada sebagai draft mentah**, tidak dihapus — konten
+  yang benar-benar tayang di `/kebijakan-privasi`/`/ketentuan-layanan`
+  adalah versi yang sudah disederhanakan/final di `guratan-web`'s
+  `PrivacyPolicyView.vue`/`TermsOfServiceView.vue`, bukan draft ini secara
+  langsung.
+- Lihat `guratan-web/CLAUDE.md` untuk detail frontend (3 halaman publik
+  baru + footer global).
+- **Verifikasi**: 459 backend test tetap hijau (1 kegagalan pre-existing
+  tidak terkait, `ExampleTest` soal `APP_KEY` kosong di lingkungan test
+  bawaan Laravel — bukan regresi dari perubahan ini), `pint --test` lolos,
+  `npm run lint`/`npm run build` lolos. Browser-verified end-to-end
+  (Playwright): footer + 3 halaman baru tampil benar dengan
+  `legal_entity_name` kosong (baris Kontak tersembunyi sepenuhnya), admin
+  mengisi 6 field lewat `/admin/content`, lalu footer/`/bantuan`/
+  `/kebijakan-privasi` semuanya langsung merefleksikan nilai baru tanpa
+  reload manual di luar navigasi halaman.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

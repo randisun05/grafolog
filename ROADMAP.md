@@ -1012,19 +1012,35 @@ keahlian/keputusan yang beda (legal, bisnis go-to-market), bukan sekadar
 menunggu satu input untuk dieksekusi.
 
 **Legal & kepatuhan (spesifik Indonesia):**
-- [ ] **Kepatuhan UU PDP (Pelindungan Data Pribadi)** — data psikologis
-  kemungkinan "data pribadi bersifat spesifik" berisiko tinggi menurut
-  UU PDP: butuh consent eksplisit terpisah dari ToS umum, mekanisme klien
-  minta hapus/ekspor data miliknya (belum ada endpoint/UI untuk ini sama
-  sekali), dan kemungkinan penunjukan penanggung jawab perlindungan data.
-- [ ] **Disclosure penggunaan AI ke klien** — narasi terpadu dihasilkan
-  AI (walau wajib direview grafolog dulu) - perlu dinyatakan eksplisit ke
-  klien penerima laporan, bukan cuma terkubur di Privacy Policy.
-- [ ] **Status legal jasa grafologi** — cek apakah butuh izin usaha/
-  lisensi tertentu di Indonesia, terutama untuk pemakaian B2B dalam
-  keputusan rekrutmen (root `CLAUDE.md` sudah framing sebagai "insight
-  reflektif bukan diagnosis klinis" - perlu dipastikan framing ini cukup
-  secara hukum, bukan cuma copy produk).
+- [x] **Privacy Policy & Terms of Service dipublikasikan** — 2026-08-30.
+  Draft yang tadinya `legal/privacy-policy.md`/`legal/terms-of-service.md`
+  (berlabel "JANGAN publikasikan sebelum ditinjau") disederhanakan lalu
+  ditayangkan sebagai halaman nyata: `/kebijakan-privasi`
+  (`PrivacyPolicyView.vue`) dan `/ketentuan-layanan` (`TermsOfServiceView.vue`),
+  ditautkan dari footer global baru (`AppFooter.vue`, dipasang di
+  `App.vue`). Atas instruksi eksplisit user ("simpel saja"): TIDAK ada
+  dashboard self-service ekspor/hapus data — permintaan hak data-subjek
+  diarahkan lewat kanal dukungan pelanggan (`/bantuan`, lihat di bawah)
+  sebagai gantinya. Retensi data didefinisikan tetap 30 hari kerja pasca
+  penghapusan akun (bukan lagi `[BELUM DIPUTUSKAN]`). Sisa kepatuhan UU
+  PDP yang lebih dalam (consent terpisah, penunjukan penanggung jawab
+  perlindungan data formal) tetap belum dikerjakan — lihat item di bawah.
+- [x] ~~Disclosure penggunaan AI ke klien~~ — **dicoret 2026-08-30 atas
+  instruksi eksplisit user** ("tidak perlu ada disclaimer AI"), bukan
+  dikerjakan. Jangan tambahkan lagi tanpa keputusan baru dari user.
+- [x] **Status legal jasa grafologi — placeholder teknis disiapkan**
+  2026-08-30. User menyatakan legitimasi/pengawasan hukum produk berasal
+  dari sebuah "biro psikologi" tapi belum menyebutkan namanya — Claude
+  sengaja TIDAK mengarang nama entitas ini. Dibangun 2 field
+  admin-editable baru di `ContentBlock` (`legal_entity_name`,
+  `legal_contact_email`, default kosong) lewat panel `/admin/content`
+  yang sudah ada; `PrivacyPolicyView`/`TermsOfServiceView`/`AppFooter`
+  semuanya menyembunyikan baris entitas ini sepenuhnya kalau kosong
+  (tidak tampil sebagai placeholder ber-kurung-siku ke publik). Ini
+  cuma "tempatnya sudah siap" — user masih perlu isi nama biro psikologi
+  yang sebenarnya lewat panel admin, dan pertanyaan hukum yang lebih
+  besar (perlu izin usaha/lisensi tertentu untuk B2B rekrutmen) masih
+  belum dijawab.
 
 **Infrastruktur & operasional:**
 - [ ] **Domain + SSL** — belum ada domain nyata terdaftar/dikonfigurasi.
@@ -1038,8 +1054,16 @@ menunggu satu input untuk dieksekusi.
   realistis (semua verifikasi sesi-sesi ini pakai 1 browser headless).
 
 **Produk & UX:**
-- [ ] **Kanal dukungan pelanggan** — belum ada cara klien/grafolog
-  menghubungi support (email/chat/help center) dari dalam aplikasi.
+- [x] **Kanal dukungan pelanggan** — 2026-08-30. Halaman `/bantuan`
+  (`HelpView.vue`, ditautkan dari footer global) menampilkan email/
+  WhatsApp/jam layanan/catatan pembuka, semuanya dibaca dari 4 field
+  `ContentBlock` baru (`support_email`, `support_whatsapp`,
+  `support_hours`, `support_note`) via panel `/admin/content` yang sudah
+  ada — sengaja TIDAK membangun sistem tiket/manajemen kontak baru,
+  "managementnya bisa diatur" dipenuhi dengan reuse CMS fixed-field yang
+  sudah ada, sesuai instruksi user "simpel saja". Ini juga jadi kanal
+  permintaan hak data-subjek (lihat item UU PDP di atas) — bukan
+  dashboard self-service terpisah.
 - [ ] **Uji coba mobile & lintas-browser** — semua verifikasi Playwright
   sesi ini di viewport desktop Chromium saja, belum pernah dicek di HP
   atau Firefox/Safari.

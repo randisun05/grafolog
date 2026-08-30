@@ -1,6 +1,7 @@
 <script setup>
 import { RouterView } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
+import AppFooter from '@/components/layout/AppFooter.vue'
 import ToastNotification from '@/components/shared/ToastNotification.vue'
 import CommandPalette from '@/components/shared/CommandPalette.vue'
 </script>
@@ -12,6 +13,8 @@ import CommandPalette from '@/components/shared/CommandPalette.vue'
     <main class="app-main">
       <RouterView />
     </main>
+
+    <AppFooter />
 
     <ToastNotification />
     <CommandPalette />

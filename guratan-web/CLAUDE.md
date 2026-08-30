@@ -712,6 +712,36 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `berakhir_at` has already passed — a display signal only, never writes
   back to the record.
 
+- **3 halaman publik baru + footer global, 2026-08-30** (perlindungan
+  data simpel + dukungan pelanggan — see `guratan-api/CLAUDE.md`'s
+  matching entry for the 6 new `ContentBlock` keys behind these pages):
+  `PrivacyPolicyView.vue` (`/kebijakan-privasi`), `TermsOfServiceView.vue`
+  (`/ketentuan-layanan`), `HelpView.vue` (`/bantuan`) — all fully public
+  routes, no `meta.requiresAuth`/`meta.role` (same as the landing page).
+  Each fetches `GET /content` on mount for the handful of dynamic fields
+  it needs (`support_*` for Help, `legal_entity_name`/
+  `legal_contact_email` for the two legal pages) and otherwise renders
+  static Indonesian copy inline in the component — these are NOT driven
+  by `AdminContentView.vue`'s generic field-list rendering, they're
+  purpose-built pages that happen to read a few CMS values, same
+  fetch-with-graceful-fallback pattern as `LandingView.vue` (empty
+  `try/catch`, page still renders fully minus the dynamic bits). New
+  `components/layout/AppFooter.vue` (mounted once in `App.vue`, after
+  `<main>`) links to all 3 pages and shows a copyright line with
+  `legal_entity_name` appended only when non-empty. Pasal 2 "Bukan Alat
+  Diagnosis Klinis" in `TermsOfServiceView.vue` was kept close to the
+  original `legal/terms-of-service.md` draft's own instruction not to
+  weaken this section for friendlier marketing language. **No AI-
+  disclosure banner/section was added anywhere** — explicit user
+  instruction, don't add one without a new decision. **No self-service
+  data export/delete UI** — the Kebijakan Privasi's "Hak Anda" section
+  points to `/bantuan` instead. Browser-verified: footer links resolve,
+  both legal pages hide their Kontak section entirely when
+  `legal_entity_name` is empty (default state), then after an admin fills
+  the 6 new fields via `/admin/content`, footer/`/bantuan`/
+  `/kebijakan-privasi` all reflect the new values on next navigation with
+  zero console errors.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

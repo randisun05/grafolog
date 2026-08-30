@@ -131,6 +131,21 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'hr' },
     },
     {
+      path: '/kebijakan-privasi',
+      name: 'privacy-policy',
+      component: () => import('../views/PrivacyPolicyView.vue'),
+    },
+    {
+      path: '/ketentuan-layanan',
+      name: 'terms-of-service',
+      component: () => import('../views/TermsOfServiceView.vue'),
+    },
+    {
+      path: '/bantuan',
+      name: 'help',
+      component: () => import('../views/HelpView.vue'),
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),

@@ -38,6 +38,14 @@ const fields = [
 
   { key: 'landing_cta_band_heading', label: 'Judul CTA Penutup', type: 'text' },
   { key: 'landing_cta_band_subtext', label: 'Subteks CTA Penutup', type: 'textarea' },
+
+  { key: 'support_email', label: 'Email Dukungan Pelanggan', type: 'text' },
+  { key: 'support_whatsapp', label: 'Nomor WhatsApp Dukungan (opsional)', type: 'text' },
+  { key: 'support_hours', label: 'Jam Layanan Dukungan', type: 'text' },
+  { key: 'support_note', label: 'Catatan Pembuka Halaman Bantuan', type: 'textarea' },
+
+  { key: 'legal_entity_name', label: 'Nama Entitas Hukum/Mitra Pengawas (mis. Biro Psikologi)', type: 'text' },
+  { key: 'legal_contact_email', label: 'Email Kontak Legal/Privasi', type: 'text' },
 ]
 
 const values = ref({})
