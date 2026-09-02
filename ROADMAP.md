@@ -1180,3 +1180,31 @@ badge & isi notifikasi yang BENAR sesuai target role-nya, read-state
 terbukti persisten lewat reload halaman. 9/9 pemeriksaan lolos. Detail
 teknis lengkap di `guratan-api/CLAUDE.md` "Notifikasi/Pengumuman/Promo"
 dan `guratan-web/CLAUDE.md`. 444 backend tests total (up from 438).
+
+### Pendaftaran grafolog lewat verifikasi data — 2026-09-02
+
+User minta jalur pendaftaran grafolog yang cukup "biodata dan bukti
+profesi atau apapun", ditinjau dulu sebelum akun aktif. Investigasi
+sebelum membangun menemukan sesuatu yang penting: jalur publik
+`/auth/register` **sudah** mengizinkan siapa pun mendaftar langsung
+sebagai `role: grafolog` tanpa review sama sekali sejak MGA Fase 05
+(keputusan produk yang eksplisit saat itu, dites lewat
+`test_register_can_create_grafolog_role`) — bukan celah yang lupa
+ditutup, tapi keputusan lama yang sekarang digantikan permintaan baru
+ini. Jalur lama itu **ditutup** (`RegisterRequest` cuma izinkan `role:
+user` lagi), diganti alur baru: `POST /api/grafolog-applications`
+(publik, tanpa token/akun langsung) → status `pending` → administrator
+meninjau biodata + dokumen bukti profesi lewat halaman baru
+`/admin/grafolog-applications` → Setujui (baru di titik ini akun `users`
+sungguhan dibuat, role `grafolog`, aktif) atau Tolak (dengan catatan
+opsional, boleh daftar ulang dengan email sama). Dokumen bukti profesi
+disimpan di disk private (bukan URL publik), cuma bisa diunduh admin.
+
+Browser-verified 2026-09-02 (Playwright): submit pengajuan sungguhan
+dengan file diunggah nyata → tidak ada token/redirect (beda dari
+register biasa) → email sama tidak bisa dipakai daftar 2x selagi masih
+`pending` → admin login, buka pengajuan, lihat dokumen di tab baru,
+Setujui → akun grafolog baru langsung bisa login pakai password yang
+sama persis diajukan. Detail teknis lengkap di `guratan-api/CLAUDE.md`
+"Pendaftaran grafolog lewat verifikasi data" dan `guratan-web/CLAUDE.md`.
+473 backend tests total (up from 459).

@@ -499,21 +499,121 @@ dihapus, bukan berdampingan.
   which reads `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` from `.env` via
   `config/admin.php` and silently no-ops if the email/password aren't set —
   it will never create an account with a guessable default password. Every
-  subsequent administrator/supervisor/grafolog/**hr** account is created by
-  an already-logged-in Administrator via `POST /api/admin/users`
+  subsequent administrator/supervisor/**hr** account is created by an
+  already-logged-in Administrator via `POST /api/admin/users`
   (`AdminUserController`, `StoreStaffUserRequest`) — **not** by re-running
   the seeder and **not** via public registration. `role: hr` additionally
   **requires** `company_id` in that same request (the company must already
-  exist — `POST /api/admin/companies` first). `RegisterRequest` still only
-  accepts `role: user|grafolog`; this is enforced by a test
-  (`test_register_rejects_administrator_and_supervisor_roles`) — if that
-  test ever needs to change, it means the provisioning decision changed and
-  root `ROADMAP.md` / memory need updating too.
+  exist — `POST /api/admin/companies` first).
+  **`grafolog` is provisioned differently since 2026-09-02** — see
+  "Pendaftaran grafolog lewat verifikasi data" below; it's neither
+  `AdminUserController::store()` nor public `/auth/register` anymore.
+  `RegisterRequest` now only accepts `role: user`; this is enforced by a
+  test (`test_register_rejects_administrator_and_supervisor_and_grafolog_roles`)
+  — if that test ever needs to change, it means the provisioning decision
+  changed and root `ROADMAP.md` / memory need updating too.
 - Supervisor has **no dedicated functionality yet** — the role exists and
   is assignable, but there's no review queue or supervisor-specific view.
   That was explicitly deferred (see ROADMAP.md Fase 05 entry), not
   forgotten — don't build it speculatively without a product decision on
   what a supervisor actually reviews.
+
+## Pendaftaran grafolog lewat verifikasi data — added 2026-09-02
+
+User minta jalur pendaftaran grafolog yang lewat verifikasi ("cukup
+biodata dan bukti profesi atau apapun"). Sebelum ini, `RegisterRequest`
+publik (`/auth/register`) langsung mengizinkan `role: grafolog` tanpa
+review sama sekali (`test_register_can_create_grafolog_role`, dari MGA
+Fase 05) — **jalur itu sekarang DITUTUP** (`RegisterRequest.rules()` cuma
+izinkan `role: user`), digantikan alur baru ini.
+
+- **`grafolog_applications` table / `App\Models\GrafologApplication`**:
+  `name`, `email`, `password` (cast `hashed` - dipakai APA ADANYA saat
+  approve, bukan di-generate ulang, karena Laravel's `hashed` cast
+  mendeteksi string yang sudah ter-hash lewat `Hash::isHashed()` dan tidak
+  hash ulang), `phone` nullable, `catatan` nullable (bebas - pengalaman/
+  sertifikasi/apa pun, sesuai instruksi user "atau apapun"),
+  `document_path`+`document_original_name` (bukti profesi), `status`
+  (`pending`/`approved`/`rejected`, default `pending`), `reviewed_by`
+  (nullable FK users)/`reviewed_at`/`review_note`.
+- **`POST /api/grafolog-applications`** (publik, throttle:20,1 - satu grup
+  dengan `/auth/register`/`/auth/login`) — `GrafologApplicationController`
+  (bukan di bawah `Admin\`). **Beda mendasar dari `AuthController::register`**:
+  TIDAK menerbitkan token Sanctum, TIDAK membuat baris `users` sama
+  sekali - cuma `grafolog_applications` berstatus `pending`. Dokumen
+  disimpan di disk `local` (private, `storage/app/private`, BUKAN disk
+  `public`) - mengikuti pola `ReportPdfService`/`ReportController::pdf()`,
+  bukan pola upload lama Rapid tier yang sudah dihapus (itu dulu pakai
+  disk publik tanpa authorization check, ditandai sebagai security finding
+  yang belum diperbaiki sebelum akhirnya seluruh Rapid tier di-retire).
+  `StoreGrafologApplicationRequest`: email harus belum jadi `users` DAN
+  belum punya pengajuan `pending` lain (pengajuan yang sudah `rejected`
+  BOLEH dipakai daftar ulang - lihat `Rule::unique(...)->where('status',
+  'pending')`), `document` wajib `mimes:jpg,jpeg,png,pdf|max:5120` (5MB).
+  Audit log `ajukan_akun_grafolog` dengan `actor_user_id` **null** (belum
+  ada user staf yang login di titik ini - pengajuan publik/anonim).
+- **`Admin\GrafologApplicationController`** (`role:administrator`):
+  `index()` (paginated, filter `?status=`, eager-load `reviewer:id,name`),
+  `document()` (streaming download lewat `Storage::disk('local')->download()`,
+  sama pola dengan `ReportController::pdf()` - tidak ada URL publik ke
+  dokumen ini sama sekali), `approve()`, `reject()`.
+  - **`approve()`**: guard `status !== 'pending'` (422, sudah diproses) dan
+    guard email sudah dipakai `users` lain (422 - kasus tepi kalau
+    seseorang lain sempat daftar dengan email yang sama di antara
+    pengajuan dan approval). Kalau lolos: `DB::transaction` bikin `User`
+    baru (`role: grafolog, is_active: true`, password dari
+    `$grafologApplication->password` yang sudah hashed) + update
+    `grafolog_applications.status = approved` + `reviewed_by`/`reviewed_at`,
+    audit log `setujui_akun_grafolog`.
+  - **`reject()`**: guard `status !== 'pending'` sama, set `status =
+    rejected` + `review_note` opsional (`RejectGrafologApplicationRequest`),
+    audit log `tolak_akun_grafolog`. Dokumen TIDAK dihapus otomatis saat
+    ditolak - tetap ada untuk jejak audit (bisa dilihat admin kapan pun
+    lewat `document()`), bukan retensi 30-hari otomatis seperti akun
+    pengguna biasa (lihat Kebijakan Privasi) - beda konteks (dokumen
+    pengajuan yang ditolak, bukan data akun aktif).
+- **Frontend**: `RegisterGrafologView.vue` (`/daftar-grafolog`, publik,
+  `guestOnly`) - form `FormData`/`multipart` (bukan JSON biasa seperti
+  `RegisterView.vue` - lihat `guratan-web/CLAUDE.md`), tidak redirect ke
+  dashboard setelah submit (beda dari `RegisterView`/`auth.register()`) -
+  cuma tampilkan pesan "tunggu review admin", tidak ada token untuk
+  di-redirect ke mana pun. `RegisterView.vue`'s role dropdown
+  (`user`/`grafolog`) **dihapus** - sekarang cuma daftar `user`, dengan
+  link ke `/daftar-grafolog` untuk calon grafolog.
+  `AdminGrafologApplicationsView.vue` (`/admin/grafolog-applications`,
+  nav "Verifikasi Grafolog" + `CommandPalette.vue` entry) - expand-row
+  pattern yang sama dengan tab-tab lain (bukan modal), status filter,
+  tombol "Lihat Bukti Profesi" (blob download + `window.open()` di tab
+  baru, sama pola dengan `ReportView.vue`'s unduh PDF), tombol
+  Setujui/Tolak (Tolak punya input catatan opsional inline, bukan
+  `window.prompt()` - tidak ada preseden `window.prompt()` di codebase
+  ini).
+- Test: `GrafologApplicationControllerTest` (publik, 7 test - submit,
+  hash password bukan plaintext, tidak menerbitkan token/user, email
+  sudah-jadi-user ditolak, pengajuan pending duplikat ditolak, pengajuan
+  setelah `rejected` boleh daftar ulang, tipe file salah ditolak, dokumen
+  wajib) dan `Admin\GrafologApplicationControllerTest` (8 test - guest/non-
+  admin ditolak, list+filter, download dokumen, approve sukses (termasuk
+  verifikasi password baru bisa dipakai lewat `Hash::check()` - **BUKAN**
+  request `/auth/login` sungguhan di test yang sama, karena
+  `actingAs(..., 'sanctum')` mengganti guard default request itu dan bikin
+  `Auth::attempt()` di `AuthController::login` gagal dengan
+  `BadMethodCallException`, bukan gagal karena password salah - gotcha
+  yang ditemukan saat menjalankan test ini), approve gagal kalau email
+  sudah dipakai / pengajuan sudah diproses, reject dengan catatan.
+  `AuthControllerTest`'s `test_register_can_create_grafolog_role` **DIHAPUS**
+  (jalur itu tidak ada lagi); `test_register_rejects_administrator_and_
+  supervisor_roles` diganti jadi `..._and_grafolog_roles`, sekarang
+  menguji ketiganya ditolak `/auth/register`.
+- **Verifikasi**: 473 test backend total (1 kegagalan pre-existing tidak
+  terkait, `ExampleTest`), `pint --test` lolos, `npm run lint`/`build`
+  lolos. Browser-verified end-to-end (Playwright): `/register` tidak lagi
+  punya dropdown role, submit pengajuan lewat `/daftar-grafolog` dengan
+  file sungguhan (PNG 1x1) tidak membuat token/akun, email pending
+  duplikat ditolak, admin login → lihat pengajuan di
+  `/admin/grafolog-applications` → buka dokumen (blob tab baru berhasil)
+  → Setujui → grafolog baru berhasil login pakai email+password yang
+  sama persis diajukan.
 
 ## HR: Company, Candidate import, Assignment — added 2026-08-06 (MGA Fase 06)
 

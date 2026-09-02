@@ -23,6 +23,12 @@ const router = createRouter({
       meta: { guestOnly: true },
     },
     {
+      path: '/daftar-grafolog',
+      name: 'register-grafolog',
+      component: () => import('../views/RegisterGrafologView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
       path: '/lupa-password',
       name: 'forgot-password',
       component: () => import('../views/ForgotPasswordView.vue'),
@@ -123,6 +129,12 @@ const router = createRouter({
       path: '/admin/audit-logs',
       name: 'admin-audit-logs',
       component: () => import('../views/AdminAuditLogView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/grafolog-applications',
+      name: 'admin-grafolog-applications',
+      component: () => import('../views/AdminGrafologApplicationsView.vue'),
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {

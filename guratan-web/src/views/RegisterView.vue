@@ -1,17 +1,19 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
 
+// Cuma daftar sebagai 'user' (klien) di sini - pendaftaran grafolog pindah
+// ke jalur verifikasi data terpisah (lihat RegisterGrafologView.vue), tidak
+// lagi self-register langsung lewat form ini.
 const form = ref({
   name: '',
   email: '',
   password: '',
   password_confirmation: '',
-  role: 'user',
 })
 const errors = ref({})
 const loading = ref(false)
@@ -57,18 +59,15 @@ async function submit() {
         <input v-model="form.password_confirmation" type="password" required />
       </label>
 
-      <label>
-        Daftar sebagai
-        <select v-model="form.role">
-          <option value="user">Individu (klien)</option>
-          <option value="grafolog">Grafolog</option>
-        </select>
-      </label>
-
       <button type="submit" class="btn btn--primary" :disabled="loading">
         {{ loading ? 'Memproses...' : 'Daftar' }}
       </button>
     </form>
+
+    <p class="auth-form__grafolog-link">
+      Grafolog bersertifikat?
+      <RouterLink to="/daftar-grafolog">Daftar lewat verifikasi data di sini</RouterLink>.
+    </p>
   </div>
 </template>
 
@@ -99,5 +98,11 @@ label {
 .btn--primary {
   width: 100%;
   padding: 11px;
+}
+.auth-form__grafolog-link {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--color-text-soft);
+  text-align: center;
 }
 </style>

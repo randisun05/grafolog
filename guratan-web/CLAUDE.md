@@ -767,6 +767,42 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   key (true no-op, not just visually inert), and confirmed the privacy
   policy page renders the new disclosure text.
 
+- **Grafolog registration moved to a verification flow, 2026-09-02** (see
+  `guratan-api/CLAUDE.md`'s "Pendaftaran grafolog lewat verifikasi data"
+  for the backend half). `RegisterView.vue` **lost its role dropdown** —
+  it now only registers `role: user`, with a link to a new page for
+  aspiring grafolog instead. New `RegisterGrafologView.vue`
+  (`/daftar-grafolog`, public, `guestOnly`): biodata + a required document
+  upload (certificate/membership card/whatever), posted as **`FormData`**
+  (this codebase's first multipart form submission — every other POST is
+  plain JSON via the shared `api` axios instance, which sets no
+  `Content-Type` override so the browser fills in the multipart boundary
+  itself with zero changes needed to `src/lib/api.js`). Unlike
+  `RegisterView.vue`/`auth.register()`, submitting here does **not**
+  authenticate you or redirect anywhere — the response carries no token,
+  just a confirmation message, since the application sits in `pending`
+  until an administrator reviews it.
+  New `AdminGrafologApplicationsView.vue` (`/admin/grafolog-applications`,
+  nav link "Verifikasi Grafolog" + `CommandPalette.vue` entry) — status
+  filter (pending/approved/rejected/semua) + paginated list, same
+  expand-row convention as every other admin table in this app (no modal
+  component exists here). Expanding a row shows the applicant's phone/
+  notes/review history, a "Lihat Bukti Profesi" button that fetches the
+  document as a blob (`responseType: 'blob'`, same pattern as
+  `ReportView.vue`'s PDF download) and opens it in a new tab via
+  `window.open(URL.createObjectURL(...))`, and — only while `status ===
+  'pending'` — Approve/Reject buttons. Reject has an inline optional-note
+  text input rather than `window.prompt()` (no precedent for `prompt()`
+  anywhere in this codebase; `IndikatorChecklist.vue` uses `confirm()` for
+  a yes/no, this needed free text so it got its own inline field instead).
+  Browser-verified end-to-end: confirmed `/register` no longer shows a
+  role select, submitted a real application with an actual uploaded PNG
+  (no token/redirect afterward), confirmed a second submission with the
+  same email while the first was still pending was rejected, logged in as
+  admin and opened the uploaded document from a fresh blob tab, approved
+  the application, then logged in as the newly-created grafolog account
+  successfully with the exact password submitted at application time.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

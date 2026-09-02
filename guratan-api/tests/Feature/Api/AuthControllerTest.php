@@ -31,19 +31,6 @@ class AuthControllerTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'budi@example.com', 'role' => 'user']);
     }
 
-    public function test_register_can_create_grafolog_role(): void
-    {
-        $response = $this->postJson('/api/auth/register', [
-            'name' => 'Grafolog Satu',
-            'email' => 'grafolog@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-            'role' => 'grafolog',
-        ]);
-
-        $response->assertCreated()->assertJsonPath('user.role', 'grafolog');
-    }
-
     public function test_register_rejects_duplicate_email(): void
     {
         User::factory()->create(['email' => 'dup@example.com']);
@@ -83,11 +70,14 @@ class AuthControllerTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('role');
     }
 
-    public function test_register_rejects_administrator_and_supervisor_roles(): void
+    public function test_register_rejects_administrator_and_supervisor_and_grafolog_roles(): void
     {
-        // MGA Fase 05: hanya user/grafolog boleh daftar sendiri. administrator/
-        // supervisor cuma bisa dibuat lewat POST /api/admin/users oleh admin.
-        foreach (['administrator', 'supervisor'] as $role) {
+        // Sejak 2026-09-02: hanya 'user' boleh daftar sendiri lewat
+        // /auth/register. administrator/supervisor tetap cuma lewat
+        // POST /api/admin/users; grafolog sekarang lewat jalur verifikasi
+        // data terpisah, POST /api/grafolog-applications (lihat
+        // GrafologApplicationControllerTest), bukan di sini lagi.
+        foreach (['administrator', 'supervisor', 'grafolog'] as $role) {
             $response = $this->postJson('/api/auth/register', [
                 'name' => 'Someone',
                 'email' => "sneaky-$role@example.com",

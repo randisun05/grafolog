@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
+use App\Http\Controllers\Api\Admin\GrafologApplicationController as AdminGrafologApplicationController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\KombinasiSyaratController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChecklistController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\GrafologApplicationController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\MeasurementVariableController;
@@ -47,6 +49,12 @@ Route::middleware('throttle:20,1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+
+    // Pendaftaran grafolog lewat verifikasi data (2026-09-02) - lihat
+    // migrasi create_grafolog_applications_table. Menggantikan jalur lama
+    // self-register langsung role=grafolog lewat /auth/register di atas
+    // (RegisterRequest sekarang cuma izinkan role=user).
+    Route::post('/grafolog-applications', [GrafologApplicationController::class, 'store']);
 });
 
 // DOKU memanggil ini server-to-server, tidak punya token Sanctum kita -
@@ -127,6 +135,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::patch('/company-contracts/{companyContract}', [CompanyContractController::class, 'update']);
         Route::delete('/company-contracts/{companyContract}', [CompanyContractController::class, 'destroy']);
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        Route::get('/grafolog-applications', [AdminGrafologApplicationController::class, 'index']);
+        Route::get('/grafolog-applications/{grafologApplication}/document', [AdminGrafologApplicationController::class, 'document']);
+        Route::post('/grafolog-applications/{grafologApplication}/approve', [AdminGrafologApplicationController::class, 'approve']);
+        Route::post('/grafolog-applications/{grafologApplication}/reject', [AdminGrafologApplicationController::class, 'reject']);
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
         Route::get('/token-price', [AdminTokenPriceController::class, 'index']);
