@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\DiscountCode;
 use App\Models\HandwritingSample;
 use App\Models\Payment;
+use App\Models\PersonalityReport;
+use App\Models\TokenLedgerEntry;
+use App\Models\TokenPrice;
 use App\Models\TokenPurchase;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -96,6 +100,102 @@ class AnalyticsController extends Controller
             'total_new_users' => $users->count(),
             'by_role' => $users->groupBy('role')->map->count(),
         ]);
+    }
+
+    /**
+     * Sengaja terpisah dari GrafologRecapController (Fase 1) - beda
+     * kebutuhan UI, tabel penuh+export CSV vs ringkasan siap-chart dalam
+     * satu rentang tanggal, tapi keduanya pakai
+     * PersonalityReport::avgTurnaroundDaysFor() yang sama.
+     */
+    public function grafologPerformance(Request $request): JsonResponse
+    {
+        [$from, $to] = $this->dateRange($request);
+
+        $data = User::where('role', 'grafolog')->get(['id', 'name'])
+            ->map(function (User $grafolog) use ($from, $to) {
+                $sampleIds = HandwritingSample::where('created_by', $grafolog->id)
+                    ->whereBetween('created_at', [$from, $to])
+                    ->pluck('id');
+
+                return [
+                    'grafolog' => $grafolog->name,
+                    'completed_reports' => PersonalityReport::whereIn('sample_id', $sampleIds)
+                        ->where('status', 'completed')->count(),
+                    'avg_turnaround_days' => PersonalityReport::avgTurnaroundDaysFor($sampleIds),
+                ];
+            })
+            ->values();
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function tokenEconomy(Request $request): JsonResponse
+    {
+        [$from, $to] = $this->dateRange($request);
+        $periodKey = $this->periodKeyFn($request);
+
+        $tokenPurchases = TokenPurchase::where('status', 'paid')->whereBetween('paid_at', [$from, $to])->get();
+        $consumption = TokenLedgerEntry::where('type', 'consumption')->whereBetween('created_at', [$from, $to])->get();
+
+        $soldByPeriod = $tokenPurchases->groupBy(fn (TokenPurchase $p) => $periodKey($p->paid_at))->map->sum('quantity');
+        $consumedByPeriod = $consumption->groupBy(fn (TokenLedgerEntry $e) => $periodKey($e->created_at))
+            ->map(fn ($group) => abs($group->sum('delta')));
+
+        $periods = $soldByPeriod->keys()->merge($consumedByPeriod->keys())->unique()->sort()->values();
+        $series = $periods->map(fn (string $period) => [
+            'period' => $period,
+            'tokens_sold' => (int) ($soldByPeriod[$period] ?? 0),
+            'tokens_consumed' => (int) ($consumedByPeriod[$period] ?? 0),
+        ])->values();
+
+        return response()->json([
+            'series' => $series,
+            'tokens_sold' => $tokenPurchases->sum('quantity'),
+            'token_revenue' => $tokenPurchases->sum('amount'),
+            'tokens_consumed' => (int) abs($consumption->sum('delta')),
+            'outstanding_grafolog_balance' => User::where('role', 'grafolog')->sum('token_balance'),
+            'current_price_per_token' => TokenPrice::current(),
+        ]);
+    }
+
+    /**
+     * `used_count`/`max_uses` tetap counter seumur-hidup kode (sama yang
+     * ditampilkan AdminDiscountsView.vue), TAPI `discount_given`/
+     * `revenue_generated` di-scope ke rentang tanggal seperti section
+     * lain - jadi baris ini menunjukkan "kode ini secara keseluruhan
+     * sudah dipakai N kali, dan di rentang yang dipilih menghasilkan
+     * sekian revenue/potongan". `discount_given` digabung dari Payment
+     * DAN TokenPurchase per discount_code_id DI PHP (bukan join SQL
+     * lintas tabel) - satu kode bisa dipakai di pembelian laporan
+     * maupun pembelian token sekaligus.
+     */
+    public function discountEffectiveness(Request $request): JsonResponse
+    {
+        [$from, $to] = $this->dateRange($request);
+
+        $payments = Payment::where('status', 'paid')->whereNotNull('discount_code_id')
+            ->whereBetween('paid_at', [$from, $to])->get(['discount_code_id', 'base_amount', 'amount']);
+        $tokenPurchases = TokenPurchase::where('status', 'paid')->whereNotNull('discount_code_id')
+            ->whereBetween('paid_at', [$from, $to])->get(['discount_code_id', 'base_amount', 'amount']);
+
+        $discountGivenByCode = [];
+        $revenueByCode = [];
+        foreach ($payments->concat($tokenPurchases) as $tx) {
+            $id = $tx->discount_code_id;
+            $discountGivenByCode[$id] = ($discountGivenByCode[$id] ?? 0) + ($tx->base_amount - $tx->amount);
+            $revenueByCode[$id] = ($revenueByCode[$id] ?? 0) + $tx->amount;
+        }
+
+        $data = DiscountCode::all()->map(fn (DiscountCode $code) => [
+            'code' => $code->code,
+            'used_count' => $code->used_count,
+            'max_uses' => $code->max_uses,
+            'discount_given' => $discountGivenByCode[$code->id] ?? 0,
+            'revenue_generated' => $revenueByCode[$code->id] ?? 0,
+        ])->values();
+
+        return response()->json(['data' => $data]);
     }
 
     /**

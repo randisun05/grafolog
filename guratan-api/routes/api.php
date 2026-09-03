@@ -159,6 +159,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/analytics/revenue', [AnalyticsController::class, 'revenue']);
         Route::get('/analytics/product-usage', [AnalyticsController::class, 'productUsage']);
         Route::get('/analytics/user-growth', [AnalyticsController::class, 'userGrowth']);
+        Route::get('/analytics/grafolog-performance', [AnalyticsController::class, 'grafologPerformance']);
+        Route::get('/analytics/token-economy', [AnalyticsController::class, 'tokenEconomy']);
+        Route::get('/analytics/discount-effectiveness', [AnalyticsController::class, 'discountEffectiveness']);
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
         Route::get('/token-price', [AdminTokenPriceController::class, 'index']);

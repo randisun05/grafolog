@@ -56,6 +56,9 @@ function loadAll() {
   loadRevenue()
   loadProductUsage()
   loadUserGrowth()
+  loadGrafologPerformance()
+  loadTokenEconomy()
+  loadDiscountEffectiveness()
 }
 
 // --- Revenue ---
@@ -174,6 +177,106 @@ const userGrowthChartData = computed(() => {
   }
 })
 
+// --- Kinerja Grafolog (Fase 4) ---
+const grafologPerformance = ref(null)
+const grafologPerformanceLoading = ref(false)
+const grafologPerformanceError = ref('')
+
+async function loadGrafologPerformance() {
+  grafologPerformanceLoading.value = true
+  grafologPerformanceError.value = ''
+  try {
+    const { data } = await api.get('/admin/analytics/grafolog-performance', {
+      params: { from: rangeFrom.value, to: rangeTo.value },
+    })
+    grafologPerformance.value = data.data
+  } catch (e) {
+    grafologPerformanceError.value = e.response?.data?.message ?? 'Gagal memuat kinerja grafolog.'
+    toast.push(grafologPerformanceError.value)
+  } finally {
+    grafologPerformanceLoading.value = false
+  }
+}
+
+const grafologPerformanceChartData = computed(() => {
+  if (!grafologPerformance.value) return null
+  const c = chartColors()
+
+  return {
+    labels: grafologPerformance.value.map((g) => g.grafolog),
+    datasets: [
+      { label: 'Laporan Selesai', data: grafologPerformance.value.map((g) => g.completed_reports), backgroundColor: c.seal },
+    ],
+  }
+})
+
+// --- Ekonomi Token (Fase 4) ---
+const tokenEconomy = ref(null)
+const tokenEconomyLoading = ref(false)
+const tokenEconomyError = ref('')
+
+async function loadTokenEconomy() {
+  tokenEconomyLoading.value = true
+  tokenEconomyError.value = ''
+  try {
+    const { data } = await api.get('/admin/analytics/token-economy', {
+      params: { from: rangeFrom.value, to: rangeTo.value },
+    })
+    tokenEconomy.value = data
+  } catch (e) {
+    tokenEconomyError.value = e.response?.data?.message ?? 'Gagal memuat data ekonomi token.'
+    toast.push(tokenEconomyError.value)
+  } finally {
+    tokenEconomyLoading.value = false
+  }
+}
+
+const tokenEconomyChartData = computed(() => {
+  if (!tokenEconomy.value) return null
+  const c = chartColors()
+
+  return {
+    labels: tokenEconomy.value.series.map((s) => s.period),
+    datasets: [
+      { label: 'Terjual', data: tokenEconomy.value.series.map((s) => s.tokens_sold), backgroundColor: c.gold },
+      { label: 'Terpakai', data: tokenEconomy.value.series.map((s) => s.tokens_consumed), backgroundColor: c.seal },
+    ],
+  }
+})
+
+// --- Efektivitas Diskon (Fase 4) ---
+const discountEffectiveness = ref(null)
+const discountEffectivenessLoading = ref(false)
+const discountEffectivenessError = ref('')
+
+async function loadDiscountEffectiveness() {
+  discountEffectivenessLoading.value = true
+  discountEffectivenessError.value = ''
+  try {
+    const { data } = await api.get('/admin/analytics/discount-effectiveness', {
+      params: { from: rangeFrom.value, to: rangeTo.value },
+    })
+    discountEffectiveness.value = data.data
+  } catch (e) {
+    discountEffectivenessError.value = e.response?.data?.message ?? 'Gagal memuat efektivitas diskon.'
+    toast.push(discountEffectivenessError.value)
+  } finally {
+    discountEffectivenessLoading.value = false
+  }
+}
+
+const discountChartData = computed(() => {
+  if (!discountEffectiveness.value) return null
+  const c = chartColors()
+
+  return {
+    labels: discountEffectiveness.value.map((d) => d.code),
+    datasets: [
+      { label: 'Nilai Diskon Diberikan', data: discountEffectiveness.value.map((d) => d.discount_given), backgroundColor: c.sage },
+    ],
+  }
+})
+
 function formatRupiah(amount) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount ?? 0)
 }
@@ -256,6 +359,100 @@ onMounted(() => applyPreset(presets[2]))
         <div class="admin-analytics__chart">
           <Line v-if="userGrowthChartData" :data="userGrowthChartData" :options="baseChartOptions()" />
         </div>
+      </template>
+    </section>
+
+    <!-- Kinerja Grafolog -->
+    <section class="admin-analytics__section">
+      <h2>Kinerja Grafolog</h2>
+      <LoadingSpinner v-if="grafologPerformanceLoading" label="Memuat..." />
+      <p v-else-if="grafologPerformanceError" class="error">{{ grafologPerformanceError }}</p>
+      <template v-else-if="grafologPerformance">
+        <p v-if="grafologPerformance.length === 0" class="admin-analytics__total">Belum ada grafolog.</p>
+        <template v-else>
+          <div class="admin-analytics__chart">
+            <Bar v-if="grafologPerformanceChartData" :data="grafologPerformanceChartData" :options="baseChartOptions()" />
+          </div>
+          <table class="admin-analytics__table">
+            <thead>
+              <tr>
+                <th>Grafolog</th>
+                <th>Laporan Selesai</th>
+                <th>Rata-rata Durasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="g in grafologPerformance" :key="g.grafolog">
+                <td>{{ g.grafolog }}</td>
+                <td>{{ g.completed_reports }}</td>
+                <td>{{ g.avg_turnaround_days != null ? `${g.avg_turnaround_days} hari` : '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+      </template>
+    </section>
+
+    <!-- Ekonomi Token -->
+    <section class="admin-analytics__section">
+      <h2>Ekonomi Token</h2>
+      <LoadingSpinner v-if="tokenEconomyLoading" label="Memuat..." />
+      <p v-else-if="tokenEconomyError" class="error">{{ tokenEconomyError }}</p>
+      <template v-else-if="tokenEconomy">
+        <div class="admin-analytics__tiles">
+          <div class="admin-analytics__tile">
+            <span class="admin-analytics__tile-label">Token Terjual</span>
+            <strong>{{ tokenEconomy.tokens_sold }}</strong>
+          </div>
+          <div class="admin-analytics__tile">
+            <span class="admin-analytics__tile-label">Revenue Token</span>
+            <strong>{{ formatRupiah(tokenEconomy.token_revenue) }}</strong>
+          </div>
+          <div class="admin-analytics__tile">
+            <span class="admin-analytics__tile-label">Token Terpakai</span>
+            <strong>{{ tokenEconomy.tokens_consumed }}</strong>
+          </div>
+          <div class="admin-analytics__tile">
+            <span class="admin-analytics__tile-label">Saldo Grafolog (Total)</span>
+            <strong>{{ tokenEconomy.outstanding_grafolog_balance }}</strong>
+          </div>
+        </div>
+        <div class="admin-analytics__chart">
+          <Bar v-if="tokenEconomyChartData" :data="tokenEconomyChartData" :options="baseChartOptions()" />
+        </div>
+      </template>
+    </section>
+
+    <!-- Efektivitas Promo/Diskon -->
+    <section class="admin-analytics__section">
+      <h2>Efektivitas Promo/Diskon</h2>
+      <LoadingSpinner v-if="discountEffectivenessLoading" label="Memuat..." />
+      <p v-else-if="discountEffectivenessError" class="error">{{ discountEffectivenessError }}</p>
+      <template v-else-if="discountEffectiveness">
+        <p v-if="discountEffectiveness.length === 0" class="admin-analytics__total">Belum ada kode diskon.</p>
+        <template v-else>
+          <div class="admin-analytics__chart">
+            <Bar v-if="discountChartData" :data="discountChartData" :options="baseChartOptions()" />
+          </div>
+          <table class="admin-analytics__table">
+            <thead>
+              <tr>
+                <th>Kode</th>
+                <th>Pemakaian</th>
+                <th>Nilai Diskon (rentang ini)</th>
+                <th>Revenue Dihasilkan (rentang ini)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="d in discountEffectiveness" :key="d.code">
+                <td>{{ d.code }}</td>
+                <td>{{ d.used_count }}{{ d.max_uses ? ` / ${d.max_uses}` : '' }}</td>
+                <td>{{ formatRupiah(d.discount_given) }}</td>
+                <td>{{ formatRupiah(d.revenue_generated) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
       </template>
     </section>
   </div>
@@ -343,5 +540,23 @@ onMounted(() => applyPreset(presets[2]))
   font-size: 12.5px;
   color: var(--color-text-soft);
   margin-bottom: 8px;
+}
+.admin-analytics__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 16px;
+}
+.admin-analytics__table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--color-text-soft);
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.admin-analytics__table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--color-border);
 }
 </style>

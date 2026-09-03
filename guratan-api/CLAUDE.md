@@ -2552,6 +2552,61 @@ query lambat).
 - Lihat `guratan-web/CLAUDE.md` untuk detail frontend (Chart.js+
   vue-chartjs baru dipasang, `chartTheme.js`, `AdminAnalyticsView.vue`).
 
+## Laporan/Rekap admin — Fase 4 (Dashboard Analitik bag. 2), 2026-09-03
+
+**Fase terakhir dari 4-fase laporan/rekap admin** (lihat entri Fase 1
+untuk konteks penuh). `Admin\AnalyticsController` genap jadi 6 method
+aksi dengan 3 tambahan ini:
+
+- **`grafologPerformance(Request $request)`** — per-grafolog
+  `completed_reports`/`avg_turnaround_days` dalam rentang tanggal
+  (lewat `PersonalityReport::avgTurnaroundDaysFor()` dari Fase 1),
+  bentuk siap-chart. **Sengaja terpisah** dari
+  `Admin\GrafologRecapController` (Fase 1) — beda kebutuhan UI (tabel
+  penuh+export CSV vs ringkasan siap-chart dalam satu rentang tanggal),
+  bukan duplikasi yang seharusnya digabung.
+- **`tokenEconomy(Request $request)`** — token terjual+revenue per
+  periode (dari `TokenPurchase` paid), token terpakai per periode (dari
+  `TokenLedgerEntry` where `type='consumption'`, `delta` negatif di-
+  `abs()`), total saldo token grafolog outstanding
+  (`User::where('role','grafolog')->sum('token_balance')`), harga token
+  aktif saat ini (`TokenPrice::current()`) untuk konteks.
+- **`discountEffectiveness(Request $request)`** — per `DiscountCode`:
+  `used_count`/`max_uses` tetap counter **seumur-hidup** kode (sama yang
+  ditampilkan `AdminDiscountsView.vue`, TIDAK di-scope ke rentang
+  tanggal), tapi `discount_given`/`revenue_generated` **di-scope ke
+  rentang tanggal** seperti section lain — jadi satu baris menunjukkan
+  "kode ini sudah dipakai N kali total, dan di rentang yang dipilih
+  menghasilkan sekian revenue/potongan". `discount_given` digabung dari
+  `Payment` DAN `TokenPurchase` per `discount_code_id` **DI PHP** (2
+  query terpisah lalu digabung manual, bukan join SQL lintas tabel) -
+  satu kode bisa dipakai di pembelian laporan maupun pembelian token
+  sekaligus, kasus ini eksplisit ditest.
+- Routes: `GET /admin/analytics/grafolog-performance`, `/token-economy`,
+  `/discount-effectiveness`.
+- Test: `AnalyticsControllerTest` diperluas jadi 8 test total (3 baru -
+  performa grafolog termasuk grafolog idle dengan 0/null bukan error,
+  ekonomi token termasuk transaksi `pending` yang dikecualikan,
+  efektivitas diskon dengan kasus khusus 1 kode dipakai di Payment DAN
+  TokenPurchase sekaligus - membuktikan logika gabung-per-kode-id benar
+  bukan cuma diuji per tabel terpisah). 502 backend tests total (up
+  from 499).
+- **Verifikasi**: `php artisan test` (501/502 hijau, kegagalan
+  `ExampleTest` pre-existing tidak terkait), `pint --test` lolos,
+  `npm run lint`/`build` lolos. Browser-verified (Playwright): keenam
+  section dashboard tampil sekaligus dengan data seed realistis
+  (grafolog dengan laporan selesai + turnaround 6 hari, 15 token
+  terjual/5 terpakai/saldo 25, 1 kode diskon dipakai di pembelian
+  laporan DAN token — nilai diskon Rp10.000 dan revenue Rp114.000
+  keduanya cocok PERSIS hitungan manual dari data seed), 7 chart
+  ter-render termasuk di dark mode, 0 error konsol.
+- Lihat `guratan-web/CLAUDE.md` untuk detail frontend (3 section baru
+  di `AdminAnalyticsView.vue`, menutup dashboard 6-section).
+- **Ini menutup seluruh rencana 4-fase laporan/rekap admin** dari
+  `ROADMAP.md` "Inisiatif — Laporan/Rekap + Dashboard Analitik Admin" -
+  export CSV, rekap pengguna/grafolog/pembelian token/pembelian laporan,
+  dan dashboard analitik 6-section semuanya selesai dikerjakan.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

@@ -1233,5 +1233,14 @@ keputusan desain) disimpan sebagai riwayat sesi; ringkasan tiap fase:
   ikut dark mode otomatis lewat `chartTheme.js`. Detail teknis di
   `guratan-api/CLAUDE.md` "Laporan/Rekap admin — Fase 3" dan
   `guratan-web/CLAUDE.md`.
-- **Fase 4 (tertunda)**: Dashboard Analitik bagian Kinerja Grafolog,
-  Ekonomi Token, Efektivitas Promo/Diskon.
+- **Fase 4 (selesai 2026-09-03)**: Dashboard Analitik bagian Kinerja
+  Grafolog, Ekonomi Token, Efektivitas Promo/Diskon — menutup seluruh
+  rencana 4-fase. Detail teknis di `guratan-api/CLAUDE.md` "Laporan/Rekap
+  admin — Fase 4" dan `guratan-web/CLAUDE.md`.
+
+**Seluruh inisiatif selesai 2026-09-03**: export CSV (`App\Support\CsvStreamer`),
+4 halaman rekap terfilter+export (Pengguna, Grafolog, Pembelian Token,
+Pembelian Laporan), dan dashboard analitik 6-section dengan 7 chart
+(`Admin\AnalyticsController`, Chart.js+vue-chartjs) — semuanya
+browser-verified dengan data seed nyata, bukan cuma test hijau. 502
+backend tests total (up from 473 sebelum inisiatif ini dimulai).

@@ -889,6 +889,30 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `chartTheme.js`'s runtime CSS-var read actually works, not just
   reads correctly once at initial light-mode load), 0 console errors.
 
+- **Laporan/Rekap admin — Fase 4 (Dashboard Analitik bag. 2, terakhir),
+  2026-09-03** (see `guratan-api/CLAUDE.md`'s matching entry — this
+  closes the whole 4-phase reporting/analytics initiative). 3 more
+  sections added to the same `AdminAnalyticsView.vue` from Fase 3, same
+  independent-fetch-per-section pattern: **Kinerja Grafolog** (`<Bar>`
+  of completed reports per grafolog + a small table adding average
+  turnaround, since a bar chart alone can't show two numbers per
+  grafolog at once), **Ekonomi Token** (4 stat tiles + grouped `<Bar>`
+  of tokens sold vs. consumed per period), **Efektivitas Promo/Diskon**
+  (`<Bar>` of discount amount given per code + a table adding
+  redemption count and revenue generated, same "chart shows the one
+  headline number, table shows the rest" split as the grafolog
+  section). `loadAll()` now fires 6 parallel fetches instead of 3. The
+  dashboard is now genuinely 6 sections / 7 chart canvases on one page.
+  Browser-verified end-to-end with realistic seeded data spanning every
+  section at once (a grafolog with a completed report, a paid token
+  purchase, token consumption, and — the specific edge case this phase's
+  backend test targets — one discount code used on both a report
+  purchase and a token purchase): every displayed number was checked
+  against the seed's ground truth and matched exactly (turnaround days,
+  tokens sold/consumed/balance, discount amount and revenue generated
+  summed correctly across both transaction tables for the shared code),
+  all 7 canvases rendered including in dark mode, 0 console errors.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
