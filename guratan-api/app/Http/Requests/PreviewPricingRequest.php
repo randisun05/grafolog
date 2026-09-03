@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Product;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PreviewPricingRequest extends FormRequest
 {
@@ -21,7 +23,7 @@ class PreviewPricingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tier' => ['required', 'string', 'in:comprehensive,master'],
+            'tier' => ['required', 'string', Rule::in(Product::activeCodes())],
             'code' => ['nullable', 'string', 'max:32'],
         ];
     }

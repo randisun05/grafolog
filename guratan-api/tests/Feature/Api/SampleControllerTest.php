@@ -4,16 +4,26 @@ namespace Tests\Feature\Api;
 
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\Concerns\SeedsGrafologiKb;
+use Tests\Concerns\SeedsProducts;
 use Tests\TestCase;
 
 class SampleControllerTest extends TestCase
 {
     use RefreshDatabase;
     use SeedsGrafologiKb;
+    use SeedsProducts;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedProducts();
+    }
 
     public function test_guest_cannot_list_samples(): void
     {
@@ -218,5 +228,29 @@ class SampleControllerTest extends TestCase
             ->getJson('/api/samples')
             ->assertOk()
             ->assertJsonCount(1, 'data');
+    }
+
+    // --- Sistem Products data-driven, Fase 2b: bukti tier valid dibaca dari
+    // Product::activeCodes(), bukan literal 'in:comprehensive,master' lagi.
+
+    public function test_a_newly_added_active_product_is_accepted_as_tier(): void
+    {
+        Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/samples', ['tier' => 'deluxe']);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('handwriting_samples', ['tier' => 'deluxe']);
+    }
+
+    public function test_deactivating_comprehensive_makes_it_rejected_as_tier(): void
+    {
+        Product::where('code', 'comprehensive')->update(['is_active' => false]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/samples', ['tier' => 'comprehensive']);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('tier');
     }
 }

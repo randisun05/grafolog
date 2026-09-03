@@ -2,14 +2,24 @@
 
 namespace Tests\Feature\Api\Admin;
 
+use App\Models\Product;
 use App\Models\TokenCost;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsProducts;
 use Tests\TestCase;
 
 class TokenCostControllerTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsProducts;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedProducts();
+    }
 
     public function test_guest_cannot_view_or_update_token_costs(): void
     {
@@ -93,5 +103,18 @@ class TokenCostControllerTest extends TestCase
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/token-costs');
 
         $response->assertOk()->assertJsonCount(2, 'data');
+    }
+
+    // Sistem Products data-driven, Fase 2b: bukti tier valid dibaca dari
+    // Product::activeCodes(), bukan literal ['comprehensive','master'] lagi.
+    public function test_a_newly_added_active_product_is_accepted_as_tier(): void
+    {
+        Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->putJson('/api/admin/token-costs/deluxe', ['tokens_required' => 3]);
+
+        $response->assertCreated()->assertJsonPath('tier', 'deluxe')->assertJsonPath('tokens_required', 3);
     }
 }

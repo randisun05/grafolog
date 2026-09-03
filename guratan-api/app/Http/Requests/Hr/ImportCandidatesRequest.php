@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Hr;
 
+use App\Models\Product;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ImportCandidatesRequest extends FormRequest
 {
@@ -23,7 +25,7 @@ class ImportCandidatesRequest extends FormRequest
         return [
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
             'project_name' => ['nullable', 'string', 'max:255'],
-            'tier' => ['sometimes', 'string', 'in:comprehensive,master'],
+            'tier' => ['sometimes', 'string', Rule::in(Product::activeCodes())],
         ];
     }
 }

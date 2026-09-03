@@ -4,18 +4,22 @@ namespace Tests\Feature\Api;
 
 use App\Models\DiscountCode;
 use App\Models\PricingPlan;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsProducts;
 use Tests\TestCase;
 
 class PricingPreviewControllerTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsProducts;
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->seedProducts();
         PricingPlan::create(['tier' => 'comprehensive', 'price' => 49000, 'is_active' => true]);
         PricingPlan::create(['tier' => 'master', 'price' => 149000, 'is_active' => true]);
     }
@@ -78,5 +82,18 @@ class PricingPreviewControllerTest extends TestCase
             ->postJson('/api/pricing/preview', ['tier' => 'comprehensive', 'code' => 'MASTERONLY']);
 
         $response->assertOk()->assertJsonPath('code_valid', false)->assertJsonPath('final_price', 49000);
+    }
+
+    // Sistem Products data-driven, Fase 2b: bukti tier valid dibaca dari
+    // Product::activeCodes(), bukan literal 'in:comprehensive,master' lagi.
+    public function test_a_newly_added_active_product_is_accepted_as_tier(): void
+    {
+        Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
+        PricingPlan::create(['tier' => 'deluxe', 'price' => 199000, 'is_active' => true]);
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user, 'sanctum')->postJson('/api/pricing/preview', ['tier' => 'deluxe']);
+
+        $response->assertOk()->assertJsonPath('base_price', 199000);
     }
 }

@@ -3,13 +3,23 @@
 namespace Tests\Feature\Api\Admin;
 
 use App\Models\DiscountCode;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsProducts;
 use Tests\TestCase;
 
 class DiscountCodeControllerTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsProducts;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedProducts();
+    }
 
     public function test_guest_cannot_manage_discount_codes(): void
     {
@@ -83,5 +93,32 @@ class DiscountCodeControllerTest extends TestCase
 
         $this->actingAs($admin, 'sanctum')->getJson('/api/admin/discount-codes')
             ->assertOk()->assertJsonCount(2, 'data');
+    }
+
+    // Sistem Products data-driven, Fase 2b: bukti applicable_tiers.* dibaca
+    // dari Product::activeCodes() dinamis, TAPI 'token' tetap diterima
+    // sebagai literal (pseudo-tier pembelian token, bukan baris Product).
+    public function test_applicable_tiers_accepts_new_product_and_token_literal(): void
+    {
+        Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/discount-codes', [
+            'code' => 'DELUXE10', 'type' => 'fixed', 'value' => 5000,
+            'applicable_tiers' => ['deluxe', 'token'],
+        ]);
+
+        $response->assertCreated()->assertJsonPath('applicable_tiers', ['deluxe', 'token']);
+    }
+
+    public function test_applicable_tiers_rejects_inactive_product(): void
+    {
+        Product::where('code', 'comprehensive')->update(['is_active' => false]);
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $this->actingAs($admin, 'sanctum')->postJson('/api/admin/discount-codes', [
+            'code' => 'OFFTIER', 'type' => 'fixed', 'value' => 5000,
+            'applicable_tiers' => ['comprehensive'],
+        ])->assertUnprocessable()->assertJsonValidationErrors('applicable_tiers.0');
     }
 }

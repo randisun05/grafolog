@@ -1297,10 +1297,17 @@ baru otomatis mewarisi semua perilaku itu tanpa sentuh
   `discount_codes.applicable_tiers` tetap JSON free-form seperti sekarang.
   Detail teknis di `guratan-api/CLAUDE.md` "Sistem Products data-driven
   — Fase 2a".
-- **Fase 2b (tertunda)**: ganti 7 titik `in:comprehensive,master`/
+- **Fase 2b (selesai 2026-09-03)**: ganti 7 titik `in:comprehensive,master`/
   `in_array([...])` hardcoded jadi `Product::activeCodes()` dinamis
   (3 Form Request, 1 aturan diskon yang tetap terima literal `'token'`
   di sampingnya, 2 pengaman controller, 1 pembuat respons wallet token).
+  Ini titik di mana tier baru benar-benar bisa dipakai lewat backend
+  untuk pertama kalinya. Gotcha ditemukan & diperbaiki: `RefreshDatabase`
+  tidak menjalankan seeder otomatis, jadi 7 test class yang lewat
+  endpoint terkait butuh trait baru `tests/Concerns/SeedsProducts.php`
+  supaya tidak semua test tier gagal karena tabel `products` kosong.
+  Detail teknis di `guratan-api/CLAUDE.md` "Sistem Products data-driven
+  — Fase 2b".
 - **Fase 3 (tertunda)**: `AdminProductsView.vue` baru (CRUD produk) +
   `AdminPricingView.vue`/`AdminTokensView.vue` jadi dinamis (fetch
   `/api/products`, bukan lagi hardcode 2 tier) — ini titik pembuktian

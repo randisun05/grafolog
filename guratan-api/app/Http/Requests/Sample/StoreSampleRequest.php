@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Sample;
 
+use App\Models\Product;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSampleRequest extends FormRequest
 {
@@ -25,7 +27,7 @@ class StoreSampleRequest extends FormRequest
         $isGrafolog = $this->user()->isGrafolog();
 
         return [
-            'tier' => ['required', 'string', 'in:comprehensive,master'],
+            'tier' => ['required', 'string', Rule::in(Product::activeCodes())],
             'client_user_id' => [$isGrafolog ? 'required' : 'prohibited', 'integer', 'exists:users,id'],
             'image' => ['prohibited'],
         ];

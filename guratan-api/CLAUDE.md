@@ -2712,6 +2712,64 @@ di fase ini kolomnya sudah bisa menampung string apa saja, tapi belum
 ada jalur di aplikasi yang mengizinkan tier selain 2 yang lama untuk
 benar-benar sampai ke kolom ini.
 
+## Sistem Products data-driven — Fase 2b (ganti 7 titik hardcoded), 2026-09-03
+
+Lanjutan Fase 1-2a (lihat entri di atas). Ini titik di mana tier selain
+`comprehensive`/`master` **benar-benar bisa** dipakai lewat aplikasi
+untuk pertama kalinya — Fase 1-2a baru fondasi, Fase 2b yang membuka
+jalurnya. 7 titik diganti dari literal `in:comprehensive,master`/
+`in_array(['comprehensive','master'])` jadi `Rule::in(Product::activeCodes())`/
+`in_array($tier, Product::activeCodes(), true)`:
+
+1. `StoreSampleRequest.php`
+2. `ImportCandidatesRequest.php`
+3. `PreviewPricingRequest.php`
+4. `StoreDiscountCodeRequest.php` — `applicable_tiers.*` jadi
+   `Rule::in([...Product::activeCodes(), 'token'])` — **`'token'` tetap
+   literal hardcoded di samping daftar dinamis**, karena itu pseudo-tier
+   untuk pembelian token grafolog (bukan laporan), bukan baris `products`.
+5. `Admin\PricingController::update()`'s route-param guard.
+6. `Admin\TokenCostController::update()`'s route-param guard.
+7. `Api\TokenController::wallet()`'s pembuat respons `costs` — dari array
+   literal 2-kunci jadi `collect(Product::activeCodes())->mapWithKeys(...)`,
+   shape JSON responsnya identik (object per kode tier), cuma isinya
+   sekarang mengikuti produk aktif yang sebenarnya.
+
+Tidak ada perubahan di `ScoringController`/`PaymentController` — cek
+mereka soal `tier === 'rapid'` spesifik (tier yang sudah pensiun),
+bukan soal "salah satu tier valid", tetap seperti sebelumnya.
+
+**Gotcha test yang ditemukan saat mengerjakan fase ini**: `RefreshDatabase`
+TIDAK menjalankan seeder otomatis, jadi begitu 7 titik ini bergantung ke
+`Product::activeCodes()`, **setiap test yang sebelumnya lolos dengan
+`tier: 'comprehensive'`/`'master'` hardcoded langsung gagal** kecuali
+tabel `products` diisi dulu (`activeCodes()` kosong = `Rule::in([])`
+menolak semua nilai). Solusinya: `tests/Concerns/SeedsProducts.php`
+(trait baru, pola sama `SeedsGrafologiKb`) — `seedProducts()` bikin 2
+baris aktif (comprehensive/master), dipanggil di `setUp()` ke-7 test
+class yang lewat endpoint HTTP terkait
+(`SampleControllerTest`/`CandidateImportControllerTest`/
+`PricingPreviewControllerTest`/`Admin\DiscountCodeControllerTest`/
+`Admin\PricingControllerTest`/`Admin\TokenCostControllerTest`/
+`TokenControllerTest`) — dikonfirmasi lewat grep bahwa cuma 7 file ini
+yang benar-benar POST/PUT ke endpoint yang lewat 7 titik di atas (test
+lain yang bikin `HandwritingSample`/dst langsung lewat model
+`::create()` tidak tersentuh, karena itu skip Form Request sama sekali).
+Tiap 7 titik juga dapat 1+ test baru yang genuinely membuktikan
+perilaku dinamis (bukan cuma "masih lolos karena literal lama cocok"):
+bikin produk aktif baru (kode `deluxe`) lalu buktikan diterima, DAN
+untuk `StoreSampleRequest`/`StoreDiscountCodeRequest` juga nonaktifkan
+`comprehensive` lalu buktikan sekarang ditolak (bukti separuh
+`is_active`, bukan cuma separuh "daftar bertambah").
+
+**Verifikasi**: `php artisan test` (522/523 hijau, kegagalan `ExampleTest`
+pre-existing tidak terkait) — suite PENUH, bukan cuma 7 file yang
+disentuh, untuk membuktikan tidak ada test lain di seluruh aplikasi yang
+diam-diam bergantung ke perilaku hardcoded lama. `pint --test` lolos.
+Belum ada perubahan frontend — 7 titik ini backend murni, frontend masih
+kirim `'comprehensive'`/`'master'` hardcoded seperti biasa dan tetap
+valid (masih produk aktif) sampai Fase 3-4 menyusul.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

@@ -3,13 +3,23 @@
 namespace Tests\Feature\Api\Admin;
 
 use App\Models\PricingPlan;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsProducts;
 use Tests\TestCase;
 
 class PricingControllerTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsProducts;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedProducts();
+    }
 
     public function test_guest_cannot_view_or_update_pricing(): void
     {
@@ -84,5 +94,18 @@ class PricingControllerTest extends TestCase
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/pricing');
 
         $response->assertOk()->assertJsonCount(2, 'data');
+    }
+
+    // Sistem Products data-driven, Fase 2b: bukti tier valid dibaca dari
+    // Product::activeCodes(), bukan literal ['comprehensive','master'] lagi.
+    public function test_a_newly_added_active_product_is_accepted_as_tier(): void
+    {
+        Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $response = $this->actingAs($admin, 'sanctum')
+            ->putJson('/api/admin/pricing/deluxe', ['price' => 199000]);
+
+        $response->assertCreated()->assertJsonPath('tier', 'deluxe')->assertJsonPath('price', 199000);
     }
 }

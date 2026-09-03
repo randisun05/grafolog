@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateTokenCostRequest;
 use App\Models\AuditLog;
+use App\Models\Product;
 use App\Models\TokenCost;
 use Illuminate\Http\JsonResponse;
 
@@ -24,7 +25,7 @@ class TokenCostController extends Controller
 
     public function update(UpdateTokenCostRequest $request, string $tier): JsonResponse
     {
-        abort_unless(in_array($tier, ['comprehensive', 'master'], true), 404);
+        abort_unless(in_array($tier, Product::activeCodes(), true), 404);
 
         $cost = TokenCost::setTokensFor($tier, $request->validated('tokens_required'), $request->user());
 

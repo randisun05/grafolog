@@ -3,14 +3,24 @@
 namespace Tests\Feature\Api\Hr;
 
 use App\Models\Company;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Tests\Concerns\SeedsProducts;
 use Tests\TestCase;
 
 class CandidateImportControllerTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsProducts;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedProducts();
+    }
 
     private function hrUser(): User
     {
@@ -127,5 +137,21 @@ class CandidateImportControllerTest extends TestCase
         $response->assertCreated();
         $this->assertDatabaseHas('users', ['id' => $client->id, 'company_id' => $hr->company_id]);
         $this->assertDatabaseCount('users', 2); // hr + client, tidak bikin duplikat
+    }
+
+    // Sistem Products data-driven, Fase 2b: bukti tier valid dibaca dari
+    // Product::activeCodes(), bukan literal 'in:comprehensive,master' lagi.
+    public function test_a_newly_added_active_product_is_accepted_as_tier(): void
+    {
+        Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
+        $hr = $this->hrUser();
+        $csv = "name,email\nCalon Deluxe,deluxe@example.com\n";
+
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+            'file' => $this->csv($csv), 'tier' => 'deluxe',
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('handwriting_samples', ['tier' => 'deluxe']);
     }
 }

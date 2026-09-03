@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PreviewTokenPurchaseRequest;
 use App\Models\DiscountCode;
+use App\Models\Product;
 use App\Models\TokenCost;
 use App\Models\TokenLedgerEntry;
 use App\Models\TokenPrice;
@@ -36,10 +37,10 @@ class TokenController extends Controller
             // tidak cukup" SEBELUM grafolog mulai isi form 40 aspek, bukan
             // baru ketahuan setelah submit gagal 402 - null berarti gate
             // belum dikonfigurasi admin untuk tier itu (tidak ada batasan).
-            'costs' => [
-                'comprehensive' => TokenCost::activeTokensFor('comprehensive'),
-                'master' => TokenCost::activeTokensFor('master'),
-            ],
+            // Loop atas produk aktif (bukan 2 kunci hardcoded lagi) - lihat
+            // guratan-api/CLAUDE.md "Sistem Products data-driven".
+            'costs' => collect(Product::activeCodes())
+                ->mapWithKeys(fn (string $code) => [$code => TokenCost::activeTokensFor($code)]),
             'transactions' => TokenLedgerEntry::where('user_id', $user->id)
                 ->latest()
                 ->take(20)

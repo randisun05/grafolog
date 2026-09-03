@@ -3,16 +3,26 @@
 namespace Tests\Feature\Api;
 
 use App\Models\DiscountCode;
+use App\Models\Product;
 use App\Models\TokenCost;
 use App\Models\TokenLedgerEntry;
 use App\Models\TokenPrice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\SeedsProducts;
 use Tests\TestCase;
 
 class TokenControllerTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsProducts;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seedProducts();
+    }
 
     public function test_price_returns_null_when_unconfigured(): void
     {
@@ -120,5 +130,20 @@ class TokenControllerTest extends TestCase
             ->postJson('/api/tokens/preview', ['quantity' => 4, 'code' => 'masteronly']);
 
         $response->assertOk()->assertJsonPath('code_valid', false);
+    }
+
+    // Sistem Products data-driven, Fase 2b: bukti wallet()'s costs dibangun
+    // dari loop Product::activeCodes(), bukan 2 kunci literal lagi.
+    public function test_wallet_costs_includes_a_newly_added_active_product(): void
+    {
+        Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
+        TokenCost::create(['tier' => 'deluxe', 'tokens_required' => 7, 'is_active' => true]);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+
+        $response = $this->actingAs($grafolog, 'sanctum')->getJson('/api/tokens/wallet');
+
+        $response->assertOk()
+            ->assertJsonPath('costs.comprehensive', null)
+            ->assertJsonPath('costs.deluxe', 7);
     }
 }
