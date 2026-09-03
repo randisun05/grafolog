@@ -17,8 +17,23 @@ const isDark = computed(() => {
 })
 
 async function handleLogout() {
+  mobileMenuOpen.value = false
   await auth.logout()
   router.push({ name: 'landing' })
+}
+
+// Menu hamburger - nav ini punya ~20 link admin, di layar HP (<=640px)
+// semuanya di-collapse ke sini alih-alih di-wrap jadi berbaris (lihat
+// guratan-web/CLAUDE.md "Fix: admin tables overflow..." - temuan mobile
+// yang sama juga berlaku ke navbar, cuma bukan overflow, cuma makan
+// ruang). Di desktop toggle-nya disembunyikan lewat CSS dan nav selalu
+// tampil seperti sebelumnya - JS-nya sama untuk kedua ukuran layar, cuma
+// visual collapse-nya murni CSS.
+const mobileMenuOpen = ref(false)
+const headerRoot = ref(null)
+
+function closeMobileMenuOnLinkClick(e) {
+  if (e.target.closest('a')) mobileMenuOpen.value = false
 }
 
 // Bel notifikasi (pengumuman/promo/diskon per role - lihat
@@ -34,15 +49,24 @@ function toggleNotif() {
   if (notifOpen.value) markAllRead()
 }
 
-function closeNotifOnOutsideClick(e) {
+function closeOnOutsideClick(e) {
   if (notifRoot.value && !notifRoot.value.contains(e.target)) notifOpen.value = false
+  // Pakai composedPath(), bukan e.target langsung: klik toggle sendiri
+  // membuat Vue langsung menukar ikon hamburger<->X (v-if), jadi node
+  // e.target (elemen <path> yang diklik) sudah lepas dari DOM begitu
+  // handler ini jalan - headerRoot.contains(e.target) selalu false untuk
+  // node yang sudah detached, walau klik itu jelas di dalam header.
+  // composedPath() adalah snapshot rantai leluhur SAAT event ditembakkan,
+  // jadi tetap valid meski elemen paling dalamnya sudah diganti.
+  const path = e.composedPath()
+  if (headerRoot.value && !path.includes(headerRoot.value)) mobileMenuOpen.value = false
 }
 
 onMounted(() => {
-  document.addEventListener('click', closeNotifOnOutsideClick)
+  document.addEventListener('click', closeOnOutsideClick)
   if (auth.isAuthenticated) loadNotifications()
 })
-onUnmounted(() => document.removeEventListener('click', closeNotifOnOutsideClick))
+onUnmounted(() => document.removeEventListener('click', closeOnOutsideClick))
 
 watch(
   () => auth.isAuthenticated,
@@ -58,10 +82,31 @@ function formatNotifDate(iso) {
 </script>
 
 <template>
-  <header class="app-navbar">
+  <header ref="headerRoot" class="app-navbar">
     <RouterLink to="/" class="app-navbar__brand">Guratan</RouterLink>
 
-    <nav class="app-navbar__nav">
+    <button
+      type="button"
+      class="app-navbar__toggle"
+      :aria-expanded="mobileMenuOpen"
+      aria-controls="app-navbar-nav"
+      :aria-label="mobileMenuOpen ? 'Tutup menu' : 'Buka menu'"
+      @click="mobileMenuOpen = !mobileMenuOpen"
+    >
+      <svg v-if="!mobileMenuOpen" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 6h18M3 12h18M3 18h18" />
+      </svg>
+      <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+
+    <nav
+      id="app-navbar-nav"
+      class="app-navbar__nav"
+      :class="{ 'app-navbar__nav--open': mobileMenuOpen }"
+      @click="closeMobileMenuOnLinkClick"
+    >
       <template v-if="auth.isAuthenticated">
         <RouterLink to="/dashboard">Dashboard</RouterLink>
         <RouterLink to="/riwayat">Riwayat</RouterLink>
@@ -172,6 +217,22 @@ function formatNotifDate(iso) {
 .app-navbar__nav a {
   color: var(--color-ink-soft);
   text-decoration: none;
+}
+.app-navbar__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border-hover);
+  background: var(--color-paper-alt);
+  color: var(--color-ink);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.app-navbar__toggle:hover {
+  border-color: var(--color-seal);
+  color: var(--color-seal);
 }
 .app-navbar__nav a:hover,
 .app-navbar__nav a.router-link-exact-active {
@@ -298,10 +359,22 @@ function formatNotifDate(iso) {
   .app-navbar {
     padding: 12px 16px;
   }
+  .app-navbar__toggle {
+    display: inline-flex;
+  }
   .app-navbar__nav {
+    display: none;
     width: 100%;
-    gap: 8px 14px;
-    font-size: 13px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    font-size: 14px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border);
+  }
+  .app-navbar__nav--open {
+    display: flex;
   }
 }
 </style>

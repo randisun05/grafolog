@@ -1094,11 +1094,17 @@ menunggu satu input untuk dieksekusi.
   `TokenPurchasesView`/`UsersView`, `HrCandidatesView`) + tab bar
   `AdminKnowledgeView.vue`. Dikonfirmasi ulang: 0 overflow di semua
   halaman itu di 390px, tampilan desktop 1280px tidak berubah sama
-  sekali. **Masih tertunda**: navbar admin tidak punya menu hamburger
-  (17 link nav cuma di-wrap jadi berbaris di HP, bukan disembunyikan ke
-  menu - bukan overflow, tapi makan banyak ruang layar) - keputusan
-  desain lebih besar, sengaja belum dikerjakan. Firefox/Safari juga
-  belum pernah dicek sama sekali (cuma Chromium via Playwright).
+  sekali. **Juga sudah diperbaiki (2026-09-03, lanjutan)**: navbar admin
+  sekarang punya menu hamburger sungguhan di HP (`AppNavbar.vue`) - 17+
+  link nav yang tadinya cuma di-wrap berbaris sekarang di-collapse ke
+  menu (buka/tutup, tutup otomatis saat pilih link/klik di luar/logout),
+  desktop tidak berubah sama sekali (toggle disembunyikan, nav selalu
+  tampil seperti sebelumnya). Detail teknis + bug nyata yang ditemukan &
+  diperbaiki (klik toggle sempat gagal buka menu karena elemen ikon yang
+  diklik langsung lepas dari DOM di render yang sama - lihat
+  `guratan-web/CLAUDE.md` entri "Fix: AppNavbar.vue hamburger/collapse
+  menu"). **Masih tertunda**: Firefox/Safari belum pernah dicek sama
+  sekali (cuma Chromium via Playwright).
 - [x] **Web analytics (Google Analytics)** — 2026-08-30. Terpasang di
   `guratan-web` (`src/lib/analytics.js`, gtag.js diinjeksi manual tanpa
   dependency npm baru, pageview dikirim manual lewat

@@ -1032,12 +1032,51 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   representative admin pages tested at 390px (`/admin/products`,
   `/admin/users`, `/admin/audit-logs`, `/admin/discounts`,
   `/admin/analytics`, `/admin/knowledge`), desktop 1280px unchanged.
-  **Not fixed** (separate, larger scope, not done this pass): the admin
-  navbar has no hamburger/collapse menu — its 17 nav links just wrap
-  onto multiple rows on mobile instead of collapsing behind a menu
-  button. Doesn't overflow, just pushes page content down further than
-  ideal. Firefox/Safari were not checked (Playwright here is Chromium
-  only).
+  **Not fixed in this pass** (done in the follow-up entry right below):
+  admin navbar hamburger menu. Firefox/Safari were not checked
+  (Playwright here is Chromium only).
+
+- **Fix: `AppNavbar.vue` hamburger/collapse menu for mobile, 2026-09-03**
+  (follow-up to the table-overflow fix right above, same "is it
+  responsive on HP" thread). Added a `mobileMenuOpen` ref + a
+  `.app-navbar__toggle` icon button (hamburger ↔ X, swapped via `v-if`)
+  that's `display:none` on desktop and only shown under the existing
+  `@media (max-width: 640px)` block. `.app-navbar__nav` (all ~20 links +
+  notif bell + user name + logout + theme toggle — everything that used
+  to just wrap onto multiple rows on mobile) gets `display:none` on
+  mobile unless `.app-navbar__nav--open` is also present, at which point
+  it becomes a full-width `flex-direction: column` stacked menu. Closes
+  on 3 triggers: clicking a nav link (`@click` on the `<nav>` checks
+  `e.target.closest('a')`), clicking outside the header (reused/extended
+  the existing `notifRoot` outside-click listener pattern), and logging
+  out.
+  **Real bug hit and fixed while building this**: the outside-click-close
+  handler originally checked `headerRoot.value.contains(e.target)` -
+  this is exactly the kind of check the notif bell panel already used
+  successfully, but it broke specifically for the toggle button itself.
+  Root cause: clicking the toggle sets `mobileMenuOpen = true` in the
+  SAME click, which flips the button's own `v-if`/`v-else` icon (hamburger
+  → X) - Vue's reactive DOM patch removes the clicked `<path>` element
+  from the document *before* the bubbling `document`-level click listener
+  runs, so by the time `.contains(e.target)` executes, `e.target` is
+  already a detached node and `.contains()` on it is always `false` -
+  the menu opened and closed again in the same click, so it looked like
+  the button did nothing at all. Confirmed step-by-step with temporary
+  `console.log`s: `e.target.isConnected` was `false` inside the listener
+  even though the click visibly landed inside the header. **Fix**: check
+  `e.composedPath()` (a static snapshot of the ancestor chain captured
+  *at dispatch time*, before any DOM mutation) for `headerRoot.value`
+  instead of doing a live `.contains()` check against a target node that
+  the same click might detach. Any future outside-click-style handler in
+  this codebase that toggles a `v-if`-swapped icon on the same element
+  it listens for clicks on should use this pattern, not `.contains()`.
+  **Browser-verified 2026-09-03**: mobile (390px) - menu collapsed by
+  default, toggle opens it (17 links all present and clickable), clicking
+  a link (`Kelola Produk`) closes the menu and navigates correctly,
+  clicking outside closes it, 0 console errors. Desktop (1280px) -
+  toggle button hidden, nav renders exactly as before (pixel-identical
+  screenshot comparison), confirming zero regression for the primary
+  admin workflow. `npm run lint` and `npm run build` both clean.
 
 ## Stack
 
