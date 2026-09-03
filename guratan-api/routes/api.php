@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AnalyticsController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\AuditLogController;
@@ -153,6 +154,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/recap/token-purchases/export', [TokenPurchaseRecapController::class, 'export']);
         Route::get('/recap/payments', [PaymentRecapController::class, 'index']);
         Route::get('/recap/payments/export', [PaymentRecapController::class, 'export']);
+
+        // Dashboard Analitik (Fase 3-4, 2026-09-03) - lihat guratan-api/CLAUDE.md.
+        Route::get('/analytics/revenue', [AnalyticsController::class, 'revenue']);
+        Route::get('/analytics/product-usage', [AnalyticsController::class, 'productUsage']);
+        Route::get('/analytics/user-growth', [AnalyticsController::class, 'userGrowth']);
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
         Route::get('/token-price', [AdminTokenPriceController::class, 'index']);

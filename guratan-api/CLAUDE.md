@@ -2505,6 +2505,53 @@ mekanisme export.
 - Lihat `guratan-web/CLAUDE.md` untuk detail frontend (2 halaman rekap
   baru, pola identik Fase 1).
 
+## Laporan/Rekap admin — Fase 3 (Dashboard Analitik bag. 1), 2026-09-03
+
+Lanjutan Fase 1-2 (lihat entri Fase 1 untuk konteks penuh 4-fase). Fase
+ini membuka **`Admin\AnalyticsController`**, satu file dengan 6 method
+aksi independen (3 di fase ini, 3 lagi di Fase 4) - pola meniru
+`Admin\ConceptMapController` (KM-H) yang juga dipecah beberapa endpoint
+supaya tiap section frontend fetch sendiri-sendiri (loading/error state
+independen per section, bukan 1 blok besar yang gagal semua kalau 1
+query lambat).
+
+- **`revenue(Request $request)`** — `Payment`+`TokenPurchase` berstatus
+  `paid` dalam rentang `from`/`to` (default 90 hari terakhir kalau
+  kosong), dikelompokkan per periode (`group_by`: day/week/month, default
+  month) **DI PHP** (`Collection::groupBy`), bukan SQL
+  `DATE_FORMAT`/`strftime` — sengaja, supaya tidak perlu percabangan
+  driver-aware MySQL-vs-sqlite lagi seperti migrasi enum yang berulang
+  kali terjadi sebelumnya (precedent: `Announcement::isVisibleTo()` juga
+  filter di PHP dengan alasan sama, volume kecil). Balikin time series
+  `{period, report_revenue, token_revenue, total}[]` + ringkasan
+  (`total_revenue`, `report_revenue`, `token_revenue`,
+  `revenue_by_tier`).
+- **`productUsage(Request $request)`** — `HandwritingSample` dalam
+  rentang, dikelompokkan per `tier`/`status`/`Project.source` (lewat
+  eager-load `project:id,source`, bukan join SQL).
+- **`userGrowth(Request $request)`** — `User` yang dibuat dalam rentang,
+  dikelompokkan per periode per `role`.
+- Volume data di app ini kecil (puluhan-ratusan baris per fixture) -
+  agregasi `SUM`/`COUNT`/`GROUP BY` langsung lewat Eloquent di controller,
+  TIDAK ada materialized view/scheduled job/cache layer - keputusan
+  eksplisit dari riset kode sebelum plan disetujui user.
+- Routes: `GET /admin/analytics/revenue`, `/product-usage`, `/user-growth`.
+- Test baru: `AnalyticsControllerTest` (5 test - guard auth/role ke
+  ketiga endpoint sekaligus, agregasi revenue PERSIS cocok fixture
+  seeded termasuk transaksi `pending` yang benar-benar dikecualikan,
+  breakdown produk per tier/status/source, breakdown pertumbuhan
+  pengguna per role/periode). 499 backend tests total (up from 494).
+- **Verifikasi**: `php artisan test` (498/499 hijau, kegagalan
+  `ExampleTest` pre-existing tidak terkait), `pint --test` lolos,
+  `npm run lint`/`build` lolos. Browser-verified (Playwright): dashboard
+  menampilkan 4 chart dengan data seed nyata (revenue Rupiah, breakdown
+  tier/status, pertumbuhan per role), ganti preset rentang tanggal
+  memicu fetch ulang, toggle dark mode dan chart tetap ter-render dengan
+  benar (warna dibaca dari CSS var saat mount, bukan hardcoded), 0 error
+  konsol.
+- Lihat `guratan-web/CLAUDE.md` untuk detail frontend (Chart.js+
+  vue-chartjs baru dipasang, `chartTheme.js`, `AdminAnalyticsView.vue`).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

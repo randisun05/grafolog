@@ -1227,8 +1227,11 @@ keputusan desain) disimpan sebagai riwayat sesi; ringkasan tiap fase:
   Pembelian Laporan, pakai ulang `CsvStreamer` dari Fase 1. Detail
   teknis di `guratan-api/CLAUDE.md` "Laporan/Rekap admin — Fase 2" dan
   `guratan-web/CLAUDE.md`.
-- **Fase 3 (tertunda)**: Dashboard Analitik bagian Revenue, Analisa
-  Produk, Pertumbuhan Pengguna — memperkenalkan Chart.js+vue-chartjs
-  (dependency chart pertama di `guratan-web`).
+- **Fase 3 (selesai 2026-09-03)**: Dashboard Analitik bagian Revenue,
+  Analisa Produk, Pertumbuhan Pengguna — memperkenalkan Chart.js+
+  vue-chartjs (dependency chart pertama di `guratan-web`), warna chart
+  ikut dark mode otomatis lewat `chartTheme.js`. Detail teknis di
+  `guratan-api/CLAUDE.md` "Laporan/Rekap admin — Fase 3" dan
+  `guratan-web/CLAUDE.md`.
 - **Fase 4 (tertunda)**: Dashboard Analitik bagian Kinerja Grafolog,
   Ekonomi Token, Efektivitas Promo/Diskon.

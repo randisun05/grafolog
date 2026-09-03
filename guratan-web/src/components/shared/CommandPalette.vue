@@ -42,6 +42,7 @@ const commands = computed(() => {
     items.push({ label: 'Rekap Grafolog', to: { name: 'admin-recap-grafolog' } })
     items.push({ label: 'Rekap Token', to: { name: 'admin-recap-token-purchases' } })
     items.push({ label: 'Rekap Pembayaran', to: { name: 'admin-recap-payments' } })
+    items.push({ label: 'Analitik', to: { name: 'admin-analytics' } })
   }
   if (auth.isHr) {
     items.push({ label: 'Kandidat', to: { name: 'hr-candidates' } })

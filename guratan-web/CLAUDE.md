@@ -849,6 +849,46 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   filter and search both work, CSV export downloads a real file on both
   pages, 0 console errors.
 
+- **Laporan/Rekap admin — Fase 3 (Dashboard Analitik bag. 1), 2026-09-03**
+  (see `guratan-api/CLAUDE.md`'s matching entry). **First charting
+  library in this codebase** — `chart.js` + `vue-chartjs` (installed with
+  `--legacy-peer-deps`, a pre-existing `eslint-plugin-oxlint`/`oxlint`
+  version-pin conflict in devDependencies, unrelated to these two new
+  runtime dependencies). New `src/lib/chartTheme.js`: reads the live
+  `--color-seal`/`--color-sage`/`--color-gold`/`--color-text-soft`/
+  `--color-border` CSS custom properties via `getComputedStyle` at chart
+  mount time rather than hardcoding hex values — this is what makes
+  charts automatically follow dark mode with zero component-level
+  dark-mode CSS, matching the rule already stated elsewhere in this file
+  ("no component has or should ever need its own dark-mode CSS").
+  Exports `chartColors()`, `categoricalPalette()` (seal→gold→sage, same
+  order as badge/accent usage throughout the app), and
+  `baseChartOptions()` (responsive, `maintainAspectRatio: false`, axis/
+  legend colors from those tokens).
+  New `AdminAnalyticsView.vue` (`/admin/analytics`, nav link "Analitik" +
+  `CommandPalette.vue` entry) — a shared date-range filter at the top
+  (quick presets 7/30/90 days + "Tahun Ini", plus manual from/to date
+  inputs) that re-triggers all section fetches, then 3 independent
+  sections (own `ref` state/`load()`/`LoadingSpinner`/error text each,
+  same per-section-fetch convention `DashboardView.vue` already uses for
+  KPIs vs announcements): **Revenue** (3 Rupiah stat tiles +
+  `<Line>` of report/token/total revenue per period), **Analisa Produk**
+  (`<Bar>` by tier + `<Doughnut>` by status, side by side), **Pertumbuhan
+  Pengguna** (`<Line>` with one series per role, built from the API's
+  `by_role` breakdown so the number of lines adapts to whichever roles
+  actually signed up in range rather than a fixed list). `ChartJS.register(...)`
+  happens once at the top of this single view (`CategoryScale`,
+  `LinearScale`, `PointElement`, `LineElement`, `BarElement`,
+  `ArcElement`, `Tooltip`, `Legend`) — no global registration in
+  `main.js`, since this is the only page using charts so far.
+  Browser-verified: all 4 chart canvases render against real seeded
+  revenue/sample/signup data, Rupiah formatting shows correctly on the
+  stat tiles, switching the date-range preset re-fetches and re-renders,
+  and — specifically checked because this is the first chart component
+  in the app — toggling dark mode leaves every chart legible (confirms
+  `chartTheme.js`'s runtime CSS-var read actually works, not just
+  reads correctly once at initial light-mode load), 0 console errors.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
