@@ -1289,11 +1289,14 @@ baru otomatis mewarisi semua perilaku itu tanpa sentuh
   Belum menyentuh 7 titik hardcoded lama sama sekali (itu Fase 2b) -
   murni fondasi baru berdampingan dengan yang lama. Detail teknis di
   `guratan-api/CLAUDE.md` "Sistem Products data-driven — Fase 1".
-- **Fase 2a (tertunda)**: lebarkan 4 kolom `enum` (`handwriting_samples.tier`,
-  `personality_reports.tier`, `pricing_plans.tier`, `token_costs.tier`)
-  jadi `string` biasa — murni skema, nol perubahan perilaku (dibuktikan
-  lewat suite test lama yang tetap hijau tanpa diubah).
+- **Fase 2a (selesai 2026-09-03)**: lebarkan 4 kolom `enum`
+  (`handwriting_samples.tier`, `personality_reports.tier`,
+  `pricing_plans.tier`, `token_costs.tier`) jadi `string` biasa — murni
+  skema, nol perubahan perilaku (dibuktikan lewat suite test lama yang
+  tetap hijau tanpa diubah sama sekali, 513/514 identik sebelum/sesudah).
   `discount_codes.applicable_tiers` tetap JSON free-form seperti sekarang.
+  Detail teknis di `guratan-api/CLAUDE.md` "Sistem Products data-driven
+  — Fase 2a".
 - **Fase 2b (tertunda)**: ganti 7 titik `in:comprehensive,master`/
   `in_array([...])` hardcoded jadi `Product::activeCodes()` dinamis
   (3 Form Request, 1 aturan diskon yang tetap terima literal `'token'`

@@ -2682,6 +2682,36 @@ belum menyentuh 7 titik hardcoded lama — itu Fase 2b).
   test yang pakai `RefreshDatabase` (yang tidak menjalankan seeder). Belum
   ada perubahan frontend sama sekali di fase ini (menyusul Fase 3-4).
 
+## Sistem Products data-driven — Fase 2a (lebarkan kolom tier), 2026-09-03
+
+Lanjutan Fase 1 (lihat entri di atas). Migrasi
+`widen_tier_columns_to_string` melebarkan 4 kolom `enum` (`handwriting_samples.tier`,
+`personality_reports.tier`, `pricing_plans.tier`, `token_costs.tier`) jadi
+`string(50)` biasa — driver-aware persis pola
+`2026_08_03_060730_expand_users_role_enum.php` (SQL mentah `ALTER TABLE
+... MODIFY COLUMN` untuk MySQL karena doctrine/dbal tidak terpasang,
+`Schema::table()->string()->change()` untuk sqlite test DB). `down()`
+mengembalikan definisi enum asli persis (disalin dari migrasi pembuatan
+tabel masing-masing) supaya rollback adalah revert byte-for-byte, bukan
+perkiraan.
+
+**Murni perubahan skema** — tidak ada file lain yang diubah, tidak ada
+string baru yang ditulis (masih persis `'rapid'`/`'comprehensive'`/
+`'master'` yang sudah ada). Pembuktiannya: **seluruh suite test yang
+sudah ada dijalankan TANPA diubah** dan hasilnya identik dengan sebelum
+migrasi ini (513/514 hijau, kegagalan sama persis `ExampleTest`
+pre-existing) — VARCHAR menerima string yang sama persis dengan yang
+diterima ENUM sebelumnya, jadi tidak ada test yang perlu disesuaikan.
+`pint --test` lolos. Index komposit `['tier', 'is_active']` di
+`pricing_plans`/`token_costs` tidak terpengaruh (`MODIFY COLUMN` tidak
+menyentuh index kolom lain).
+
+Fase 2b (menyusul) yang akan benar-benar mengganti sumber validasi dari
+literal `in:comprehensive,master` ke `Product::activeCodes()` dinamis -
+di fase ini kolomnya sudah bisa menampung string apa saja, tapi belum
+ada jalur di aplikasi yang mengizinkan tier selain 2 yang lama untuk
+benar-benar sampai ke kolom ini.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
