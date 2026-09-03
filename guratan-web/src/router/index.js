@@ -138,6 +138,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/recap/users',
+      name: 'admin-recap-users',
+      component: () => import('../views/AdminRecapUsersView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/recap/grafolog',
+      name: 'admin-recap-grafolog',
+      component: () => import('../views/AdminRecapGrafologView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/hr/candidates',
       name: 'hr-candidates',
       component: () => import('../views/HrCandidatesView.vue'),

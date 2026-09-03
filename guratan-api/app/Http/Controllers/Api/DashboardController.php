@@ -55,7 +55,7 @@ class DashboardController extends Controller
                 [
                     'key' => 'avg_turnaround_days',
                     'label' => 'Rata-rata Durasi (hari)',
-                    'value' => $this->avgTurnaroundDays($sampleIds),
+                    'value' => PersonalityReport::avgTurnaroundDaysFor($sampleIds),
                 ],
                 [
                     'key' => 'token_balance',
@@ -87,7 +87,7 @@ class DashboardController extends Controller
                 [
                     'key' => 'avg_turnaround_days',
                     'label' => 'Rata-rata Durasi (hari)',
-                    'value' => $this->avgTurnaroundDays($sampleIds),
+                    'value' => PersonalityReport::avgTurnaroundDaysFor($sampleIds),
                 ],
             ],
             'activity' => $this->recentActivity($sampleIds, clientView: true),
@@ -121,30 +121,11 @@ class DashboardController extends Controller
                 [
                     'key' => 'avg_turnaround_days',
                     'label' => 'Rata-rata Durasi (hari)',
-                    'value' => $this->avgTurnaroundDays($sampleIds),
+                    'value' => PersonalityReport::avgTurnaroundDaysFor($sampleIds),
                 ],
             ],
             'activity' => $this->recentActivity($sampleIds),
         ];
-    }
-
-    private function avgTurnaroundDays(Collection $sampleIds): ?float
-    {
-        $reports = PersonalityReport::whereIn('sample_id', $sampleIds)
-            ->where('status', 'completed')
-            ->whereNotNull('generated_at')
-            ->with('sample:id,created_at')
-            ->get();
-
-        if ($reports->isEmpty()) {
-            return null;
-        }
-
-        $totalDays = $reports->sum(
-            fn (PersonalityReport $report) => $report->sample->created_at->diffInHours($report->generated_at) / 24
-        );
-
-        return round($totalDays / $reports->count(), 1);
     }
 
     /**

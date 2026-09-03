@@ -78,6 +78,8 @@ function formatNotifDate(iso) {
         <RouterLink v-if="auth.isAdministrator" to="/admin/knowledge">Knowledge Base</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/audit-logs">Log Audit</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/grafolog-applications">Verifikasi Grafolog</RouterLink>
+        <RouterLink v-if="auth.isAdministrator" to="/admin/recap/users">Rekap Pengguna</RouterLink>
+        <RouterLink v-if="auth.isAdministrator" to="/admin/recap/grafolog">Rekap Grafolog</RouterLink>
         <RouterLink v-if="auth.isHr" to="/hr/candidates">Kandidat</RouterLink>
 
         <div ref="notifRoot" class="app-navbar__notif">

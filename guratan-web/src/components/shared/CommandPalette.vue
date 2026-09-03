@@ -38,6 +38,8 @@ const commands = computed(() => {
     items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
     items.push({ label: 'Log Audit', to: { name: 'admin-audit-logs' } })
     items.push({ label: 'Verifikasi Grafolog', to: { name: 'admin-grafolog-applications' } })
+    items.push({ label: 'Rekap Pengguna', to: { name: 'admin-recap-users' } })
+    items.push({ label: 'Rekap Grafolog', to: { name: 'admin-recap-grafolog' } })
   }
   if (auth.isHr) {
     items.push({ label: 'Kandidat', to: { name: 'hr-candidates' } })

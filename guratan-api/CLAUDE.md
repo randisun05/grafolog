@@ -2410,6 +2410,70 @@ diatur" dengan hampir nol permukaan backend baru.
   `/kebijakan-privasi` semuanya langsung merefleksikan nilai baru tanpa
   reload manual di luar navigasi halaman.
 
+## Laporan/Rekap admin — Fase 1 (CSV export + Rekap Pengguna/Grafolog), 2026-09-03
+
+User minta rekap + dashboard analitik lengkap, diminta bikin daftar dulu
+sebelum dikerjakan (lihat `ROADMAP.md`'s entri matching untuk daftar
+lengkap 10 item, dipecah 4 fase). Riset kode sebelum mulai: **tidak ada
+agregasi cross-user/global sama sekali** (`DashboardController` cuma
+per-user, `Admin\CompanyController` cuma per-company) dan **tidak ada
+export CSV apapun** di aplikasi ini — keduanya genuinely gap baru, bukan
+duplikasi. Fase 1 membangun fondasi yang dipakai ulang di Fase 2+:
+
+- **`App\Support\CsvStreamer`** (class static-method baru, BUKAN trait —
+  tidak ada trait sama sekali di `app/`, precedent yang dipakai adalah
+  `App\Support\IndikatorKode`) — `CsvStreamer::download(string $filename,
+  array $header, iterable $rows)` membungkus `response()->streamDownload()`.
+  Setiap controller Rekap punya method `export()` **terpisah** dari
+  `index()` (bukan `?format=csv` di endpoint yang sama) karena shape
+  paginator vs unpaginated-stream beda jauh — keduanya berbagi 1 private
+  `filteredQuery()` supaya filter yang tampil di layar dan yang di-export
+  TIDAK PERNAH beda. `export()` dipanggil dengan `->cursor()` (bukan
+  `->get()`) supaya memori tetap flat berapa pun jumlah barisnya.
+- **`PersonalityReport::avgTurnaroundDaysFor(Collection $sampleIds): ?float`**
+  (baru, di model) — diekstrak dari duplikasi byte-identik yang
+  sebelumnya ada 2x (`DashboardController`'s dan
+  `Admin\CompanyController`'s private `avgTurnaroundDays()`, yang terakhir
+  bahkan punya docblock eksplisit membela duplikasi itu "tidak sepadan
+  diekstrak"). Alasan diekstrak SEKARANG (bukan tetap duplikat lagi):
+  `GrafologRecapController` di fase ini butuh logika yang sama persis
+  ke-3 kalinya, dan Fase 4's `grafologPerformance()` bakal jadi ke-4 —
+  diekstrak ke **model** (bukan helper controller/trait) supaya tidak
+  jadi "Admin controller coupled ke controller non-admin" seperti yang
+  tadinya jadi keberatan `CompanyController`'s docblock. Kedua controller
+  lama didelegasikan ke method baru ini (perubahan mekanis, test lama
+  yang sudah ada jadi bukti kebenaran refactor, bukan ditulis ulang) —
+  konfirmasi eksplisit dari user lewat AskUserQuestion sebelum dikerjakan.
+- **`Admin\UserRecapController`** (`GET /admin/recap/users[/export]`) —
+  roster lintas-role (user/grafolog/administrator/supervisor/hr), filter
+  `role`/`is_active`/`company_id`/`from`-`to` (created_at)/`search`
+  (nama/email). Beda dari `AdminUsersView.vue`'s tabel staf yang cuma
+  CRUD — ini murni pembacaan terfilter+export untuk kebutuhan rekap.
+- **`Admin\GrafologRecapController`** (`GET /admin/recap/grafolog[/export]`) —
+  sama filter minus `role`/`company_id` (selalu `role=grafolog`), tiap
+  baris ditambah `completed_reports` + `avg_turnaround_days` (pola sama
+  `Admin\CompanyController::index()` per-company, di sini per-grafolog).
+- **Export dicatat di Log Audit** (`ekspor_rekap_pengguna`/
+  `ekspor_rekap_grafolog`, actor = admin yang export) — beda dari
+  `index()` yang tidak dicatat (melihat tabel di layar dianggap setara
+  membuka `AdminAuditLogView.vue` sendiri, tidak dicatat) — export adalah
+  ekstraksi data massal (email dkk), dikonfirmasi eksplisit oleh user
+  untuk dicatat, konsisten dengan `log.report_access` yang juga mencatat
+  setiap PEMBACAAN laporan sensitif, bukan cuma perubahan data.
+- Test baru: `UserRecapControllerTest`, `GrafologRecapControllerTest` (7+4
+  test: guard auth/role, filter benar termasuk company+search gabungan,
+  isi CSV yang di-stream cocok fixture, stat kosong = 0/null bukan error,
+  audit log tercatat saat export). 484 backend tests total (up from 473).
+- **Verifikasi**: `php artisan test` (483/484 hijau, 1 kegagalan
+  `ExampleTest` pre-existing tidak terkait), `pint --test` lolos,
+  `npm run lint`/`build` lolos. Browser-verified (Playwright): login
+  admin, filter role/search di Rekap Pengguna menemukan user seed yang
+  benar, Export CSV di kedua halaman benar-benar mengunduh file nyata,
+  Rekap Grafolog menampilkan 0/null dengan benar untuk grafolog tanpa
+  laporan, 0 error konsol.
+- Lihat `guratan-web/CLAUDE.md` untuk detail frontend (2 halaman rekap
+  baru + `src/lib/downloadBlob.js`).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

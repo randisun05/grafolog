@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\GrafologApplicationController as AdminGrafologApplicationController;
+use App\Http\Controllers\Api\Admin\GrafologRecapController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\KombinasiSyaratController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
 use App\Http\Controllers\Api\Admin\TopikController as AdminTopikController;
+use App\Http\Controllers\Api\Admin\UserRecapController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
@@ -139,6 +141,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/grafolog-applications/{grafologApplication}/document', [AdminGrafologApplicationController::class, 'document']);
         Route::post('/grafolog-applications/{grafologApplication}/approve', [AdminGrafologApplicationController::class, 'approve']);
         Route::post('/grafolog-applications/{grafologApplication}/reject', [AdminGrafologApplicationController::class, 'reject']);
+
+        // Laporan/Rekap admin (2026-09-03) - lihat guratan-api/CLAUDE.md.
+        Route::get('/recap/users', [UserRecapController::class, 'index']);
+        Route::get('/recap/users/export', [UserRecapController::class, 'export']);
+        Route::get('/recap/grafolog', [GrafologRecapController::class, 'index']);
+        Route::get('/recap/grafolog/export', [GrafologRecapController::class, 'export']);
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
         Route::get('/token-price', [AdminTokenPriceController::class, 'index']);

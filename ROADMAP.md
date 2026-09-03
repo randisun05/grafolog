@@ -1208,3 +1208,24 @@ Setujui → akun grafolog baru langsung bisa login pakai password yang
 sama persis diajukan. Detail teknis lengkap di `guratan-api/CLAUDE.md`
 "Pendaftaran grafolog lewat verifikasi data" dan `guratan-web/CLAUDE.md`.
 473 backend tests total (up from 459).
+
+### Laporan/Rekap + Dashboard Analitik Admin — dipecah 4 fase, mulai 2026-09-03
+
+User minta laporan rekap (pengguna, grafolog, pembelian token, pembelian
+laporan) plus dashboard analitik (revenue, analisa produk, pertumbuhan
+pengguna, kinerja grafolog, ekonomi token, efektivitas promo/diskon) —
+eksplisit minta daftar dulu sebelum dikerjakan. Daftar 10 item diajukan,
+user pilih: kerjakan semua bertahap (4 fase), chart visual (bukan tabel
+angka saja). Rencana detail (lewat plan mode + AskUserQuestion untuk 2
+keputusan desain) disimpan sebagai riwayat sesi; ringkasan tiap fase:
+
+- **Fase 1 (selesai 2026-09-03)**: mekanisme export CSV
+  (`App\Support\CsvStreamer`, dipakai ulang tiap fase setelahnya) +
+  Rekap Pengguna + Rekap Grafolog. Detail teknis di `guratan-api/CLAUDE.md`
+  "Laporan/Rekap admin — Fase 1" dan `guratan-web/CLAUDE.md`.
+- **Fase 2 (tertunda)**: Rekap Pembelian Token + Rekap Pembelian Laporan.
+- **Fase 3 (tertunda)**: Dashboard Analitik bagian Revenue, Analisa
+  Produk, Pertumbuhan Pengguna — memperkenalkan Chart.js+vue-chartjs
+  (dependency chart pertama di `guratan-web`).
+- **Fase 4 (tertunda)**: Dashboard Analitik bagian Kinerja Grafolog,
+  Ekonomi Token, Efektivitas Promo/Diskon.

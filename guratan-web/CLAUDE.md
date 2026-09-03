@@ -803,6 +803,34 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   the application, then logged in as the newly-created grafolog account
   successfully with the exact password submitted at application time.
 
+- **Laporan/Rekap admin — Fase 1, 2026-09-03** (see `guratan-api/CLAUDE.md`'s
+  matching entry for the full 4-phase plan and the backend half). New
+  `src/lib/downloadBlob.js` — tiny shared helper (`downloadBlob(blob,
+  filename)`, creates an object URL, clicks a hidden `<a download>`,
+  revokes the URL) extracted because the exact same blob-download
+  sequence that `ReportView.vue`'s PDF button already used inline is now
+  needed 4+ times across the new recap pages (Fase 1's 2 pages, Fase 2's
+  2 more) — worth a shared function past that point, per this codebase's
+  own "3rd+ use" extraction bar (see `avgTurnaroundDaysFor()` in
+  `guratan-api/CLAUDE.md`'s matching entry for the same reasoning applied
+  backend-side). `AdminRecapUsersView.vue` (`/admin/recap/users`) and
+  `AdminRecapGrafologView.vue` (`/admin/recap/grafolog`) — filter bar +
+  paginated table + "Export CSV" button, scaffolding copied from
+  `AdminAuditLogView.vue` (400ms-debounced search, date-range inputs,
+  prev/next pager) with extra filters (role/status/company dropdown for
+  Users; status only for Grafolog, since that page is always
+  `role=grafolog`). The company filter dropdown reuses the exact
+  `api.get('/admin/companies')` → `data.data` pattern already used by
+  `AdminUsersView.vue`'s HR-creation form, not a new fetch convention.
+  Export button calls the matching `/export` endpoint with
+  `responseType: 'blob'` and the same filter params currently applied on
+  screen (so what downloads always matches what's visible), then
+  `downloadBlob()`. Nav links "Rekap Pengguna"/"Rekap Grafolog" +
+  `CommandPalette.vue` entries. Browser-verified: filtered by role and by
+  search text and confirmed the right seeded users surfaced, clicked
+  Export CSV on both pages and confirmed a real file downloaded each
+  time (not just a click with no result), 0 console errors.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
