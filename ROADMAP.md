@@ -1223,7 +1223,10 @@ keputusan desain) disimpan sebagai riwayat sesi; ringkasan tiap fase:
   (`App\Support\CsvStreamer`, dipakai ulang tiap fase setelahnya) +
   Rekap Pengguna + Rekap Grafolog. Detail teknis di `guratan-api/CLAUDE.md`
   "Laporan/Rekap admin — Fase 1" dan `guratan-web/CLAUDE.md`.
-- **Fase 2 (tertunda)**: Rekap Pembelian Token + Rekap Pembelian Laporan.
+- **Fase 2 (selesai 2026-09-03)**: Rekap Pembelian Token + Rekap
+  Pembelian Laporan, pakai ulang `CsvStreamer` dari Fase 1. Detail
+  teknis di `guratan-api/CLAUDE.md` "Laporan/Rekap admin — Fase 2" dan
+  `guratan-web/CLAUDE.md`.
 - **Fase 3 (tertunda)**: Dashboard Analitik bagian Revenue, Analisa
   Produk, Pertumbuhan Pengguna — memperkenalkan Chart.js+vue-chartjs
   (dependency chart pertama di `guratan-web`).

@@ -40,6 +40,8 @@ const commands = computed(() => {
     items.push({ label: 'Verifikasi Grafolog', to: { name: 'admin-grafolog-applications' } })
     items.push({ label: 'Rekap Pengguna', to: { name: 'admin-recap-users' } })
     items.push({ label: 'Rekap Grafolog', to: { name: 'admin-recap-grafolog' } })
+    items.push({ label: 'Rekap Token', to: { name: 'admin-recap-token-purchases' } })
+    items.push({ label: 'Rekap Pembayaran', to: { name: 'admin-recap-payments' } })
   }
   if (auth.isHr) {
     items.push({ label: 'Kandidat', to: { name: 'hr-candidates' } })

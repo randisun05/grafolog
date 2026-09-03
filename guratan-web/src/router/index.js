@@ -150,6 +150,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/recap/token-purchases',
+      name: 'admin-recap-token-purchases',
+      component: () => import('../views/AdminRecapTokenPurchasesView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/recap/payments',
+      name: 'admin-recap-payments',
+      component: () => import('../views/AdminRecapPaymentsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/hr/candidates',
       name: 'hr-candidates',
       component: () => import('../views/HrCandidatesView.vue'),

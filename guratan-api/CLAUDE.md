@@ -2474,6 +2474,37 @@ duplikasi. Fase 1 membangun fondasi yang dipakai ulang di Fase 2+:
 - Lihat `guratan-web/CLAUDE.md` untuk detail frontend (2 halaman rekap
   baru + `src/lib/downloadBlob.js`).
 
+## Laporan/Rekap admin — Fase 2 (Rekap Pembelian Token + Laporan), 2026-09-03
+
+Lanjutan Fase 1 (lihat entri di atas untuk konteks penuh 4-fase). Pakai
+ulang `CsvStreamer` dari Fase 1 apa adanya — tidak ada perubahan ke
+mekanisme export.
+
+- **`Admin\TokenPurchaseRecapController`** (`GET
+  /admin/recap/token-purchases[/export]`) — atas `TokenPurchase`,
+  eager-load `user:id,name,email`/`discountCode:id,code`, filter
+  `status`/`from`-`to` (`paid_at`)/`search` (nama/email pembeli).
+- **`Admin\PaymentRecapController`** (`GET /admin/recap/payments[/export]`) —
+  atas `Payment`, eager-load `sample.user:id,name,email`/
+  `discountCode:id,code`, filter sama (`search` lewat
+  `whereHas('sample.user', ...)` karena `Payment` tidak punya `user_id`
+  langsung — relasinya lewat `sample.user_id`).
+- Audit log: `ekspor_rekap_token_purchase`/`ekspor_rekap_pembayaran`,
+  sama pola Fase 1.
+- Test baru: `TokenPurchaseRecapControllerTest`,
+  `PaymentRecapControllerTest` (10 test: guard auth/role, filter
+  status+search, relasi eager-load benar termasuk `discount_code.code`,
+  export CSV berisi data yang benar, audit log tercatat). 494 backend
+  tests total (up from 484).
+- **Verifikasi**: `php artisan test` (493/494 hijau, kegagalan
+  `ExampleTest` pre-existing tidak terkait), `pint --test` lolos,
+  `npm run lint`/`build` lolos. Browser-verified (Playwright): kedua
+  halaman menampilkan transaksi seed dengan benar (termasuk nama
+  pembeli lewat relasi `sample.user`), filter status dan search bekerja,
+  export CSV di kedua halaman mengunduh file nyata, 0 error konsol.
+- Lihat `guratan-web/CLAUDE.md` untuk detail frontend (2 halaman rekap
+  baru, pola identik Fase 1).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

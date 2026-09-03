@@ -831,6 +831,24 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   Export CSV on both pages and confirmed a real file downloaded each
   time (not just a click with no result), 0 console errors.
 
+- **Laporan/Rekap admin — Fase 2, 2026-09-03** (see `guratan-api/CLAUDE.md`'s
+  matching entry). `AdminRecapTokenPurchasesView.vue`
+  (`/admin/recap/token-purchases`) and `AdminRecapPaymentsView.vue`
+  (`/admin/recap/payments`) — identical scaffolding to Fase 1's two
+  pages (filter bar/table/Export CSV/`downloadBlob()`), plus a
+  `formatRupiah()` helper (`Intl.NumberFormat('id-ID', {style:
+  'currency', currency: 'IDR'})`) since these are the first recap tables
+  showing money amounts. Payments table reads the buyer's name via
+  `p.sample?.user?.name` (Payment has no direct user relation — it's
+  `sample.user`, matches the backend's eager-load path) while token
+  purchases read it directly via `p.user?.name`. Nav links "Rekap
+  Token"/"Rekap Pembayaran" + `CommandPalette.vue` entries. Browser-
+  verified: both pages show seeded transactions with correct relation
+  data (buyer name via the indirect `sample.user` path on the payments
+  page specifically, not just the simpler direct-relation one), status
+  filter and search both work, CSV export downloads a real file on both
+  pages, 0 console errors.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
