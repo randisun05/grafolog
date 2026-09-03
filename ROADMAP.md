@@ -1308,11 +1308,13 @@ baru otomatis mewarisi semua perilaku itu tanpa sentuh
   supaya tidak semua test tier gagal karena tabel `products` kosong.
   Detail teknis di `guratan-api/CLAUDE.md` "Sistem Products data-driven
   — Fase 2b".
-- **Fase 3 (tertunda)**: `AdminProductsView.vue` baru (CRUD produk) +
-  `AdminPricingView.vue`/`AdminTokensView.vue` jadi dinamis (fetch
-  `/api/products`, bukan lagi hardcode 2 tier) — ini titik pembuktian
-  nilai utama: produk baru langsung dapat kartu harga/biaya token tanpa
-  perubahan kode lagi.
+- **Fase 3 (selesai 2026-09-03)**: `AdminProductsView.vue` baru (CRUD
+  produk) + `AdminPricingView.vue`/`AdminTokensView.vue` jadi dinamis
+  (fetch `/products`, bukan lagi hardcode 2 tier) — ini titik pembuktian
+  nilai utama: produk baru (dites lewat produk seed "Deluxe") langsung
+  dapat kartu harga/biaya token tanpa perubahan kode lagi, dikonfirmasi
+  lewat browser-test end-to-end. Detail teknis di `guratan-api/CLAUDE.md`
+  "Sistem Products data-driven — Fase 3" dan `guratan-web/CLAUDE.md`.
 - **Fase 4 (tertunda)**: sisa 5 file frontend publik/staf
   (`OrderView.vue`, `LandingView.vue` dengan fallback, `HrCandidatesView.vue`,
   `PortalGrafologView.vue`, `AdminDiscountsView.vue`'s tier-picker) jadi

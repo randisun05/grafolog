@@ -1,13 +1,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
 
-const tierLabel = { comprehensive: 'Comprehensive', master: 'Master' }
-
+const products = ref([])
 const prices = ref([])
 const costs = ref([])
 const loading = ref(true)
@@ -15,8 +15,8 @@ const loadError = ref('')
 
 const priceDraft = ref('')
 const savingPrice = ref(false)
-const costDraft = ref({ comprehensive: '', master: '' })
-const savingCost = ref({ comprehensive: false, master: false })
+const costDraft = ref({})
+const savingCost = ref({})
 
 const activePrice = computed(() => prices.value.find((p) => p.is_active) ?? null)
 const priceHistory = computed(() => prices.value.filter((p) => !p.is_active))
@@ -29,17 +29,32 @@ const activeCostByTier = computed(() => {
   return result
 })
 const costHistoryByTier = computed(() => {
-  const result = { comprehensive: [], master: [] }
+  const result = {}
+  for (const product of products.value) result[product.code] = []
   for (const cost of costs.value) {
     if (!cost.is_active) result[cost.tier]?.push(cost)
   }
   return result
 })
 
+// Sistem Products data-driven (2026-09-03, lihat guratan-api/CLAUDE.md) -
+// daftar tier TIDAK lagi hardcoded ['comprehensive', 'master'] di sini,
+// diambil dari /api/products supaya produk baru langsung dapat kartu
+// biaya token tanpa perubahan kode lagi.
+async function loadProducts() {
+  const { data } = await api.get('/products')
+  products.value = data
+  for (const product of data) {
+    if (!(product.code in costDraft.value)) costDraft.value[product.code] = ''
+    if (!(product.code in savingCost.value)) savingCost.value[product.code] = false
+  }
+}
+
 async function loadAll() {
   loading.value = true
   loadError.value = ''
   try {
+    await loadProducts()
     const [priceRes, costRes] = await Promise.all([
       api.get('/admin/token-price'),
       api.get('/admin/token-costs'),
@@ -47,8 +62,8 @@ async function loadAll() {
     prices.value = priceRes.data.data
     costs.value = costRes.data.data
     priceDraft.value = activePrice.value?.price_per_token ?? ''
-    for (const tier of ['comprehensive', 'master']) {
-      costDraft.value[tier] = activeCostByTier.value[tier]?.tokens_required ?? ''
+    for (const product of products.value) {
+      costDraft.value[product.code] = activeCostByTier.value[product.code]?.tokens_required ?? ''
     }
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat pengaturan token.'
@@ -75,7 +90,7 @@ async function savePrice() {
   }
 }
 
-async function saveCost(tier) {
+async function saveCost(tier, label) {
   const tokens = Number(costDraft.value[tier])
   if (!Number.isInteger(tokens) || tokens < 0) {
     toast.push('Jumlah token harus berupa angka bulat, minimal 0.')
@@ -84,7 +99,7 @@ async function saveCost(tier) {
   savingCost.value[tier] = true
   try {
     await api.put(`/admin/token-costs/${tier}`, { tokens_required: tokens })
-    toast.push(`Biaya token ${tierLabel[tier]} berhasil diubah.`, 'success')
+    toast.push(`Biaya token ${label} berhasil diubah.`, 'success')
     await loadAll()
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal mengubah biaya token.')
@@ -139,34 +154,37 @@ onMounted(loadAll)
       </section>
 
       <h2 class="admin-tokens__section-title">Biaya Token per Tier Laporan</h2>
-      <div class="admin-tokens__grid">
-        <div v-for="tier in ['comprehensive', 'master']" :key="tier" class="admin-tokens__card">
-          <h3>{{ tierLabel[tier] }}</h3>
+      <p v-if="products.length === 0" class="admin-tokens__note">
+        Belum ada produk aktif — tambahkan lewat <RouterLink to="/admin/products">Kelola Produk</RouterLink> dulu.
+      </p>
+      <div v-else class="admin-tokens__grid">
+        <div v-for="product in products" :key="product.code" class="admin-tokens__card">
+          <h3>{{ product.name }}</h3>
           <p class="admin-tokens__current">
             Biaya aktif:
             <strong>
               {{
-                activeCostByTier[tier]
-                  ? `${activeCostByTier[tier].tokens_required} token / laporan`
+                activeCostByTier[product.code]
+                  ? `${activeCostByTier[product.code].tokens_required} token / laporan`
                   : 'Belum diatur (tidak memotong token)'
               }}
             </strong>
           </p>
           <div class="admin-tokens__edit">
-            <input v-model="costDraft[tier]" type="number" min="0" step="1" />
+            <input v-model="costDraft[product.code]" type="number" min="0" step="1" />
             <button
               type="button"
               class="btn btn--primary"
-              :disabled="savingCost[tier]"
-              @click="saveCost(tier)"
+              :disabled="savingCost[product.code]"
+              @click="saveCost(product.code, product.name)"
             >
-              {{ savingCost[tier] ? 'Menyimpan...' : 'Ubah Biaya' }}
+              {{ savingCost[product.code] ? 'Menyimpan...' : 'Ubah Biaya' }}
             </button>
           </div>
-          <div v-if="costHistoryByTier[tier].length" class="admin-tokens__history">
+          <div v-if="costHistoryByTier[product.code]?.length" class="admin-tokens__history">
             <h4>Riwayat</h4>
             <ul>
-              <li v-for="c in costHistoryByTier[tier]" :key="c.id">
+              <li v-for="c in costHistoryByTier[product.code]" :key="c.id">
                 {{ c.tokens_required }} token / laporan
                 <span class="admin-tokens__history-meta">
                   — diganti {{ new Date(c.updated_at).toLocaleDateString('id-ID') }}

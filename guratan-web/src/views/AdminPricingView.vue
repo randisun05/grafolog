@@ -1,18 +1,31 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
 
+const products = ref([])
 const plans = ref([])
 const loading = ref(true)
 const loadError = ref('')
-const draft = ref({ comprehensive: '', master: '' })
-const saving = ref({ comprehensive: false, master: false })
+const draft = ref({})
+const saving = ref({})
 
-const tierLabel = { comprehensive: 'Comprehensive', master: 'Master' }
+// Sistem Products data-driven (2026-09-03, lihat guratan-api/CLAUDE.md) -
+// daftar tier TIDAK lagi hardcoded ['comprehensive', 'master'] di sini,
+// diambil dari /api/products supaya produk baru langsung dapat kartu
+// harga tanpa perubahan kode lagi.
+async function loadProducts() {
+  const { data } = await api.get('/products')
+  products.value = data
+  for (const product of data) {
+    if (!(product.code in draft.value)) draft.value[product.code] = ''
+    if (!(product.code in saving.value)) saving.value[product.code] = false
+  }
+}
 
 const activeByTier = computed(() => {
   const result = {}
@@ -23,7 +36,8 @@ const activeByTier = computed(() => {
 })
 
 const historyByTier = computed(() => {
-  const result = { comprehensive: [], master: [] }
+  const result = {}
+  for (const product of products.value) result[product.code] = []
   for (const plan of plans.value) {
     if (!plan.is_active) result[plan.tier]?.push(plan)
   }
@@ -34,10 +48,11 @@ async function loadPlans() {
   loading.value = true
   loadError.value = ''
   try {
+    await loadProducts()
     const { data } = await api.get('/admin/pricing')
     plans.value = data.data
-    for (const tier of ['comprehensive', 'master']) {
-      draft.value[tier] = activeByTier.value[tier]?.price ?? ''
+    for (const product of products.value) {
+      draft.value[product.code] = activeByTier.value[product.code]?.price ?? ''
     }
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat harga.'
@@ -46,7 +61,7 @@ async function loadPlans() {
   }
 }
 
-async function savePrice(tier) {
+async function savePrice(tier, label) {
   const price = Number(draft.value[tier])
   if (!Number.isInteger(price) || price < 0) {
     toast.push('Harga harus berupa angka bulat, minimal 0.')
@@ -55,7 +70,7 @@ async function savePrice(tier) {
   saving.value[tier] = true
   try {
     await api.put(`/admin/pricing/${tier}`, { price })
-    toast.push(`Harga ${tierLabel[tier]} berhasil diubah.`, 'success')
+    toast.push(`Harga ${label} berhasil diubah.`, 'success')
     await loadPlans()
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal mengubah harga.')
@@ -81,25 +96,33 @@ onMounted(loadPlans)
 
     <LoadingSpinner v-if="loading" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
+    <p v-else-if="products.length === 0" class="admin-pricing__note">
+      Belum ada produk aktif — tambahkan lewat <RouterLink to="/admin/products">Kelola Produk</RouterLink> dulu.
+    </p>
     <div v-else class="admin-pricing__grid">
-      <div v-for="tier in ['comprehensive', 'master']" :key="tier" class="admin-pricing__card">
-        <h3>{{ tierLabel[tier] }}</h3>
+      <div v-for="product in products" :key="product.code" class="admin-pricing__card">
+        <h3>{{ product.name }}</h3>
         <p class="admin-pricing__current">
           Harga aktif:
-          <strong>{{ activeByTier[tier] ? formatRupiah(activeByTier[tier].price) : 'Belum diatur' }}</strong>
+          <strong>{{ activeByTier[product.code] ? formatRupiah(activeByTier[product.code].price) : 'Belum diatur' }}</strong>
         </p>
 
         <div class="admin-pricing__edit">
-          <input v-model="draft[tier]" type="number" min="0" step="1000" />
-          <button type="button" class="btn btn--primary" :disabled="saving[tier]" @click="savePrice(tier)">
-            {{ saving[tier] ? 'Menyimpan...' : 'Ubah Harga' }}
+          <input v-model="draft[product.code]" type="number" min="0" step="1000" />
+          <button
+            type="button"
+            class="btn btn--primary"
+            :disabled="saving[product.code]"
+            @click="savePrice(product.code, product.name)"
+          >
+            {{ saving[product.code] ? 'Menyimpan...' : 'Ubah Harga' }}
           </button>
         </div>
 
-        <div v-if="historyByTier[tier].length" class="admin-pricing__history">
+        <div v-if="historyByTier[product.code]?.length" class="admin-pricing__history">
           <h4>Riwayat</h4>
           <ul>
-            <li v-for="p in historyByTier[tier]" :key="p.id">
+            <li v-for="p in historyByTier[product.code]" :key="p.id">
               {{ formatRupiah(p.price) }}
               <span class="admin-pricing__history-meta">
                 — diganti {{ new Date(p.updated_at).toLocaleDateString('id-ID') }}

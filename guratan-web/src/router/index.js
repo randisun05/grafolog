@@ -90,6 +90,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/products',
+      name: 'admin-products',
+      component: () => import('../views/AdminProductsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/pricing',
       name: 'admin-pricing',
       component: () => import('../views/AdminPricingView.vue'),

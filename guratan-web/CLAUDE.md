@@ -913,6 +913,39 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   summed correctly across both transaction tables for the shared code),
   all 7 canvases rendered including in dark mode, 0 console errors.
 
+- **Sistem Products data-driven — Fase 3 (admin frontend), 2026-09-03**
+  (see `guratan-api/CLAUDE.md`'s matching entry for the full 4-phase plan
+  and why this exists — tiers were previously hardcoded `['comprehensive',
+  'master']` in ~9 places across this codebase). New
+  `AdminProductsView.vue` (`/admin/products`, nav "Kelola Produk" +
+  `CommandPalette.vue` entry) — create form (code/name/description/
+  sort_order) + table with the same expand-row edit convention as
+  `AdminUsersView.vue`'s staff panel (no modal component exists anywhere
+  in this codebase). `code` is read-only in the edit panel (plain text,
+  not an input) — mirrors the backend's immutability decision
+  (`UpdateProductRequest` has no `code` rule at all). List shows
+  **every** product including inactive ones (a "Nonaktif" badge, not
+  hidden) so the retired `rapid` seed row and any deactivated product
+  stay visible with an Aktifkan/Nonaktifkan toggle, same convention as
+  the Company table on `AdminUsersView.vue`.
+  **`AdminPricingView.vue` and `AdminTokensView.vue` rewritten to be
+  dynamic** — both used to hardcode `['comprehensive', 'master']` (plus
+  a separate `tierLabel` map in each) as the literal list of cards to
+  render; both now fetch `GET /products` on mount and `v-for` over the
+  result (`product.code` where the tier string was used, `product.name`
+  where the hardcoded label was used) — the `tierLabel` maps are gone
+  entirely, one less place that had to be kept in sync by hand. Both
+  show a hint linking to `/admin/products` when the product list is
+  empty rather than rendering a blank grid.
+  **Browser-verified end-to-end — this is the concrete proof-of-value
+  moment for the whole 4-phase plan**: created a 3rd product "Deluxe"
+  via `/admin/products`, confirmed pricing and token-cost cards for it
+  appeared on `/admin/pricing`/`/admin/tokens` immediately with zero
+  further code changes, set its price and confirmed it saved and
+  displayed correctly, deactivated it and confirmed its cards
+  disappeared from both pages while it stayed visible (as inactive) on
+  `/admin/products` itself, 0 console errors throughout.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

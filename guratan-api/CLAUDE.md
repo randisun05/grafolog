@@ -2770,6 +2770,24 @@ Belum ada perubahan frontend — 7 titik ini backend murni, frontend masih
 kirim `'comprehensive'`/`'master'` hardcoded seperti biasa dan tetap
 valid (masih produk aktif) sampai Fase 3-4 menyusul.
 
+## Sistem Products data-driven — Fase 3 (admin frontend), 2026-09-03
+
+Lanjutan Fase 1-2b (lihat entri di atas). Backend sudah sepenuhnya
+data-driven sejak Fase 2b; Fase ini yang pertama kali mengekspos itu ke
+UI admin. Lihat `guratan-web/CLAUDE.md` untuk detail frontend penuh
+(`AdminProductsView.vue` baru, `AdminPricingView.vue`/`AdminTokensView.vue`
+jadi dinamis).
+
+**Browser-verified 2026-09-03 (Playwright), ini titik pembuktian nilai
+utama seluruh rencana 4-fase**: admin buat produk baru "Deluxe" lewat
+`/admin/products` → langsung muncul kartu harga di `/admin/pricing` DAN
+kartu biaya token di `/admin/tokens` **tanpa perubahan kode apa pun** →
+set harga Rp199.000, tersimpan benar → nonaktifkan produk lewat
+`/admin/products` → kartu harga/token-nya hilang dari kedua halaman itu
+→ produk tetap terlihat (berstatus nonaktif) di `/admin/products` sendiri
+(tidak hilang total, konsisten dengan `rapid` yang juga tetap terlihat).
+0 error konsol di seluruh alur.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
