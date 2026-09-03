@@ -228,7 +228,9 @@ onMounted(() => {
   color: var(--color-text-soft);
 }
 .hr-candidates__table {
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 14px;
 }

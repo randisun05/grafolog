@@ -252,7 +252,9 @@ onMounted(loadProducts)
   margin-bottom: 10px;
 }
 .admin-products__table {
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 13px;
 }

@@ -226,7 +226,9 @@ onMounted(() => {
   color: var(--color-text-soft);
 }
 .admin-recap__table {
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 13px;
 }

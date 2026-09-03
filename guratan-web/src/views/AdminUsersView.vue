@@ -594,7 +594,9 @@ async function deleteContract(company, contract) {
   color: var(--color-text-soft);
 }
 .admin-users__table {
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 14px;
 }

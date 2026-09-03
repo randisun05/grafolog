@@ -1295,6 +1295,7 @@ onMounted(async () => {
   gap: 6px;
   margin-bottom: 20px;
   border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
 }
 .admin-km__tab {
   padding: 8px 16px;
@@ -1304,6 +1305,8 @@ onMounted(async () => {
   font-size: 14px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .admin-km__tab--active {
   color: var(--color-seal);
@@ -1410,7 +1413,9 @@ onMounted(async () => {
   font-size: 13px;
 }
 .admin-km__table {
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 13.5px;
 }

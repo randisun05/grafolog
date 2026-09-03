@@ -992,6 +992,53 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `/admin/products` itself. 0 console errors throughout. `npm run lint`
   and `npm run build` both clean.
 
+- **Fix: admin tables overflow the whole page on mobile, 2026-09-03**
+  (from user asking "apakah UI/UX-nya sudah responsif di HP?" — see the
+  "Uji coba mobile & lintas-browser" ROADMAP item). Checked every admin/
+  public page at a 390px (iPhone) Playwright viewport for the first time
+  this session. Public pages (landing, login, dashboard, `/pesan`,
+  Analitik charts) were already fine — they have `@media (max-width:
+  640px)` in `AppNavbar.vue`/`App.vue`/`LandingView.vue`/
+  `PortalGrafologView.vue`. **The 11 admin views with a `<table>` did
+  not**: the table had no width constraint, so on a narrow viewport the
+  whole `<body>` stretched to the table's natural width instead of just
+  the table scrolling — the entire page (including the navbar) had to be
+  scrolled sideways to read anything.
+  **Fix applied to all 11**: `AdminProductsView.vue`, `AdminUsersView.vue`,
+  `AdminAuditLogView.vue`, `AdminDiscountsView.vue`, `AdminAnalyticsView.vue`,
+  `AdminKnowledgeView.vue`, `AdminRecapGrafologView.vue`,
+  `AdminRecapPaymentsView.vue`, `AdminRecapTokenPurchasesView.vue`,
+  `AdminRecapUsersView.vue`, `HrCandidatesView.vue` — added `display:
+  block; overflow-x: auto;` to each file's `<table>` CSS rule (every
+  file has exactly one base table class shared by all `<table>` tags in
+  that file, even where a file renders 2+ tables, so one rule edit per
+  file was enough). This is the standard CSS-only responsive-table trick:
+  setting a `<table>` element's `display` to `block` stops it from
+  establishing the outer table-layout box (so it behaves like a normal
+  block element for width/overflow purposes), while its `<tr>`/`<td>`/
+  `<th>` children keep their table-row/table-cell display and the
+  browser re-wraps them in an anonymous table box, so the internal
+  row/column grid renders identically to before — confirmed
+  browser-verified on both a 1280px desktop viewport (pixel-identical to
+  before the change) and 390px mobile (table now scrolls independently
+  within its own box, page no longer stretches).
+  Also fixed the same underlying bug in `AdminKnowledgeView.vue`'s
+  `.admin-km__tabs` row (8 tab buttons in a `display: flex` row with no
+  wrap/scroll, same page-wide-overflow symptom) — added `overflow-x:
+  auto` to `.admin-km__tabs` and `flex-shrink: 0; white-space: nowrap;`
+  to `.admin-km__tab` so each tab keeps its natural width and the row
+  scrolls horizontally instead of wrapping tab labels onto two lines.
+  **Browser-verified 2026-09-03**: 0 horizontal overflow across all 6
+  representative admin pages tested at 390px (`/admin/products`,
+  `/admin/users`, `/admin/audit-logs`, `/admin/discounts`,
+  `/admin/analytics`, `/admin/knowledge`), desktop 1280px unchanged.
+  **Not fixed** (separate, larger scope, not done this pass): the admin
+  navbar has no hamburger/collapse menu — its 17 nav links just wrap
+  onto multiple rows on mobile instead of collapsing behind a menu
+  button. Doesn't overflow, just pushes page content down further than
+  ideal. Firefox/Safari were not checked (Playwright here is Chromium
+  only).
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

@@ -542,7 +542,9 @@ onMounted(() => applyPreset(presets[2]))
   margin-bottom: 8px;
 }
 .admin-analytics__table {
+  display: block;
   width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 13px;
   margin-top: 16px;

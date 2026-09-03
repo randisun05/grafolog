@@ -1081,9 +1081,24 @@ menunggu satu input untuk dieksekusi.
   sudah ada, sesuai instruksi user "simpel saja". Ini juga jadi kanal
   permintaan hak data-subjek (lihat item UU PDP di atas) — bukan
   dashboard self-service terpisah.
-- [ ] **Uji coba mobile & lintas-browser** — semua verifikasi Playwright
-  sesi ini di viewport desktop Chromium saja, belum pernah dicek di HP
-  atau Firefox/Safari.
+- [~] **Uji coba mobile & lintas-browser** — sebelumnya semua verifikasi
+  Playwright cuma di viewport desktop Chromium, belum pernah dicek di HP.
+  **2026-09-03**: dicek pakai Playwright viewport iPhone (390px) di
+  seluruh halaman admin (tabel-berat) + publik — ketemu 2 masalah nyata
+  (halaman admin dengan tabel meluber ke samping bikin SELURUH halaman
+  horizontal-scroll, bukan cuma tabelnya; tab bar `AdminKnowledgeView.vue`
+  sama). **Sudah diperbaiki**: `overflow-x: auto` + `display: block` di
+  11 file yang punya `<table>` (`AdminProductsView`, `AdminUsersView`,
+  `AdminAuditLogView`, `AdminDiscountsView`, `AdminAnalyticsView`,
+  `AdminKnowledgeView`, `AdminRecapGrafologView`/`PaymentsView`/
+  `TokenPurchasesView`/`UsersView`, `HrCandidatesView`) + tab bar
+  `AdminKnowledgeView.vue`. Dikonfirmasi ulang: 0 overflow di semua
+  halaman itu di 390px, tampilan desktop 1280px tidak berubah sama
+  sekali. **Masih tertunda**: navbar admin tidak punya menu hamburger
+  (17 link nav cuma di-wrap jadi berbaris di HP, bukan disembunyikan ke
+  menu - bukan overflow, tapi makan banyak ruang layar) - keputusan
+  desain lebih besar, sengaja belum dikerjakan. Firefox/Safari juga
+  belum pernah dicek sama sekali (cuma Chromium via Playwright).
 - [x] **Web analytics (Google Analytics)** — 2026-08-30. Terpasang di
   `guratan-web` (`src/lib/analytics.js`, gtag.js diinjeksi manual tanpa
   dependency npm baru, pageview dikirim manual lewat
