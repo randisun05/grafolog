@@ -978,16 +978,41 @@ backup") dan `guratan-web/CLAUDE.md`.
 
 ### Tertunda — butuh keputusan bisnis
 
-- [ ] **Privacy Policy/ToS** — masih draft, belum ditinjau legal &
-  dipublikasikan sebagai halaman (`DEPLOYMENT.md` "Sebelum benar-benar
-  go-live").
-- [ ] **Kebijakan retensi data** — placeholder di Privacy Policy.
-- [ ] **Verifikasi role "grafolog"** — self-declared saat registrasi,
-  cukup untuk MVP atau perlu verifikasi manual?
+- [x] **Privacy Policy/ToS** — **selesai 2026-08-30**, lihat "Tertunda —
+  di luar kode aplikasi" di bawah. Sudah dipublikasikan sebagai halaman
+  nyata (`/kebijakan-privasi`, `/ketentuan-layanan`), belum ditinjau
+  pengacara sungguhan tapi sudah bukan draft tersembunyi lagi.
+- [x] **Kebijakan retensi data** — **default ditetapkan 2026-08-30**
+  (30 hari kerja pasca penghapusan akun, dinyatakan di Kebijakan
+  Privasi) - bukan lagi placeholder kosong, meski belum ditinjau legal
+  formal.
+- [x] **Verifikasi role "grafolog"** — **selesai 2026-09-02**, lihat
+  "Pendaftaran grafolog lewat verifikasi data" di bawah. Self-register
+  langsung sudah ditutup, sekarang lewat pengajuan biodata+bukti profesi
+  yang direview administrator dulu.
 - [ ] **Akses gambar rapid-tier lama** — masih di disk publik tanpa
   ownership check (risiko rendah, tier sudah pensiun 2026-08-01) —
   pindah ke private atau biarkan?
 - [ ] **Masa berlaku token Sanctum** — sekarang tidak pernah expired.
+- [ ] **Peran Supervisor belum ada fungsinya** — role-nya sudah ada di
+  sistem sejak MGA Fase 05 (bisa dibuatkan akun lewat
+  `/admin/users`), tapi belum ada halaman/kerjaan/review-queue apa pun
+  untuknya — perlu diputuskan dulu supervisor itu sebenarnya mengawasi/
+  meninjau apa, baru bisa dibangun (2026-09-03, dari pertanyaan user
+  "fitur pelengkap apa lagi").
+- [ ] **Sistem "produk"/tier belum data-driven** — `comprehensive`/
+  `master` sekarang murni string yang diulang di 5 tabel/kolom terpisah
+  (`handwriting_samples.tier`, `personality_reports.tier`,
+  `pricing_plans.tier`, `token_costs.tier`,
+  `discount_codes.applicable_tiers`), tidak ada tabel `products`/`tiers`
+  terpusat. Harga & biaya token per tier SUDAH admin-manageable lewat
+  `/admin/pricing`/`/admin/tokens`, tapi menambah tier ke-3 masih butuh
+  migrasi (lebarkan 4 kolom enum) + edit kode di 7 titik backend + ~9
+  titik frontend yang hardcode daftar 2 tier ini — bukan sekadar isi
+  form admin. Perlu keputusan: berapa banyak varian produk yang
+  realistis akan ditambahkan, baru sepadan dibangun jadi tabel `products`
+  sungguhan atau tidak (2026-09-03, dari pertanyaan user soal skalabilitas
+  produk turunan).
 
 ### Tertunda — operasional produksi (butuh server nyata untuk dieksekusi)
 
