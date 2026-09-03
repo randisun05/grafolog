@@ -16,9 +16,11 @@ const selectedGrafolog = ref({}) // { [sampleId]: grafologId }
 
 const file = ref(null)
 const projectName = ref('')
-const tier = ref('comprehensive')
+const tier = ref('')
 const importing = ref(false)
 const importErrors = ref([])
+
+const products = ref([])
 
 const statusLabel = {
   pending: 'Menunggu Skor',
@@ -45,6 +47,16 @@ async function loadGrafologs() {
     grafologs.value = data
   } catch {
     // Daftar grafolog gagal dimuat - form assign akan kosong, tidak fatal.
+  }
+}
+
+async function loadProducts() {
+  try {
+    const { data } = await api.get('/products')
+    products.value = data
+    if (!tier.value && data.length) tier.value = data[0].code
+  } catch {
+    // Daftar produk gagal dimuat - dropdown tier akan kosong, tidak fatal.
   }
 }
 
@@ -97,6 +109,7 @@ async function submitImport() {
 onMounted(() => {
   loadSamples()
   loadGrafologs()
+  loadProducts()
 })
 </script>
 
@@ -120,8 +133,7 @@ onMounted(() => {
       <label>
         Tier
         <select v-model="tier">
-          <option value="comprehensive">Comprehensive</option>
-          <option value="master">Master</option>
+          <option v-for="product in products" :key="product.code" :value="product.code">{{ product.name }}</option>
         </select>
       </label>
 

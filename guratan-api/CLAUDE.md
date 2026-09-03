@@ -2788,6 +2788,42 @@ set harga Rp199.000, tersimpan benar → nonaktifkan produk lewat
 (tidak hilang total, konsisten dengan `rapid` yang juga tetap terlihat).
 0 error konsol di seluruh alur.
 
+## Sistem Products data-driven — Fase 4 (penutup, sisa titik hardcoded publik/staf), 2026-09-03
+
+**Ini menutup seluruh inisiatif 4-fase Sistem Products Data-Driven** (Fase
+1-3 di entri atas). Fase ini murni frontend, tidak ada perubahan backend —
+5 file di `guratan-web` yang masih hardcode `comprehensive`/`master` diganti
+fetch `GET /api/products` (lihat `guratan-web/CLAUDE.md` untuk detail per
+file: `OrderView.vue`, `LandingView.vue`, `HrCandidatesView.vue`,
+`PortalGrafologView.vue`, `AdminDiscountsView.vue`).
+
+**Browser-verified 2026-09-03 (Playwright) end-to-end penuh**: admin buat
+produk ke-3 "Elite" lewat `/admin/products`, set harga Rp299.000 →
+langsung tampil di landing page publik (`/`) sebagai kartu harga ketiga,
+tanpa badge/fitur kurasi (cuma yang dikenal di `cardMeta` dapat
+badge/daftar fitur, produk baru dapat kartu generik - lihat catatan
+`guratan-web/CLAUDE.md`) → klien baru daftar, buka `/pesan`, Elite muncul
+sebagai opsi tier dengan harga benar → HR lihat Elite di dropdown tier
+form impor CSV kandidat (`/hr/candidates`) → grafolog lihat Elite di
+dropdown tier Portal Grafolog (`/portal-grafolog`) setelah cari klien →
+admin buat kode diskon `ELITE10` dengan `applicable_tiers: ['elite']` lewat
+checkbox dinamis di `/admin/discounts` (checkbox `token` tetap statis di
+sampingnya, tidak berubah) → nonaktifkan Elite lewat `/admin/products` →
+dikonfirmasi hilang dari kelima permukaan itu (landing, `/pesan`, HR
+select, grafolog select, checkbox diskon) → tetap terlihat (berstatus
+nonaktif) di `/admin/products` sendiri. 0 error konsol di seluruh alur.
+`php artisan test` (523/523 hijau) + `pint --test` tetap hijau (fase ini
+tidak menyentuh backend).
+
+**Status akhir inisiatif**: tier/produk laporan (`comprehensive`, `master`,
+dan siapa pun berikutnya) sekarang murni data — admin bisa menambah varian
+produk baru dari `/admin/products` tanpa deploy kode apa pun, produk baru
+otomatis muncul di seluruh alur harga/pemesanan/impor HR/portal
+grafolog/diskon. Satu-satunya sentuhan kode manual yang masih tersisa untuk
+produk benar-benar baru: kurasi opsional badge/daftar fitur marketing di
+`cardMeta` (`LandingView.vue`) - disengaja, bukan gap (fitur marketing per
+produk itu keputusan konten, bukan keputusan data).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

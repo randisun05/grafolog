@@ -10,6 +10,8 @@ const codes = ref([])
 const loading = ref(true)
 const loadError = ref('')
 
+const products = ref([])
+
 const form = ref({
   code: '',
   type: 'percentage',
@@ -32,6 +34,15 @@ async function loadCodes() {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat kode diskon.'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadProducts() {
+  try {
+    const { data } = await api.get('/products')
+    products.value = data
+  } catch {
+    // Daftar produk gagal dimuat - checkbox tier akan kosong, tidak fatal.
   }
 }
 
@@ -75,7 +86,10 @@ function formatValue(discount) {
   return discount.type === 'percentage' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`
 }
 
-onMounted(loadCodes)
+onMounted(() => {
+  loadCodes()
+  loadProducts()
+})
 </script>
 
 <template>
@@ -111,8 +125,9 @@ onMounted(loadCodes)
         <label class="admin-discounts__checkboxes">
           Berlaku untuk tier (kosongkan = semua)
           <span>
-            <label><input v-model="form.tiers" type="checkbox" value="comprehensive" /> Comprehensive</label>
-            <label><input v-model="form.tiers" type="checkbox" value="master" /> Master</label>
+            <label v-for="product in products" :key="product.code">
+              <input v-model="form.tiers" type="checkbox" :value="product.code" /> {{ product.name }}
+            </label>
             <label><input v-model="form.tiers" type="checkbox" value="token" /> Token (pembelian token grafolog)</label>
           </span>
         </label>

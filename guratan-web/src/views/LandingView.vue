@@ -76,6 +76,27 @@ const pricing = ref([])
 function priceFor(tier) {
   return pricing.value.find((p) => p.tier === tier)?.price ?? null
 }
+
+// Metadata kurasi (badge/fitur) cuma untuk tier yang sudah dikenal -
+// produk baru yang ditambah admin lewat /admin/products tetap tampil
+// (nama/harga/deskripsi dari API), cuma tanpa badge/daftar fitur khusus.
+const cardMeta = {
+  comprehensive: {
+    features: ['Laporan 8 Sindrom & 40 Aspek lengkap', 'Disusun grafolog bersertifikat', 'Unduh PDF kapan saja'],
+  },
+  master: {
+    badge: 'Paling Lengkap',
+    highlight: true,
+    features: ['Semua fitur Comprehensive', 'Sesi konsultasi langsung dengan grafolog', 'Prioritas pengerjaan'],
+  },
+}
+
+// Default = fallback kalau /api/products gagal/lambat, supaya kartu harga
+// tidak pernah kosong (sama filosofi fallback konten CMS di atas).
+const products = ref([
+  { code: 'comprehensive', name: 'Comprehensive', description: 'Analisis mendalam 40 aspek kepribadian dari tulisan tangan Anda.' },
+  { code: 'master', name: 'Master', description: 'Semua isi Comprehensive, plus sesi konsultasi langsung.' },
+])
 function formatRupiah(value) {
   if (value === null || value === undefined) return '—'
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
@@ -108,6 +129,13 @@ onMounted(async () => {
     pricing.value = data
   } catch {
     // Kartu harga tetap tampil dengan "-" kalau publik pricing gagal dimuat.
+  }
+
+  try {
+    const { data } = await api.get('/products')
+    if (Array.isArray(data) && data.length) products.value = data
+  } catch {
+    // Tetap pakai daftar hardcoded di atas - halaman jualan tidak boleh kosong.
   }
 
   await nextTick()
@@ -245,28 +273,26 @@ onMounted(async () => {
         <p>{{ content.landing_pricing_subtext }}</p>
       </div>
       <div class="pricing-grid">
-        <div class="price-card">
-          <div class="price-card__tier">Comprehensive</div>
-          <div class="price-card__amount">{{ formatRupiah(priceFor('comprehensive')) }}<span> /laporan</span></div>
-          <p class="price-card__desc">Analisis mendalam 40 aspek kepribadian dari tulisan tangan Anda.</p>
-          <ul>
-            <li><span class="check">✓</span> Laporan 8 Sindrom &amp; 40 Aspek lengkap</li>
-            <li><span class="check">✓</span> Disusun grafolog bersertifikat</li>
-            <li><span class="check">✓</span> Unduh PDF kapan saja</li>
+        <div
+          v-for="product in products"
+          :key="product.code"
+          class="price-card"
+          :class="{ 'price-card--master': cardMeta[product.code]?.highlight }"
+        >
+          <span v-if="cardMeta[product.code]?.badge" class="price-card__badge badge badge--gold">{{ cardMeta[product.code].badge }}</span>
+          <div class="price-card__tier">{{ product.name }}</div>
+          <div class="price-card__amount">{{ formatRupiah(priceFor(product.code)) }}<span> /laporan</span></div>
+          <p class="price-card__desc">{{ product.description }}</p>
+          <ul v-if="cardMeta[product.code]?.features">
+            <li v-for="f in cardMeta[product.code].features" :key="f"><span class="check">✓</span> {{ f }}</li>
           </ul>
-          <RouterLink to="/register" class="btn btn--ghost price-card__cta">Pilih Comprehensive</RouterLink>
-        </div>
-        <div class="price-card price-card--master">
-          <span class="price-card__badge badge badge--gold">Paling Lengkap</span>
-          <div class="price-card__tier">Master</div>
-          <div class="price-card__amount">{{ formatRupiah(priceFor('master')) }}<span> /laporan</span></div>
-          <p class="price-card__desc">Semua isi Comprehensive, plus sesi konsultasi langsung.</p>
-          <ul>
-            <li><span class="check">✓</span> Semua fitur Comprehensive</li>
-            <li><span class="check">✓</span> Sesi konsultasi langsung dengan grafolog</li>
-            <li><span class="check">✓</span> Prioritas pengerjaan</li>
-          </ul>
-          <RouterLink to="/register" class="btn btn--primary price-card__cta">Pilih Master</RouterLink>
+          <RouterLink
+            to="/register"
+            class="price-card__cta"
+            :class="cardMeta[product.code]?.highlight ? 'btn btn--primary' : 'btn btn--ghost'"
+          >
+            Pilih {{ product.name }}
+          </RouterLink>
         </div>
       </div>
     </section>

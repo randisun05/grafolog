@@ -946,6 +946,52 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   disappeared from both pages while it stayed visible (as inactive) on
   `/admin/products` itself, 0 console errors throughout.
 
+- **Sistem Products data-driven — Fase 4 (penutup), 2026-09-03** (see
+  `guratan-api/CLAUDE.md`'s matching entry — **this closes the whole
+  4-phase Products initiative**). Last 5 hardcoded `comprehensive`/`master`
+  sites in this repo, all now fetching `GET /api/products`:
+  - `OrderView.vue` — hardcoded `tierLabel`/`tierDesc` lookup objects
+    replaced with a `products` fetch matched by `code` against the tier
+    cards already rendered from `GET /pricing` (that `v-for` was already
+    dynamic — the gap was only the label/description maps, not the card
+    list itself).
+  - `LandingView.vue` — the two duplicated pricing-card markup blocks
+    collapsed into one `v-for="product in products"`. Kept a curated
+    `cardMeta` object (badge + feature bullets) keyed by `code`, but
+    **only for `comprehensive`/`master`** — a newly added product renders
+    a plain card (name/price/description from the API, generic ghost
+    button) with no badge/bullets until someone deliberately adds
+    marketing copy for it in `cardMeta`. This is a conscious scope limit,
+    not a gap: which products get sales-page feature bullets is a content
+    decision, not something that should auto-populate from an admin CRUD
+    form. `products` defaults to a hardcoded 2-item array and only
+    overwrites on a successful non-empty fetch — same fallback philosophy
+    as this file's existing `/content` fetch, so the pricing section can
+    never render blank.
+  - `HrCandidatesView.vue` / `PortalGrafologView.vue` — the hardcoded
+    2-`<option>` tier `<select>` in each replaced with `v-for="product in
+    products"`; default `tier` ref changed from the literal `'comprehensive'`
+    to `''`, set to the first fetched product's code once `/products`
+    resolves.
+  - `AdminDiscountsView.vue` — the 2 hardcoded tier checkboxes replaced
+    with `v-for="product in products"`; the `token` checkbox stays a
+    literal, unchanged, right after the dynamic ones (mirrors the
+    backend's `StoreDiscountCodeRequest` validation, which also keeps
+    `'token'` as a hardcoded pseudo-tier alongside `Product::activeCodes()`
+    — this is the one place in the whole initiative where that
+    dynamic+literal mix is visible directly in a template, not just in
+    validation logic).
+  **Browser-verified 2026-09-03 (Playwright), full end-to-end**: created
+  a 3rd product "Elite" via `/admin/products`, priced it, then confirmed
+  it appeared correctly across all five surfaces above (landing page
+  pricing grid, `/pesan` order flow with correct price, HR's CSV-import
+  tier dropdown, grafolog Portal's tier dropdown, and as a selectable
+  checkbox when creating discount code `ELITE10` with `applicable_tiers:
+  ['elite']`) — then deactivated it and confirmed it disappeared from
+  all five surfaces while remaining visible (as inactive) on
+  `/admin/products` itself. 0 console errors throughout. `npm run lint`
+  and `npm run build` both clean.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

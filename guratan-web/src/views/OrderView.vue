@@ -6,18 +6,21 @@ import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
 
-const tierLabel = {
-  comprehensive: 'Comprehensive',
-  master: 'Master',
-}
-const tierDesc = {
-  comprehensive: 'Analisis mendalam 40 aspek oleh grafolog bersertifikat.',
-  master: 'Comprehensive + sesi konsultasi langsung dengan grafolog.',
-}
+const products = ref([])
 
 const pricing = ref([])
 const loading = ref(true)
 const loadError = ref('')
+
+function productFor(tier) {
+  return products.value.find((p) => p.code === tier)
+}
+function tierLabel(tier) {
+  return productFor(tier)?.name ?? tier
+}
+function tierDesc(tier) {
+  return productFor(tier)?.description ?? ''
+}
 
 const selectedTier = ref(null)
 const discountCode = ref('')
@@ -37,6 +40,15 @@ const finalPrice = computed(() => {
 function formatRupiah(value) {
   if (value === null || value === undefined) return '–'
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
+}
+
+async function loadProducts() {
+  try {
+    const { data } = await api.get('/products')
+    products.value = data
+  } catch {
+    products.value = []
+  }
 }
 
 async function loadPricing() {
@@ -92,7 +104,10 @@ async function pay() {
   }
 }
 
-onMounted(loadPricing)
+onMounted(() => {
+  loadProducts()
+  loadPricing()
+})
 </script>
 
 <template>
@@ -112,9 +127,9 @@ onMounted(loadPricing)
           :class="{ 'order__tier-card--selected': selectedTier === p.tier }"
           @click="selectTier(p.tier)"
         >
-          <span class="order__tier-name">{{ tierLabel[p.tier] ?? p.tier }}</span>
+          <span class="order__tier-name">{{ tierLabel(p.tier) }}</span>
           <span class="order__tier-price">{{ formatRupiah(p.price) }}</span>
-          <span class="order__tier-desc">{{ tierDesc[p.tier] }}</span>
+          <span class="order__tier-desc">{{ tierDesc(p.tier) }}</span>
         </button>
       </div>
 

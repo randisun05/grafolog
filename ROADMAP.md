@@ -1000,11 +1000,11 @@ backup") dan `guratan-web/CLAUDE.md`.
   untuknya — perlu diputuskan dulu supervisor itu sebenarnya mengawasi/
   meninjau apa, baru bisa dibangun (2026-09-03, dari pertanyaan user
   "fitur pelengkap apa lagi").
-- [~] **Sistem "produk"/tier data-driven — SEDANG DIKERJAKAN, dipecah
-  4 fase mulai 2026-09-03** — user konfirmasi beberapa varian produk
-  akan ditambahkan dalam waktu dekat, sepadan dibangun tabel `products`
-  sungguhan. Lihat "Inisiatif — Sistem Products Data-Driven" di bawah
-  untuk rencana & progres lengkap.
+- [x] **Sistem "produk"/tier data-driven — SELESAI 2026-09-03, 4 fase** —
+  user konfirmasi beberapa varian produk akan ditambahkan dalam waktu
+  dekat, sepadan dibangun tabel `products` sungguhan. Lihat "Inisiatif —
+  Sistem Products Data-Driven" di bawah untuk rencana & detail teknis
+  lengkap tiap fase.
 
 ### Tertunda — operasional produksi (butuh server nyata untuk dieksekusi)
 
@@ -1315,8 +1315,22 @@ baru otomatis mewarisi semua perilaku itu tanpa sentuh
   dapat kartu harga/biaya token tanpa perubahan kode lagi, dikonfirmasi
   lewat browser-test end-to-end. Detail teknis di `guratan-api/CLAUDE.md`
   "Sistem Products data-driven — Fase 3" dan `guratan-web/CLAUDE.md`.
-- **Fase 4 (tertunda)**: sisa 5 file frontend publik/staf
-  (`OrderView.vue`, `LandingView.vue` dengan fallback, `HrCandidatesView.vue`,
+- **Fase 4 (selesai 2026-09-03, PENUTUP INISIATIF)**: sisa 5 file
+  frontend publik/staf (`OrderView.vue`, `LandingView.vue` dengan
+  fallback ke daftar hardcoded kalau fetch gagal, `HrCandidatesView.vue`,
   `PortalGrafologView.vue`, `AdminDiscountsView.vue`'s tier-picker) jadi
-  dinamis — titik ini produk baru benar-benar bisa dipesan/dipilih
-  end-to-end oleh klien/HR/grafolog, menutup seluruh inisiatif.
+  dinamis lewat `GET /api/products` — titik ini produk baru benar-benar
+  bisa dipesan/dipilih end-to-end oleh klien/HR/grafolog. Dibuktikan
+  lewat browser-test end-to-end penuh: produk ke-3 "Elite" dibuat lewat
+  `/admin/products`, langsung bisa dipesan klien di `/pesan`, tampil di
+  landing page publik, jadi opsi tier di form impor HR & Portal Grafolog,
+  dan jadi checkbox `applicable_tiers` saat admin buat kode diskon —
+  lalu dinonaktifkan dan dikonfirmasi hilang dari kelima permukaan itu
+  sekaligus, 0 error konsol. Detail teknis di `guratan-api/CLAUDE.md` dan
+  `guratan-web/CLAUDE.md`, masing-masing entri "Sistem Products
+  data-driven — Fase 4 (penutup)".
+
+**Status akhir**: tier/produk laporan sekarang murni data — admin bisa
+menambah varian produk baru dari `/admin/products` tanpa deploy kode
+apa pun sama sekali, langsung mewarisi harga, biaya token, dan seluruh
+alur pemesanan/impor/portal/diskon secara otomatis.

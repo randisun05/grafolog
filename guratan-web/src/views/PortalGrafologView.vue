@@ -22,7 +22,8 @@ const totalAspek = computed(() => sindromList.value.reduce((n, s) => n + s.aspek
 
 const clientEmail = ref('')
 const client = ref(null)
-const tier = ref('comprehensive')
+const products = ref([])
+const tier = ref('')
 const sample = ref(null)
 
 // KM-G: cara mengisi skor - 'manual' (form dropdown 1-10, alur asli) atau
@@ -80,10 +81,21 @@ async function loadWallet() {
   }
 }
 
+async function loadProducts() {
+  try {
+    const { data } = await api.get('/products')
+    products.value = data
+    if (!tier.value && data.length) tier.value = data[0].code
+  } catch {
+    // Daftar produk gagal dimuat - dropdown tier akan kosong, tidak fatal.
+  }
+}
+
 onMounted(async () => {
   const { data } = await api.get('/sindrom')
   sindromList.value = data
   loadWallet()
+  loadProducts()
 
   if (route.query.sampleId) {
     await resumeSample(route.query.sampleId)
@@ -306,8 +318,7 @@ function viewReport() {
         <label>
           Tier:
           <select v-model="tier">
-            <option value="comprehensive">Comprehensive</option>
-            <option value="master">Master</option>
+            <option v-for="product in products" :key="product.code" :value="product.code">{{ product.name }}</option>
           </select>
         </label>
         <button type="button" class="btn btn--primary" :disabled="creatingSample" @click="createSample">
