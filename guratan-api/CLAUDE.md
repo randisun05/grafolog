@@ -2607,6 +2607,81 @@ aksi dengan 3 tambahan ini:
   export CSV, rekap pengguna/grafolog/pembelian token/pembelian laporan,
   dan dashboard analitik 6-section semuanya selesai dikerjakan.
 
+## Sistem Products data-driven — Fase 1 (fondasi), 2026-09-03
+
+User bertanya dari mana asal tier "Comprehensive"/"Master" dan apakah
+bisa di-manage karena produk turunan akan banyak ditambahkan. Audit kode
+sebelum membangun ini mengonfirmasi: **tidak ada tabel `products`
+terpusat sebelumnya** — `comprehensive`/`master` murni string yang
+diulang independen di 5 tempat (`handwriting_samples.tier`,
+`personality_reports.tier`, `pricing_plans.tier`, `token_costs.tier`,
+`discount_codes.applicable_tiers`), dengan 7 titik validasi hardcoded
+`in:comprehensive,master` tersebar di backend. Harga & biaya token per
+tier **sudah** admin-manageable lewat `/admin/pricing`/`/admin/tokens`
+sebelum fitur ini — yang belum ada adalah kemampuan menambah tier BARU
+tanpa deploy kode. **Rencana 4 fase**, ini Fase 1 (fondasi murni,
+belum menyentuh 7 titik hardcoded lama — itu Fase 2b).
+
+- **`products` table / `App\Models\Product`**: `code` (string unique,
+  slug), `name`, `description` nullable, `is_active` (default true,
+  gotcha DB-default-tidak-refetch sama seperti `Company`/`DiscountCode`),
+  `sort_order` (default 0). **`code` SENGAJA BUKAN foreign key** ke 4
+  kolom `tier`/`applicable_tiers` lain — kolom-kolom itu tetap string
+  bebas seperti sekarang (dilebarkan dari enum di Fase 2a, migrasi
+  terpisah), supaya migrasi tabel `products` ini sendiri rendah risiko
+  dan tidak mengunci data historis lewat constraint FK.
+- **`Product::activeCodes(): array`** — satu-satunya method yang jadi
+  sumber kebenaran daftar tier valid SEKARANG
+  (`where('is_active',true)->orderBy('sort_order')->pluck('code')`).
+  Fase 2b akan mengganti 7 titik `in:comprehensive,master`/
+  `in_array([...])` hardcoded supaya semuanya panggil ini, bukan literal
+  array lagi. Belum ada pemanggil sama sekali di fase ini — method ini
+  murni disiapkan dan ditest sendiri dulu.
+- **`code` immutable setelah dibuat** — `UpdateProductRequest` sengaja
+  TIDAK punya rule untuk field `code` sama sekali, jadi
+  `Admin\ProductController::update()`'s `$request->validated()` otomatis
+  mengabaikannya kalau ikut dikirim di body, bukan error 422. Alasan:
+  `code` bukan FK (lihat di atas), jadi rename akan mengorbankan histori
+  `tier` di 4 tabel lain tanpa ada cara mendeteksi orphaning-nya sama
+  sekali — lebih aman dikunci daripada mengizinkan tapi berisiko.
+- **`ProductSeeder`** — idempoten (`firstOrCreate`, bukan `updateOrCreate`
+  — TIDAK menimpa edit admin saat reseed, pola sama `PricingPlanSeeder`).
+  3 baris: `comprehensive`/`master` (aktif), **`rapid` (nonaktif)** —
+  disertakan murni untuk preservasi tampilan histori tier lama di admin
+  (sample/report lama masih ber-`tier='rapid'`), BUKAN menghidupkan lagi
+  alur upload rapid yang sudah pensiun 2026-08-01. Didaftarkan di
+  `DatabaseSeeder` sebelum `PricingPlanSeeder`.
+- **`Admin\ProductController`** (`GET/POST /admin/products`,
+  `PATCH /admin/products/{product}`) — `index()` **tidak dipaginasi**
+  (beda dari `PricingController`/`TokenCostController` yang menyimpan
+  histori perubahan) dan **menyertakan produk nonaktif juga** (termasuk
+  `rapid`) — daftar ini pendek, di-scan sekilas oleh admin, bukan log
+  transaksi; admin perlu lihat semua produk (termasuk yang dinonaktifkan)
+  supaya bisa diaktifkan lagi kalau perlu, sama pola tabel Perusahaan.
+  Tidak ada `destroy()` — retirement lewat `is_active` saja. Audit log
+  `buat_produk`/`ubah_produk`.
+- **`Api\ProductController`** (publik, `GET /api/products`, tanpa auth) —
+  pola sama persis `Api\PricingController`/`Api\ContentController`
+  (endpoint baca publik untuk halaman marketing/checkout sebelum login).
+  Cuma produk **aktif**, urut `sort_order`.
+- **Route alias**: `Api\Admin\ProductController` vs `Api\ProductController`
+  tabrakan nama kelas — `use ...Admin\ProductController as
+  AdminProductController;`, pola sama `Pricing`/`Topik`/dst yang sudah
+  berulang kali terjadi di file route ini.
+- Test baru: `Unit\ProductTest` (3, `activeCodes()`), `ProductControllerTest`
+  publik (2), `Admin\ProductControllerTest` (7 - guest/non-admin ditolak,
+  list menyertakan nonaktif, create+validasi slug+duplikat, update
+  field+toggle `is_active`, **`code` di body update diabaikan diam-diam**
+  — test eksplisit untuk perilaku ini karena paling berisiko regresi diam-
+  diam di masa depan). 514 backend tests total (up from 502).
+- **Verifikasi**: `php artisan test` (513/514 hijau, kegagalan
+  `ExampleTest` pre-existing tidak terkait), `pint --test` lolos. Migrasi
+  + `ProductSeeder` dites manual lewat sqlite throwaway (`migrate` +
+  `db:seed --class=ProductSeeder` + tinker cek `Product::count()===3` dan
+  `activeCodes()===['comprehensive','master']`) — bukan cuma lewat suite
+  test yang pakai `RefreshDatabase` (yang tidak menjalankan seeder). Belum
+  ada perubahan frontend sama sekali di fase ini (menyusul Fase 3-4).
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

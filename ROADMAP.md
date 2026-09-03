@@ -1000,19 +1000,11 @@ backup") dan `guratan-web/CLAUDE.md`.
   untuknya — perlu diputuskan dulu supervisor itu sebenarnya mengawasi/
   meninjau apa, baru bisa dibangun (2026-09-03, dari pertanyaan user
   "fitur pelengkap apa lagi").
-- [ ] **Sistem "produk"/tier belum data-driven** — `comprehensive`/
-  `master` sekarang murni string yang diulang di 5 tabel/kolom terpisah
-  (`handwriting_samples.tier`, `personality_reports.tier`,
-  `pricing_plans.tier`, `token_costs.tier`,
-  `discount_codes.applicable_tiers`), tidak ada tabel `products`/`tiers`
-  terpusat. Harga & biaya token per tier SUDAH admin-manageable lewat
-  `/admin/pricing`/`/admin/tokens`, tapi menambah tier ke-3 masih butuh
-  migrasi (lebarkan 4 kolom enum) + edit kode di 7 titik backend + ~9
-  titik frontend yang hardcode daftar 2 tier ini — bukan sekadar isi
-  form admin. Perlu keputusan: berapa banyak varian produk yang
-  realistis akan ditambahkan, baru sepadan dibangun jadi tabel `products`
-  sungguhan atau tidak (2026-09-03, dari pertanyaan user soal skalabilitas
-  produk turunan).
+- [~] **Sistem "produk"/tier data-driven — SEDANG DIKERJAKAN, dipecah
+  4 fase mulai 2026-09-03** — user konfirmasi beberapa varian produk
+  akan ditambahkan dalam waktu dekat, sepadan dibangun tabel `products`
+  sungguhan. Lihat "Inisiatif — Sistem Products Data-Driven" di bawah
+  untuk rencana & progres lengkap.
 
 ### Tertunda — operasional produksi (butuh server nyata untuk dieksekusi)
 
@@ -1269,3 +1261,50 @@ Pembelian Laporan), dan dashboard analitik 6-section dengan 7 chart
 (`Admin\AnalyticsController`, Chart.js+vue-chartjs) — semuanya
 browser-verified dengan data seed nyata, bukan cuma test hijau. 502
 backend tests total (up from 473 sebelum inisiatif ini dimulai).
+
+### Inisiatif — Sistem Products Data-Driven, dipecah 4 fase, mulai 2026-09-03
+
+User bertanya dari mana asal tier "Comprehensive"/"Master" dan apakah
+bisa di-manage karena produk turunan akan banyak ditambahkan. Audit kode
+mengonfirmasi: tidak ada tabel `products` terpusat — tier murni string
+diulang independen di 5 tabel/kolom, dengan 7 titik validasi hardcoded
+di backend dan ~9 titik hardcoded di frontend. Harga & biaya token per
+tier SUDAH admin-manageable (`/admin/pricing`/`/admin/tokens`), yang
+belum ada adalah kemampuan menambah tier BARU tanpa deploy kode. User
+konfirmasi lewat AskUserQuestion: karena beberapa varian produk akan
+ditambahkan dalam waktu dekat, sepadan dibangun tabel `products`
+sungguhan sekarang (bukan ditunda sampai kebutuhan konkret).
+
+Kabar baik dari audit: nol perbedaan perilaku antara comprehensive/master
+di lapisan service (scoring/narasi/PDF) — cuma beda harga & label. Tier
+baru otomatis mewarisi semua perilaku itu tanpa sentuh
+`ScoringEngineService`/dsb sama sekali.
+
+- **Fase 1 (selesai 2026-09-03)**: fondasi — tabel `products` + model
+  `Product` (`activeCodes()` helper, `code` immutable setelah dibuat),
+  `ProductSeeder` (idempoten, seed comprehensive/master aktif + rapid
+  nonaktif untuk preservasi histori), `Admin\ProductController` (CRUD
+  tanpa delete, tidak dipaginasi, menampilkan produk nonaktif juga),
+  `Api\ProductController` publik (`GET /api/products`, cuma aktif).
+  Belum menyentuh 7 titik hardcoded lama sama sekali (itu Fase 2b) -
+  murni fondasi baru berdampingan dengan yang lama. Detail teknis di
+  `guratan-api/CLAUDE.md` "Sistem Products data-driven — Fase 1".
+- **Fase 2a (tertunda)**: lebarkan 4 kolom `enum` (`handwriting_samples.tier`,
+  `personality_reports.tier`, `pricing_plans.tier`, `token_costs.tier`)
+  jadi `string` biasa — murni skema, nol perubahan perilaku (dibuktikan
+  lewat suite test lama yang tetap hijau tanpa diubah).
+  `discount_codes.applicable_tiers` tetap JSON free-form seperti sekarang.
+- **Fase 2b (tertunda)**: ganti 7 titik `in:comprehensive,master`/
+  `in_array([...])` hardcoded jadi `Product::activeCodes()` dinamis
+  (3 Form Request, 1 aturan diskon yang tetap terima literal `'token'`
+  di sampingnya, 2 pengaman controller, 1 pembuat respons wallet token).
+- **Fase 3 (tertunda)**: `AdminProductsView.vue` baru (CRUD produk) +
+  `AdminPricingView.vue`/`AdminTokensView.vue` jadi dinamis (fetch
+  `/api/products`, bukan lagi hardcode 2 tier) — ini titik pembuktian
+  nilai utama: produk baru langsung dapat kartu harga/biaya token tanpa
+  perubahan kode lagi.
+- **Fase 4 (tertunda)**: sisa 5 file frontend publik/staf
+  (`OrderView.vue`, `LandingView.vue` dengan fallback, `HrCandidatesView.vue`,
+  `PortalGrafologView.vue`, `AdminDiscountsView.vue`'s tier-picker) jadi
+  dinamis — titik ini produk baru benar-benar bisa dipesan/dipilih
+  end-to-end oleh klien/HR/grafolog, menutup seluruh inisiatif.

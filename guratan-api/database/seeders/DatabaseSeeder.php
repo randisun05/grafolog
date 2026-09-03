@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             CategoryMatchRuleSeeder::class,
             VariableEqualityRuleSeeder::class,
             AdministratorSeeder::class,
+            ProductSeeder::class,
             PricingPlanSeeder::class,
             ContentBlockSeeder::class,
         ]);

@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
 use App\Http\Controllers\Api\Admin\PaymentRecapController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
+use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\ScoringRuleBandController;
 use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\MeasurementVariableController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PricingController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\ScoringController;
@@ -69,6 +71,7 @@ Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentContr
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);
 Route::get('/content', [ContentController::class, 'index']);
+Route::get('/products', [ProductController::class, 'index']);
 
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -162,6 +165,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/analytics/grafolog-performance', [AnalyticsController::class, 'grafologPerformance']);
         Route::get('/analytics/token-economy', [AnalyticsController::class, 'tokenEconomy']);
         Route::get('/analytics/discount-effectiveness', [AnalyticsController::class, 'discountEffectiveness']);
+        // Katalog produk/tier data-driven (2026-09-03) - lihat
+        // guratan-api/CLAUDE.md "Sistem Products data-driven".
+        Route::get('/products', [AdminProductController::class, 'index']);
+        Route::post('/products', [AdminProductController::class, 'store']);
+        Route::patch('/products/{product}', [AdminProductController::class, 'update']);
         Route::get('/pricing', [AdminPricingController::class, 'index']);
         Route::put('/pricing/{tier}', [AdminPricingController::class, 'update']);
         Route::get('/token-price', [AdminTokenPriceController::class, 'index']);
