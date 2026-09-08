@@ -46,6 +46,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\ScoringController;
 use App\Http\Controllers\Api\SindromController;
+use App\Http\Controllers\Api\Supervisor\ChatController;
 use App\Http\Controllers\Api\Supervisor\PotensiController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TokenPurchaseController;
@@ -247,8 +248,22 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/candidates/import', [CandidateImportController::class, 'import']);
     });
 
-    // Fitur Supervisor Fase 2 (2026-09-08) - lihat CLAUDE.md "Peran Supervisor".
+    // Fitur Supervisor Fase 2-3 (2026-09-08) - lihat CLAUDE.md "Peran Supervisor".
     Route::middleware('role:supervisor')->prefix('supervisor')->group(function () {
         Route::get('/potensi', [PotensiController::class, 'index']);
+
+        Route::get('/chat/conversations', [ChatController::class, 'index']);
+        Route::post('/chat/conversations', [ChatController::class, 'store']);
+        Route::get('/chat/conversations/{conversation}', [ChatController::class, 'show']);
+        Route::delete('/chat/conversations/{conversation}', [ChatController::class, 'destroy']);
+        // Throttle tambahan KHUSUS endpoint ini, di atas throttle:60,1 grup
+        // umum - satu-satunya endpoint di grup Supervisor yang memanggil
+        // Anthropic (biaya nyata per pesan). 30/jam dipilih lebih longgar
+        // dari narasi-terpadu/generate (20/jam) karena tiap giliran chat
+        // jauh lebih murah (max_tokens 1024 vs 16000) tapi frekuensi
+        // pemakaian per sesi realistisnya lebih tinggi - lihat CLAUDE.md
+        // "Guard biaya AI".
+        Route::post('/chat/conversations/{conversation}/messages', [ChatController::class, 'sendMessage'])
+            ->middleware('throttle:30,60');
     });
 });

@@ -52,6 +52,7 @@ const commands = computed(() => {
   if (auth.isSupervisor) {
     items.push({ label: 'Laporan Perusahaan', to: { name: 'supervisor-reports' } })
     items.push({ label: 'Dashboard Potensi', to: { name: 'supervisor-potensi' } })
+    items.push({ label: 'Asisten Chat', to: { name: 'supervisor-chat' } })
   }
   items.push({ label: 'Ganti Mode Terang/Gelap', action: toggleTheme })
 

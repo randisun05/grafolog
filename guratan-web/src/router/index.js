@@ -198,6 +198,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'supervisor' },
     },
     {
+      path: '/supervisor/chat',
+      name: 'supervisor-chat',
+      component: () => import('../views/SupervisorChatView.vue'),
+      meta: { requiresAuth: true, role: 'supervisor' },
+    },
+    {
       path: '/kebijakan-privasi',
       name: 'privacy-policy',
       component: () => import('../views/PrivacyPolicyView.vue'),

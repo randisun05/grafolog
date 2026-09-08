@@ -3140,6 +3140,124 @@ keduanya.
 **Fase 3 (chat interaktif) BELUM dikerjakan** — lihat ROADMAP.md "Peran
 Supervisor" untuk status.
 
+## Peran Supervisor — Fase 3 (chat interaktif), 2026-09-08
+
+Lanjutan Fase 1-2 (lihat entri di atas untuk konteks 3-fase penuh). Ini
+**REVERSI KEDUA** atas prinsip "LLM tidak live per-user" (setelah
+`NarasiTerpaduService`) — dikonfirmasi user lewat `AskUserQuestion` sebelum
+implementasi ("bangun sekaligus semua, termasuk chat"), sama pagar
+biaya/keselamatan direplikasi persis.
+
+- **2 tabel baru**: `supervisor_chat_conversations` (`user_id`, `company_id`
+  — **disalin saat dibuat, bukan live-join** ke `users.company_id`, supaya
+  percakapan lama tidak diam-diam pindah konteks kalau company Supervisor
+  itu diganti admin kemudian, `title` nullable) dan
+  `supervisor_chat_messages` (`conversation_id`, `role` enum `user`/
+  `assistant` — literal match field Anthropic API, `content` longText,
+  `token_usage` nullable int — fondasi rekap biaya nanti, belum ada
+  konsumen sekarang). Append-only (pola sama `AuditLog`/`NotificationLog`).
+- **`App\Models\SupervisorChatConversation`**/**`SupervisorChatMessage`** —
+  relasi standar (`belongsTo User/Company`, `hasMany`/`belongsTo` di
+  antara keduanya). Tidak ada method statis khusus — semua query di
+  `ChatController` langsung, tidak butuh abstraksi tambahan untuk 5
+  endpoint sederhana ini.
+- **`App\Services\Supervisor\SupervisorChatService::sendMessage()`** —
+  **SENGAJA SINKRON**, beda dari `NarasiTerpaduService` yang async lewat
+  queue job: konteks per-pesan jauh lebih kecil (ringkasan agregat, bukan
+  breakdown 40 aspek), `max_tokens` respons dibatasi 1024 (bukan 16000),
+  realistis 5-20 detik dalam 1 request HTTP (`Http::timeout(60)`) — UX
+  chat butuh terasa hidup, polling ala `NarasiTerpaduPanel` akan terasa
+  rusak untuk percakapan.
+  - **Urutan operasi penting**: riwayat (12 pesan terakhir) diambil
+    **SEBELUM** pesan user baru disimpan (supaya pesan giliran ini tidak
+    muncul dua kali di array `messages` yang dikirim ke Anthropic), lalu
+    pesan user disimpan, **BARU** `ensureConfigured()` dipanggil. Ini pola
+    yang SAMA dengan `PaymentController::store()` (row `Payment` disimpan
+    SEBELUM memanggil `DokuService` yang bisa melempar
+    `RuntimeException` karena kredensial belum diisi) — **bukan urutan
+    yang jelas dari nama fungsinya**, jadi sempat salah ditulis kebalik
+    (`ensureConfigured()` di paling awal) saat draft pertama dan ketahuan
+    lewat browser-verify: pertanyaan Supervisor lenyap total kalau LLM
+    belum dikonfigurasi, bukan cuma balasannya yang gagal. Diperbaiki +
+    dikunci test `test_user_message_is_saved_even_when_llm_is_not_
+    configured` sebelum dianggap selesai — jangan pindahkan
+    `ensureConfigured()` ke awal method lagi tanpa memindahkan juga
+    penyimpanan pesan user ke sebelum itu.
+  - **Blok data per-pesan** (tidak di-cache, genuinely beda tiap company/
+    tiap giliran, dihitung ULANG tiap panggilan): (1)
+    `PotensiAggregationService::aggregate($reports, [])` **dipakai ulang
+    APA ADANYA dari Fase 2** — jaminan konkret jawaban chat tidak pernah
+    menyimpang dari angka Dashboard Potensi karena satu sumber kebenaran
+    yang sama; (2) ringkasan ringkas per-kandidat (nama/tier/status/top-2
+    Sindrom, BUKAN breakdown 40 aspek), dibatasi 30 baris, degradasi ke
+    "gunakan agregat saja" untuk company besar.
+  - **System prompt** (tetap, `cache_control: ephemeral`, reuse pola
+    prompt-caching `NarasiTerpaduService`) — larang klaim di luar data,
+    larang penilaian final/diagnosis/simpulan "lulus-tidak lulus", jujur
+    kalau data tidak tersedia, jawaban singkat.
+  - Header `x-api-key`/`anthropic-version` (BUKAN `Authorization: Bearer`
+    — bug historis `ApiLlmProvider` yang sudah pernah diperbaiki, jangan
+    diulang di sini).
+- **`App\Http\Controllers\Api\Supervisor\ChatController`** — `index()`
+  (percakapan MILIK Supervisor login SAJA — **tidak dibagi antar-
+  Supervisor sekalipun 1 company yang sama**, keputusan desain eksplisit
+  karena ini kerja personal bukan dokumen resmi perusahaan, DIKUNCI test
+  yang secara eksplisit membuktikan Supervisor lain 1 company yang sama
+  tetap ditolak 403, bukan cuma Supervisor company lain), `store()` (422
+  kalau `company_id` null, sama guard `PotensiController`), `show()`
+  (ownership guard + messages), `sendMessage()` (ownership guard,
+  try/catch → 503 bersih pola sama `PaymentController::store`),
+  `destroy()`.
+- Routes baru di grup `role:supervisor` yang sudah ada (dari Fase 2): `GET/
+  POST /chat/conversations`, `GET/DELETE /chat/conversations/{conversation}`,
+  `POST /chat/conversations/{conversation}/messages` dengan
+  `throttle:30,60` KHUSUS endpoint ini — di atas `throttle:60,1` grup umum,
+  lebih longgar dari `narasi-terpadu/generate`'s `throttle:20,60` karena
+  tiap giliran chat jauh lebih murah (`max_tokens` 1024 vs 16000) tapi
+  frekuensi pemakaian per sesi realistisnya lebih tinggi.
+- Test baru: `Unit\Services\Supervisor\SupervisorChatServiceTest` (6 —
+  `ensureConfigured()` gagal bersih, pesan user tersimpan meski LLM
+  gagal DAN meski belum dikonfigurasi, balasan+token_usage tersimpan
+  benar, konteks memuat agregat+ringkasan kandidat, jendela riwayat
+  dibatasi 12 pesan) dan `Feature\Api\Supervisor\ChatControllerTest` (15
+  — guard auth/role/kepemilikan termasuk sesama Supervisor 1 company,
+  validasi `max:2000`, 503 saat LLM belum dikonfigurasi, CRUD percakapan,
+  **isolasi lintas-company pada KONTEKS yang benar-benar dikirim ke LLM**
+  — assert body request `Http::fake()` langsung, bukan cuma respons akhir
+  — dan throttle 30/60 terpisah dari throttle umum). 594 backend test
+  total (up from 573 di akhir Fase 2 — 21 test baru), SEMUANYA lolos
+  (termasuk `ExampleTest` yang sebelumnya selalu gagal di sandbox
+  verifikasi karena `.env` kosong — kebetulan `.env` sungguhan ada saat
+  suite penuh dijalankan sesi ini, bukan perbaikan yang disengaja).
+  `pint --test` lolos.
+- **Browser-verified 2026-09-08** (Playwright, throwaway sqlite + seed
+  lewat API sungguhan — Company → 2 akun Supervisor company sama):
+  disclaimer permanen tampil di atas panel pesan, "+ Percakapan Baru" →
+  panel pesan aktif, kirim pesan → bubble user muncul optimistic
+  langsung, ~500ms kemudian banner error bersih "Asisten chat sedang
+  tidak tersedia, coba lagi nanti." muncul (karena `LLM_PROVIDER=none` di
+  sandbox ini — jalur 503 bersih, bukan crash) → **dikonfirmasi lewat API
+  langsung bahwa pertanyaan Supervisor TETAP tersimpan** di database
+  meski balasan AI gagal (bukti konkret perbaikan urutan operasi di
+  atas) → Supervisor LAIN di company yang SAMA mencoba akses percakapan
+  itu lewat API langsung → 403 (bukti kepemilikan personal, bukan
+  dokumen company). 0 error konsol nyata (`ERR_CONNECTION_RESET` +
+  `503` yang tampil di console log adalah artefak PHP built-in server +
+  axios yang mencatat response gagal ke console, bukan bug — sudah
+  dicatat berulang di file ini). `npm run lint`/`npm run build`
+  (guratan-web) lolos. **Catatan jujur, sama seperti status
+  `NarasiTerpaduService`**: karena semua environment dev diketahui masih
+  `LLM_PROVIDER=none`, verifikasi ini cuma bisa buktikan jalur 503
+  bersih + UI-nya menangani dengan benar — respons AI sungguhan perlu 1
+  sesi verifikasi manual terpisah begitu `LLM_API_KEY` asli diisi. Lihat
+  `guratan-web/CLAUDE.md` untuk detail frontend
+  (`SupervisorChatView.vue` baru, 2-kolom sinkron, disclaimer permanen).
+
+**Ini menutup seluruh rencana 3-fase Peran Supervisor** dari
+`ROADMAP.md`'s "Peran Supervisor" — company-scoping + lihat/tarik laporan,
+dashboard potensi + kategori, dan chat interaktif semuanya selesai
+dikerjakan.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

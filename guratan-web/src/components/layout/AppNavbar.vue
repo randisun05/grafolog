@@ -133,6 +133,7 @@ function formatNotifDate(iso) {
         <RouterLink v-if="auth.isHr" to="/hr/candidates">Kandidat</RouterLink>
         <RouterLink v-if="auth.isSupervisor" to="/supervisor/reports">Laporan Perusahaan</RouterLink>
         <RouterLink v-if="auth.isSupervisor" to="/supervisor/potensi">Dashboard Potensi</RouterLink>
+        <RouterLink v-if="auth.isSupervisor" to="/supervisor/chat">Asisten Chat</RouterLink>
 
         <div ref="notifRoot" class="app-navbar__notif">
           <button

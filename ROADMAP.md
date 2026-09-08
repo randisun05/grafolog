@@ -1007,14 +1007,16 @@ backup") dan `guratan-web/CLAUDE.md`.
   ownership check (risiko rendah, tier sudah pensiun 2026-08-01) —
   pindah ke private atau biarkan?
 - [ ] **Masa berlaku token Sanctum** — sekarang tidak pernah expired.
-- [~] **Peran Supervisor — SEDANG DIBANGUN, mulai 2026-09-08.** Dikonfirmasi
-  user: lihat semua laporan karyawan/kandidat company (company-scoped,
-  seperti HR), tarik/unduh laporan, dashboard potensi, chat interaktif,
-  potensi per kategori Topik. 3 fase, dieksekusi berurutan. **Fase 1
-  (fondasi company-scoping + lihat/tarik laporan) SELESAI 2026-09-08**,
-  **Fase 2 (dashboard potensi & kategori) SELESAI 2026-09-08** — lihat
+- [x] **Peran Supervisor — SELESAI 2026-09-08, 3 fase.** Dikonfirmasi user:
+  lihat semua laporan karyawan/kandidat company (company-scoped, seperti
+  HR), tarik/unduh laporan, dashboard potensi, chat interaktif, potensi
+  per kategori Topik. **Fase 1 (fondasi company-scoping + lihat/tarik
+  laporan)**, **Fase 2 (dashboard potensi & kategori)**, **Fase 3 (chat
+  interaktif — reversi kedua atas prinsip "LLM tidak live per-user",
+  setelah narasi terpadu)** semuanya selesai — lihat
   `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md` untuk detail teknis
-  lengkap kedua fase. Fase 3 (chat interaktif) masih berjalan.
+  lengkap ketiga fase. Role yang sejak MGA Fase 05 tidak punya
+  fungsionalitas apa pun sekarang punya alur kerja B2B lengkap.
 - [x] **Sistem "produk"/tier data-driven — SELESAI 2026-09-03, 4 fase** —
   user konfirmasi beberapa varian produk akan ditambahkan dalam waktu
   dekat, sepadan dibangun tabel `products` sungguhan. Lihat "Inisiatif —

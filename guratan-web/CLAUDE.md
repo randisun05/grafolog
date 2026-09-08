@@ -1225,6 +1225,65 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   **Fase 3 (Chat Interaktif) not yet built** — see root `ROADMAP.md`'s
   "Peran Supervisor" entry.
 
+- **New `SupervisorChatView.vue` — Fase 3 of the Supervisor role (final
+  phase), 2026-09-08** (see `guratan-api/CLAUDE.md`'s matching entry for
+  the backend `SupervisorChatService`/`ChatController` — this is the
+  second deliberate reversal of "no live-per-user LLM calls," after
+  `NarasiTerpaduPanel`). Route `/supervisor/chat`, `meta: { role:
+  'supervisor' }`. 2-column layout — a conversation sidebar ("+
+  Percakapan Baru" button, list with a delete `×` per row) and a message
+  panel — fully **synchronous UX**, unlike `NarasiTerpaduPanel`'s polling:
+  the user's message renders as an optimistic bubble immediately on
+  submit, the input+send button disable and a "mengetik..." bubble shows
+  while awaiting `POST .../messages`, then the real assistant reply
+  (or an error) replaces it — no `setInterval` needed, since the backend
+  call is genuinely synchronous now (`SupervisorChatService` answers
+  within one HTTP request, unlike the queued `GenerateNarasiTerpaduJob`).
+  A **permanent, non-dismissible disclaimer strip** sits above the
+  message panel ("Asisten ini memberikan ringkasan reflektif berdasarkan
+  data yang tersimpan, bukan penilaian final atau diagnosis.") — this is
+  a **distinct decision** from the 2026-08-30 "no AI disclosure banner"
+  call, which was scoped specifically to client-facing reports; this
+  chat surface is Supervisor/B2B-facing, where the root `CLAUDE.md`'s
+  "insight reflektif bukan diagnosis klinis" framing applies doubly hard.
+  Error handling: a 503 (LLM unconfigured) renders as an inline banner
+  under the message list (not a toast — it explains why nothing more will
+  happen for this send, worth keeping visible); a 429 (rate limit) shows
+  as a toast instead, since the conversation itself is still usable, the
+  user just needs to slow down.
+  **Browser-verified 2026-09-08** (Playwright, throwaway sqlite + 2
+  Supervisor accounts in the same company): disclaimer renders, starting
+  a new conversation clears the placeholder, sending a message shows the
+  optimistic user bubble immediately, and — since this sandbox's
+  `LLM_PROVIDER` is still `none` — the clean 503 banner appears shortly
+  after with the exact expected message. **A real backend ordering bug
+  was caught and fixed during this verification**: the question the
+  Supervisor typed was being lost entirely (not just the reply failing)
+  whenever the LLM wasn't configured, because `ensureConfigured()` ran
+  before the user's message was persisted — confirmed via a direct API
+  call after the 503 that the conversation's `messages` array was empty.
+  Fixed backend-side (reordered so the user message always saves first,
+  matching `PaymentController::store()`'s established precedent — see
+  `guratan-api/CLAUDE.md`'s matching entry for detail) and re-verified:
+  the same flow now shows the question correctly saved via a follow-up
+  API call, even though the reply still fails cleanly. Also confirmed a
+  second Supervisor account in the exact same company gets a 403 trying
+  to open the first Supervisor's conversation directly via the API —
+  proving chat history really is personal, not a shared company
+  document. 0 real console errors (the `ERR_CONNECTION_RESET` and `503`
+  entries are the same PHP built-in dev-server + axios-logs-failed-
+  responses artifacts already noted elsewhere in this file, not bugs).
+  `npm run lint`/`npm run build` both clean. **Same honest caveat as
+  `NarasiTerpaduPanel`**: since every known dev environment still has
+  `LLM_PROVIDER=none`, this verification can only prove the clean-503
+  path and its UI handling — a real AI reply needs a separate manual
+  verification pass once a real `LLM_API_KEY` is configured.
+  Nav link "Asisten Chat" in `AppNavbar.vue` + matching
+  `CommandPalette.vue` entry, right after Fase 2's "Dashboard Potensi".
+
+  **This closes the entire 3-phase Peran Supervisor initiative** — see
+  `guratan-api/CLAUDE.md`'s matching closing note.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
