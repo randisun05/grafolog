@@ -50,7 +50,13 @@ return [
     |
     */
 
-    'expiration' => null,
+    // 1440 menit (24 jam) - keputusan sadar 2026-09-08 (lihat
+    // "Open security findings" di guratan-api/CLAUDE.md): sebelumnya
+    // token tidak pernah kedaluwarsa sama sekali, token yang bocor tetap
+    // valid selamanya sampai dicabut manual. Sanctum menghitung dari
+    // `created_at` (waktu login), BUKAN sliding window last-used - lihat
+    // Laravel\Sanctum\Guard::isValidAccessToken().
+    'expiration' => (int) env('SANCTUM_EXPIRATION_MINUTES', 1440),
 
     /*
     |--------------------------------------------------------------------------

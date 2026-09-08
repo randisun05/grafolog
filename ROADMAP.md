@@ -1006,7 +1006,14 @@ backup") dan `guratan-web/CLAUDE.md`.
 - [ ] **Akses gambar rapid-tier lama** — masih di disk publik tanpa
   ownership check (risiko rendah, tier sudah pensiun 2026-08-01) —
   pindah ke private atau biarkan?
-- [ ] **Masa berlaku token Sanctum** — sekarang tidak pernah expired.
+- [x] **Masa berlaku token Sanctum — SELESAI 2026-09-08.** Token sekarang
+  kedaluwarsa 24 jam setelah login (`config/sanctum.php`'s `expiration`,
+  dihitung dari `created_at`), bukan tidak pernah kedaluwarsa lagi.
+  Frontend `src/lib/api.js` juga diperkuat: 401 sekarang hard-redirect ke
+  `/login` (bukan cuma diam-diam clear `localStorage`), supaya sesi yang
+  kedaluwarsa mid-pemakaian tidak meninggalkan UI dalam state "kelihatan
+  masih login" sampai reload berikutnya. Lihat `guratan-api/CLAUDE.md`
+  "Open security findings" untuk detail teknis lengkap.
 - [x] **Peran Supervisor — SELESAI 2026-09-08, 3 fase.** Dikonfirmasi user:
   lihat semua laporan karyawan/kandidat company (company-scoped, seperti
   HR), tarik/unduh laporan, dashboard potensi, chat interaktif, potensi

@@ -1582,10 +1582,39 @@ irregularity di atas):**
   retirement are still served this way — same options as before (keep
   public since low real risk, or move to a private disk + authenticated
   streaming route like `pdf`). Still needs a call, not a silent fix.
-- **Sanctum tokens never expire** (`config/sanctum.php` `'expiration' =>
-  null`) and carry no ability scoping — a leaked token is valid forever
-  until manually revoked via logout. Setting an expiration is a UX tradeoff
-  (users get logged out periodically), so left for the user to decide.
+- **Sanctum tokens never expire** — **FIXED 2026-09-08**, user explicitly
+  chose 24 hours. `config/sanctum.php`'s `expiration` was `null`; now
+  `(int) env('SANCTUM_EXPIRATION_MINUTES', 1440)`. Sanctum's
+  `Guard::isValidAccessToken()` checks this against the token's
+  `created_at` (login time), **not** a sliding last-used window — a token
+  is dead exactly 24h after login regardless of activity in between, per
+  `vendor/laravel/sanctum/src/Guard.php` (read directly, not assumed).
+  No per-token `expires_at` override needed — the global config covers
+  every token issued via `$user->createToken()`.
+  **Frontend gap found and closed in the same change**: `src/lib/api.js`'s
+  401 handler previously only cleared `localStorage`, never touched the
+  Pinia store's already-in-memory `user`/`token` refs and never
+  redirected — harmless while tokens never expired (a 401 there only ever
+  meant a just-deactivated staff account, already forcing a fresh login
+  attempt), but a real UX bug now that expiry is reachable in normal use:
+  a session expiring mid-use would silently clear storage while the UI
+  kept rendering as "logged in" until the next reload. Fixed by hard
+  `window.location.href = '/login'`-redirecting on any 401 (guarded
+  against firing while already on `/login`, and confirmed safe against a
+  wrong-password login attempt — `AuthController::login` returns 422 for
+  bad credentials via `ValidationException`, never 401, so the redirect
+  can never fire from the login form itself). Doesn't carry ability
+  scoping — out of scope for this change, no product need identified yet.
+  Test: `tests/Feature/Api/SanctumTokenExpirationTest.php` (3 — a token
+  backdated 25h is rejected, one backdated 23h still works, a freshly
+  issued one works). **Browser-verified 2026-09-08** (Playwright):
+  logged in for a real token, backdated its `created_at` 25h via
+  `php artisan tinker`, injected the still-"logged in" localStorage state
+  into a fresh page load of a protected route (`/riwayat`) — confirmed
+  the resulting 401 hard-redirected to `/login` and cleared storage, then
+  separately confirmed a wrong-password login attempt still shows the
+  normal inline error without any stray redirect, and a correct login
+  still reaches `/dashboard` normally. 0 real console errors.
 - `APP_DEBUG=true` in `.env` is correct for local dev (and is how this
   session's debugging worked at all — stack traces with real file paths were
   essential for diagnosing the 500 bug) but **must** become `false` before
