@@ -79,7 +79,7 @@ watch(selectedTopikIds, async (ids) => {
 })
 
 onMounted(() => {
-  if (auth.isHr) loadTopikOptions()
+  if (auth.isHr || auth.isSupervisor) loadTopikOptions()
 })
 
 async function downloadPdf() {
@@ -162,7 +162,7 @@ function onNarasiTerpaduUpdated(updatedReport) {
           @corrected="onCorrected"
         />
 
-        <div v-if="auth.isHr && topikOptions.length > 0" class="report-view__segmen">
+        <div v-if="(auth.isHr || auth.isSupervisor) && topikOptions.length > 0" class="report-view__segmen">
           <h3>Filter Segmen Topik</h3>
           <p class="report-view__segmen-hint">
             Pilih satu atau lebih topik untuk melihat laporan yang difilter (mis. cuma bagian Karier) —

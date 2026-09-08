@@ -36,7 +36,7 @@ class UpdateStaffUserRequest extends FormRequest
             'role' => ['required', 'string', 'in:administrator,supervisor,grafolog,hr'],
             'company_id' => [
                 'nullable',
-                $this->input('role') === 'hr' ? 'required' : 'prohibited',
+                in_array($this->input('role'), ['hr', 'supervisor'], true) ? 'required' : 'prohibited',
                 'integer', 'exists:companies,id',
             ],
             'is_active' => ['required', 'boolean'],

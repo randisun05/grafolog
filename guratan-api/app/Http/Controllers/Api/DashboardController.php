@@ -20,6 +20,7 @@ class DashboardController extends Controller
         return response()->json(match (true) {
             $user->isGrafolog() => $this->grafologDashboard($user),
             $user->isHr() => $this->hrDashboard($user),
+            $user->isSupervisor() => $this->supervisorDashboard($user),
             default => $this->clientDashboard($user),
         });
     }
@@ -118,6 +119,37 @@ class DashboardController extends Controller
                 ['key' => 'total_candidates', 'label' => 'Total Kandidat', 'value' => $samples->count()],
                 ['key' => 'unassigned', 'label' => 'Menunggu Penugasan', 'value' => $unassignedActive],
                 ['key' => 'completed', 'label' => 'Selesai', 'value' => $completed],
+                [
+                    'key' => 'avg_turnaround_days',
+                    'label' => 'Rata-rata Durasi (hari)',
+                    'value' => PersonalityReport::avgTurnaroundDaysFor($sampleIds),
+                ],
+            ],
+            'activity' => $this->recentActivity($sampleIds),
+        ];
+    }
+
+    /**
+     * Fitur Supervisor (2026-09-08) - company-scoped, agregat lintas SEMUA
+     * akun HR di company Supervisor ini (beda dari hrDashboard() yang scope
+     * per 1 HR individual lewat created_by). Sebelum ada cabang ini,
+     * Supervisor jatuh ke default -> clientDashboard() (scope user_id) yang
+     * SELALU kosong untuknya - bug yang sama persis dengan bug HR lama yang
+     * sudah pernah diperbaiki (lihat catatan hrDashboard() di atas).
+     */
+    private function supervisorDashboard(User $user): array
+    {
+        abort_if($user->company_id === null, 422, 'Akun Supervisor Anda belum terikat ke perusahaan.');
+
+        $sampleIds = $user->company->sampleIds();
+        $completed = HandwritingSample::whereIn('id', $sampleIds)->where('status', 'completed')->count();
+
+        return [
+            'role' => 'supervisor',
+            'kpi' => [
+                ['key' => 'total_candidates', 'label' => 'Total Kandidat', 'value' => $sampleIds->count()],
+                ['key' => 'completed', 'label' => 'Selesai', 'value' => $completed],
+                ['key' => 'in_progress', 'label' => 'Dalam Proses', 'value' => $sampleIds->count() - $completed],
                 [
                     'key' => 'avg_turnaround_days',
                     'label' => 'Rata-rata Durasi (hari)',

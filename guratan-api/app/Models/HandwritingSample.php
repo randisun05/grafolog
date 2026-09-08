@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -68,12 +69,45 @@ class HandwritingSample extends Model
     /**
      * Same additive pattern as isScorableBy(), for read access
      * (SampleController::show / ReportController).
+     *
+     * 2026-09-08 (fitur Supervisor): tambahan aditif ke-2 - Supervisor
+     * company-scoped bisa lihat sample manapun yang dibuat oleh akun HR
+     * di company yang sama (rantai Project.creator.company_id, sama
+     * seperti Company::sampleIds()). Sample dari sumber lain (grafolog
+     * langsung, checkout mandiri klien) punya `project.creator.company_id`
+     * null - otomatis TIDAK PERNAH cocok dengan company Supervisor manapun,
+     * tidak perlu guard tambahan untuk membedakan sumber.
      */
     public function isViewableBy(User $user): bool
     {
-        return $this->user_id === $user->id
+        if ($this->user_id === $user->id
             || $this->created_by === $user->id
-            || $this->assignment?->grafolog_id === $user->id;
+            || $this->assignment?->grafolog_id === $user->id) {
+            return true;
+        }
+
+        return $user->isSupervisor()
+            && $user->company_id !== null
+            && $this->project?->creator?->company_id === $user->company_id;
+    }
+
+    /**
+     * Query-level versi dari isViewableBy() - dipakai SampleController::index()
+     * dan ReportController::index() (via whereHas('sample', ...)) supaya
+     * klausa OR yang sebelumnya ter-duplikasi identik di kedua tempat itu
+     * jadi satu sumber kebenaran.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $query->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+                ->orWhere('created_by', $user->id)
+                ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
+
+            if ($user->isSupervisor() && $user->company_id !== null) {
+                $q->orWhereHas('project.creator', fn ($c) => $c->where('company_id', $user->company_id));
+            }
+        });
     }
 
     /**

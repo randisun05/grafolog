@@ -36,6 +36,12 @@ class ReportController extends Controller
      * tidak bisa mengintip breakdown internal lewat endpoint list meski
      * show() sudah membatasinya - satu titik konsisten, bukan 2 aturan yang
      * bisa drift.
+     *
+     * Filter opsional (2026-09-08, fitur Supervisor - `SupervisorReportsView.vue`
+     * butuh filter/pencarian, tapi generik untuk semua pemanggil): `tier`,
+     * `status`, `from`/`to` (rentang `generated_at`), `search` (nama/email
+     * kandidat). Semua lewat `when()` - default behavior tak berubah untuk
+     * pemanggil yang tidak mengirim parameter ini.
      */
     public function index(Request $request): JsonResponse
     {
@@ -43,12 +49,16 @@ class ReportController extends Controller
 
         $reports = PersonalityReport::query()
             ->select(['id', 'sample_id', 'tier', 'status', 'narasi_status', 'generated_at', 'created_at'])
-            ->whereHas('sample', function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                    ->orWhere('created_by', $user->id)
-                    ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
+            ->whereHas('sample', fn ($q) => $q->visibleTo($user))
+            ->with('sample:id,user_id,created_by,tier', 'sample.user:id,name,email')
+            ->when($request->filled('tier'), fn ($q) => $q->where('tier', $request->string('tier')))
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('generated_at', '>=', (string) $request->input('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('generated_at', '<=', (string) $request->input('to')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $term = '%'.$request->string('search').'%';
+                $q->whereHas('sample.user', fn ($u) => $u->where('name', 'like', $term)->orWhere('email', 'like', $term));
             })
-            ->with('sample:id,user_id,created_by,tier')
             ->latest()
             ->paginate(20);
 

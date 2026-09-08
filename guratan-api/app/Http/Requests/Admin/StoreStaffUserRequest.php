@@ -21,9 +21,11 @@ class StoreStaffUserRequest extends FormRequest
      * grafolog/hr) - BUKAN akun klien ('user'), yang tetap lewat
      * /auth/register publik seperti biasa. Ini mekanisme provisioning yang
      * disepakati: admin pertama dari seeder, sisanya dibuat lewat sini,
-     * bukan pendaftaran publik. `company_id` wajib khusus untuk role `hr`
-     * (MGA Fase 06) - HR selalu terikat ke satu company, dibuat lebih dulu
-     * lewat POST /api/admin/companies.
+     * bukan pendaftaran publik. `company_id` wajib untuk `hr` (MGA Fase 06)
+     * DAN `supervisor` (fitur Supervisor, 2026-09-08 - company-scoped persis
+     * seperti HR, keputusan produk eksplisit: bukan lintas-perusahaan) -
+     * keduanya selalu terikat ke satu company, dibuat lebih dulu lewat
+     * POST /api/admin/companies.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -37,7 +39,7 @@ class StoreStaffUserRequest extends FormRequest
             'role' => ['required', 'string', 'in:administrator,supervisor,grafolog,hr'],
             'company_id' => [
                 'nullable',
-                $this->input('role') === 'hr' ? 'required' : 'prohibited',
+                in_array($this->input('role'), ['hr', 'supervisor'], true) ? 'required' : 'prohibited',
                 'integer', 'exists:companies,id',
             ],
         ];

@@ -3,8 +3,10 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Assignment;
+use App\Models\Company;
 use App\Models\HandwritingSample;
 use App\Models\Product;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -228,6 +230,74 @@ class SampleControllerTest extends TestCase
             ->getJson('/api/samples')
             ->assertOk()
             ->assertJsonCount(1, 'data');
+    }
+
+    // --- Fitur Supervisor, 2026-09-08: otorisasi aditif lewat
+    // HandwritingSample::isViewableBy()/scopeVisibleTo() company-scoped.
+
+    public function test_supervisor_can_view_and_list_sample_created_by_hr_in_same_company(): void
+    {
+        $company = Company::create(['name' => 'PT Uji Coba']);
+        $supervisor = User::factory()->create(['role' => 'supervisor', 'company_id' => $company->id]);
+        $hr = User::factory()->create(['role' => 'hr', 'company_id' => $company->id]);
+        $project = Project::create(['source' => 'hr', 'created_by' => $hr->id]);
+        $sample = HandwritingSample::create([
+            'project_id' => $project->id, 'user_id' => User::factory()->create()->id,
+            'created_by' => $hr->id, 'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($supervisor, 'sanctum')
+            ->getJson("/api/samples/{$sample->id}")
+            ->assertOk()
+            ->assertJsonPath('id', $sample->id);
+
+        $this->actingAs($supervisor, 'sanctum')
+            ->getJson('/api/samples')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_supervisor_from_other_company_cannot_view_sample(): void
+    {
+        $company = Company::create(['name' => 'PT Uji Coba']);
+        $otherCompany = Company::create(['name' => 'PT Lain']);
+        $supervisor = User::factory()->create(['role' => 'supervisor', 'company_id' => $otherCompany->id]);
+        $hr = User::factory()->create(['role' => 'hr', 'company_id' => $company->id]);
+        $project = Project::create(['source' => 'hr', 'created_by' => $hr->id]);
+        $sample = HandwritingSample::create([
+            'project_id' => $project->id, 'user_id' => User::factory()->create()->id,
+            'created_by' => $hr->id, 'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($supervisor, 'sanctum')
+            ->getJson("/api/samples/{$sample->id}")
+            ->assertForbidden();
+
+        $this->actingAs($supervisor, 'sanctum')
+            ->getJson('/api/samples')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    /**
+     * Sample dari sumber grafolog-langsung/klien-mandiri punya
+     * project.creator.company_id null - tidak boleh pernah cocok dengan
+     * company Supervisor manapun (lihat catatan isViewableBy()).
+     */
+    public function test_supervisor_cannot_view_sample_from_non_hr_source(): void
+    {
+        $company = Company::create(['name' => 'PT Uji Coba']);
+        $supervisor = User::factory()->create(['role' => 'supervisor', 'company_id' => $company->id]);
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $project = Project::create(['source' => 'grafolog', 'created_by' => $grafolog->id]);
+        $sample = HandwritingSample::create([
+            'project_id' => $project->id, 'user_id' => User::factory()->create()->id,
+            'created_by' => $grafolog->id, 'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($supervisor, 'sanctum')
+            ->getJson("/api/samples/{$sample->id}")
+            ->assertForbidden();
     }
 
     // --- Sistem Products data-driven, Fase 2b: bukti tier valid dibaca dari

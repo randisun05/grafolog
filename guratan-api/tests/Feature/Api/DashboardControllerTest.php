@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Assignment;
+use App\Models\Company;
 use App\Models\HandwritingSample;
 use App\Models\PersonalityReport;
 use App\Models\Project;
@@ -182,5 +183,53 @@ class DashboardControllerTest extends TestCase
         $this->assertSame(3, $kpi['total_candidates']['value']);
         $this->assertSame(1, $kpi['unassigned']['value']);
         $this->assertSame(1, $kpi['completed']['value']);
+    }
+
+    /**
+     * Beda dari hrDashboard() yang scope per 1 HR individual (created_by),
+     * Supervisor company-scoped harus menggabungkan kandidat dari SEMUA
+     * akun HR company-nya - dites eksplisit dengan 2 HR berbeda di company
+     * yang sama, plus company lain yang tidak boleh bocor.
+     */
+    public function test_supervisor_dashboard_aggregates_across_all_hr_accounts_in_company(): void
+    {
+        $company = Company::create(['name' => 'PT Uji Coba']);
+        $supervisor = User::factory()->create(['role' => 'supervisor', 'company_id' => $company->id]);
+        $hrOne = User::factory()->create(['role' => 'hr', 'company_id' => $company->id]);
+        $hrTwo = User::factory()->create(['role' => 'hr', 'company_id' => $company->id]);
+
+        $projectOne = $this->makeProject($hrOne, 'hr');
+        $this->makeSample($projectOne, User::factory()->create(), $hrOne, 'pending');
+        $doneOne = $this->makeSample($projectOne, User::factory()->create(), $hrOne, 'completed');
+        $doneOne->created_at = now()->subDays(2);
+        $doneOne->save();
+        $this->completeReport($doneOne, now());
+
+        $projectTwo = $this->makeProject($hrTwo, 'hr');
+        $this->makeSample($projectTwo, User::factory()->create(), $hrTwo, 'pending');
+
+        // Company lain tidak boleh bocor ke KPI Supervisor ini.
+        $otherCompany = Company::create(['name' => 'PT Lain']);
+        $otherHr = User::factory()->create(['role' => 'hr', 'company_id' => $otherCompany->id]);
+        $otherProject = $this->makeProject($otherHr, 'hr');
+        $this->makeSample($otherProject, User::factory()->create(), $otherHr, 'completed');
+
+        $response = $this->actingAs($supervisor, 'sanctum')->getJson('/api/dashboard');
+
+        $response->assertOk()->assertJsonPath('role', 'supervisor');
+        $kpi = collect($response->json('kpi'))->keyBy('key');
+
+        $this->assertSame(3, $kpi['total_candidates']['value']);
+        $this->assertSame(1, $kpi['completed']['value']);
+        $this->assertSame(2, $kpi['in_progress']['value']);
+    }
+
+    public function test_supervisor_without_company_gets_clean_error(): void
+    {
+        $supervisor = User::factory()->create(['role' => 'supervisor', 'company_id' => null]);
+
+        $this->actingAs($supervisor, 'sanctum')->getJson('/api/dashboard')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Akun Supervisor Anda belum terikat ke perusahaan.');
     }
 }

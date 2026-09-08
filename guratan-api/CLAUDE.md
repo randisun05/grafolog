@@ -2981,6 +2981,96 @@ WhatsApp belum diisi." → filter channel=email menyisakan 1 baris tanpa
 badge WhatsApp. Link nav "Log Notifikasi" muncul di navbar admin. 0 error
 konsol.
 
+## Peran Supervisor — Fase 1 (fondasi company-scoping + lihat/tarik laporan), 2026-09-08
+
+User minta role `supervisor` (ada sejak MGA Fase 05, `users.role` enum,
+tapi ZERO fungsionalitas sampai sekarang) dibangun: "melihat hasil report
+semua karyawannya/kandidat, menarik report, dashboard potensi, chat
+interaktif, potensi sesuai kategori dll." Dikonfirmasi lewat
+`AskUserQuestion`: (1) Supervisor **company-scoped, persis seperti HR**
+(terikat `company_id`), bukan lintas-perusahaan; (2) **bangun semua
+sekaligus termasuk chat interaktif** — bukan ditunda ke fase produk
+terpisah. 3 fase berurutan; ini Fase 1.
+
+**Temuan kunci sebelum implementasi**: `StoreStaffUserRequest`/
+`UpdateStaffUserRequest` sebelumnya PROHIBITS `company_id` untuk role
+selain `hr` — diperbaiki dulu (`in_array($role, ['hr','supervisor'])`)
+supaya Supervisor benar-benar bisa terikat company. Rantai company→laporan
+TIDAK LANGSUNG (`Company` → `User(role=hr, company_id)` →
+`Project.created_by` → `HandwritingSample`) — pola query ini sudah dipakai
+2x sebelumnya (`Admin\CompanyController::index()`,
+`DashboardController::hrDashboard()`), diekstrak jadi 2 method reusable di
+`Company`:
+
+- **`Company::hrUserIds(): Collection`** — semua akun `hr` di company ini.
+- **`Company::sampleIds(): Collection`** — semua `HandwritingSample` yang
+  `project.created_by` termasuk salah satu HR company ini. Dipakai ulang
+  di Fase 2/3 nanti (dashboard potensi, konteks chat), bukan cuma sekali
+  pakai. `Admin\CompanyController::index()` di-refactor pakai method ini
+  (test lama yang sudah ada jadi bukti kebenaran refactor, bukan ditulis
+  ulang).
+
+**Otorisasi diperluas secara ADITIF** (pola yang sama persis dipakai saat
+HR ditambahkan dulu — perluas method yang sudah ada, jangan bikin endpoint
+paralel baru): `HandwritingSample::isViewableBy()` dapat cabang baru
+`$user->isSupervisor() && $user->company_id !== null &&
+$this->project?->creator?->company_id === $user->company_id`. Karena
+`SampleController::show()` dan `ReportController::show()/pdf()/segmen()/
+revisions()/showRevision()` SEMUANYA sudah delegasi ke method ini, 1
+perubahan model ini otomatis mengaktifkan Supervisor di semua endpoint itu
+sekaligus — nol perubahan tambahan di controller-controller itu. Sample
+dari sumber selain HR-imported (grafolog-langsung, checkout mandiri klien)
+punya `project.creator.company_id` null — otomatis TIDAK PERNAH cocok
+company Supervisor manapun, tidak perlu guard tambahan untuk membedakan
+sumber.
+
+**`HandwritingSample::scopeVisibleTo(Builder $query, User $user)`** — local
+scope BARU (pertama di codebase ini, dikonfirmasi lewat riset sebelum
+implementasi — tidak ada scope lokal lain di seluruh `app/Models/`),
+mengonsolidasi klausa OR yang sebelumnya ter-duplikasi identik di
+`SampleController::index()` dan `ReportController::index()` jadi satu
+sumber kebenaran (`HandwritingSample::query()->visibleTo($user)`).
+
+**`ReportController::index()` diperluas** — eager-load `sample.user:id,name,email`
+(nama kandidat untuk `SupervisorReportsView.vue`) + filter opsional
+`?tier=`/`?status=`/`?from=`/`?to=`/`?search=` (aditif via `when()`,
+default tidak berubah untuk konsumen lama).
+
+**`DashboardController`** dapat cabang `supervisorDashboard()` — KPI
+`total_candidates`/`completed`/`in_progress`/`avg_turnaround_days` dari
+`$user->company->sampleIds()`, memakai `PersonalityReport::
+avgTurnaroundDaysFor()` yang sudah ada (jangan duplikasi logic). 422 kalau
+`company_id` null ("Akun Supervisor Anda belum terikat ke perusahaan.").
+
+Test baru: `Unit\CompanyTest` (2 - `hrUserIds()`/`sampleIds()` isolasi
+lintas-company benar), plus test tambahan di `SampleControllerTest`
+(Supervisor lihat sample HR company sama, ditolak company lain, ditolak
+sample non-HR-source), `ReportControllerTest` (lihat+unduh laporan,
+index menampilkan laporan multi-HR dalam 1 company, ditolak company lain,
+filter search), `DashboardControllerTest` (agregasi lintas multi-HR,
+error bersih tanpa company), `AdminUserControllerTest` (buat akun
+supervisor butuh `company_id`). 561/562 backend test lolos (1 kegagalan
+`ExampleTest` pre-existing tidak terkait, `.env` kosong di sandbox
+verifikasi).
+
+**Browser-verified 2026-09-08** (Playwright, sqlite throwaway + seed
+end-to-end lewat API): Company baru → akun HR+Supervisor terikat company
+itu → HR impor 2 kandidat via CSV → 1 diskor selesai lewat grafolog yang
+di-assign → login Supervisor → Dashboard KPI cocok PERSIS (`total_candidates:2,
+completed:1, in_progress:1`) → `/supervisor/reports` tampil kandidat yang
+sudah selesai → buka laporan (breakdown internal + unduh PDF berhasil) →
+Supervisor company lain (dibuat terpisah untuk uji isolasi) →
+`GET /reports` kosong, akses langsung ke ID laporan company lain → 403.
+0 error konsol nyata (`ERR_CONNECTION_RESET` yang muncul adalah artefak
+`php artisan serve` PHP built-in server, bukan request gagal sungguhan —
+dikonfirmasi lewat request itu sendiri sukses). `pint --test` lolos.
+`npm run lint`/`npm run build` (guratan-web) lolos. Lihat
+`guratan-web/CLAUDE.md` untuk detail frontend (`SupervisorReportsView.vue`
+baru, `auth.isSupervisor`, nav+CommandPalette).
+
+**Fase 2 (dashboard potensi & kategori) dan Fase 3 (chat interaktif)
+BELUM dikerjakan** — lihat ROADMAP.md "Peran Supervisor" untuk status.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

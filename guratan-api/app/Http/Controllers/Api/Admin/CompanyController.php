@@ -7,9 +7,7 @@ use App\Http\Requests\Admin\StoreCompanyRequest;
 use App\Http\Requests\Admin\UpdateCompanyRequest;
 use App\Models\AuditLog;
 use App\Models\Company;
-use App\Models\HandwritingSample;
 use App\Models\PersonalityReport;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -33,11 +31,9 @@ class CompanyController extends Controller
         $companies = Company::query()->with('contracts')->latest()->paginate(20);
 
         $companies->getCollection()->transform(function (Company $company) {
-            $hrIds = User::where('company_id', $company->id)->where('role', 'hr')->pluck('id');
-            $sampleIds = HandwritingSample::whereHas('project', fn ($q) => $q->whereIn('created_by', $hrIds))
-                ->pluck('id');
+            $sampleIds = $company->sampleIds();
 
-            $company->hr_count = $hrIds->count();
+            $company->hr_count = $company->hrUserIds()->count();
             $company->total_candidates = $sampleIds->count();
             $company->completed_reports = PersonalityReport::whereIn('sample_id', $sampleIds)
                 ->where('status', 'completed')->count();

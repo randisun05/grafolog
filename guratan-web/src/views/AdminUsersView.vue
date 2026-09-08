@@ -34,6 +34,10 @@ const roleLabel = {
   user: 'Klien',
 }
 
+// hr dan supervisor sama-sama company-scoped (fitur Supervisor, 2026-09-08)
+// - lihat StoreStaffUserRequest/UpdateStaffUserRequest.
+const COMPANY_SCOPED_ROLES = ['hr', 'supervisor']
+
 function companyName(id) {
   return companies.value.find((c) => c.id === id)?.name ?? '-'
 }
@@ -65,7 +69,10 @@ async function submit() {
   submitting.value = true
   errors.value = {}
   try {
-    const payload = { ...form.value, company_id: form.value.role === 'hr' ? form.value.company_id || null : null }
+    const payload = {
+      ...form.value,
+      company_id: COMPANY_SCOPED_ROLES.includes(form.value.role) ? form.value.company_id || null : null,
+    }
     const { data } = await api.post('/admin/users', payload)
     users.value = [{ ...data, created_at: new Date().toISOString() }, ...users.value]
     toast.push(`Akun ${roleLabel[data.role]} untuk ${data.name} berhasil dibuat.`, 'success')
@@ -113,7 +120,7 @@ async function saveUser(u) {
       email: editForm.value.email,
       phone: editForm.value.phone,
       role: editForm.value.role,
-      company_id: editForm.value.role === 'hr' ? editForm.value.company_id || null : null,
+      company_id: COMPANY_SCOPED_ROLES.includes(editForm.value.role) ? editForm.value.company_id || null : null,
       is_active: editForm.value.is_active,
     }
     if (editForm.value.password) {
@@ -290,7 +297,7 @@ async function deleteContract(company, contract) {
       </label>
       <p v-if="errors.role" class="error">{{ errors.role[0] }}</p>
 
-      <label v-if="form.role === 'hr'">
+      <label v-if="COMPANY_SCOPED_ROLES.includes(form.role)">
         Perusahaan
         <select v-model="form.company_id" required>
           <option value="" disabled>Pilih perusahaan</option>
@@ -377,7 +384,7 @@ async function deleteContract(company, contract) {
                 <p v-if="editErrors.role" class="error">{{ editErrors.role[0] }}</p>
 
                 <div class="admin-users__row">
-                  <label v-if="editForm.role === 'hr'">
+                  <label v-if="COMPANY_SCOPED_ROLES.includes(editForm.role)">
                     Perusahaan
                     <select v-model="editForm.company_id" required>
                       <option value="" disabled>Pilih perusahaan</option>

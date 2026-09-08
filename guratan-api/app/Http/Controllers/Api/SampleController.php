@@ -16,11 +16,7 @@ class SampleController extends Controller
         $user = $request->user();
 
         $samples = HandwritingSample::query()
-            ->where(function ($q) use ($user) {
-                $q->where('user_id', $user->id)
-                    ->orWhere('created_by', $user->id)
-                    ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
-            })
+            ->visibleTo($user)
             ->with([
                 'reports:id,sample_id,tier,status,generated_at',
                 'user:id,name,email',

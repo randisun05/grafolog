@@ -1137,6 +1137,52 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   narrows to 1 row. 0 console errors, `npm run lint`/`npm run build` both
   clean.
 
+- **New `SupervisorReportsView.vue` — Fase 1 of the Supervisor role,
+  2026-09-08** (see `guratan-api/CLAUDE.md`'s matching entry for the full
+  3-phase plan and the company-scoping backend it relies on — Supervisor
+  went from a role with zero functionality since MGA Fase 05 to
+  company-scoped report access, mirroring HR). Route `/supervisor/reports`,
+  `meta: { role: 'supervisor' }`. Structurally the same
+  filter-bar-above-table-with-pagination pattern as
+  `AdminRecapGrafologView.vue` (400ms-debounced search, tier/status
+  dropdowns, date range, prev/next pager) rather than `RiwayatView.vue`'s
+  plain list — a Supervisor's report list needs filtering across an
+  entire company's candidates, not just their own history. Hits the same
+  `GET /reports` endpoint every other role uses (now extended with
+  `?tier=`/`?status=`/`?from=`/`?to=`/`?search=` query params, backend-side)
+  — no new endpoint. Candidate name column reads `report.sample.user.name`
+  (now eager-loaded backend-side). Links into the existing `/reports/:id`
+  route/`ReportView.vue` unchanged — Supervisor gets the same staff
+  breakdown+PDF view HR/grafolog/admin already get, gated purely by the
+  backend's `isViewableBy()` extension.
+  **`stores/auth.js`** gained `isSupervisor` computed (sibling to `isHr`).
+  **`AdminUsersView.vue`**'s 4 `role === 'hr'` checks (company dropdown
+  visibility ×2 in create/edit forms, payload construction ×2) all
+  replaced with a `COMPANY_SCOPED_ROLES = ['hr', 'supervisor']` array
+  check — Supervisor is now also company-scoped at the account-creation
+  layer, not just at query time. **`ReportView.vue`**'s Topik segment
+  filter gate (previously `v-if="auth.isHr"`, see B2B Fase 2 above) is now
+  `v-if="auth.isHr || auth.isSupervisor"` — Supervisor gets the same
+  per-category report segmenting HR already has, reusing the exact same
+  `TopikFilterService`-backed endpoint. Nav link "Laporan Perusahaan" in
+  `AppNavbar.vue` + matching `CommandPalette.vue` entry.
+  **Browser-verified 2026-09-08** (Playwright, throwaway sqlite + seed
+  built via real API calls — Company → HR+Supervisor accounts → HR CSV
+  import of 2 candidates → 1 scored to completion by an assigned
+  grafolog): Supervisor login → Dashboard KPI matched the seed exactly
+  (`total_candidates: 2, completed: 1, in_progress: 1`) → nav link
+  present → `/supervisor/reports` showed the 1 completed candidate by
+  name → opened the report (internal breakdown rendered, PDF download
+  triggered successfully) → a second Supervisor seeded for a *different*
+  company got an empty report list and a 403 on directly hitting the
+  first company's report ID (cross-company isolation confirmed both via
+  UI-adjacent API calls and matches the backend test suite). 0 real
+  console errors (`ERR_CONNECTION_RESET` observed is the same PHP
+  built-in dev-server artifact already noted elsewhere in this file, not
+  a failed request). `npm run lint`/`npm run build` both clean.
+  **Fase 2 (Dashboard Potensi) and Fase 3 (Chat Interaktif) not yet
+  built** — see root `ROADMAP.md`'s "Peran Supervisor" entry.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

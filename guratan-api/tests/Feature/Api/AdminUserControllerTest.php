@@ -45,6 +45,7 @@ class AdminUserControllerTest extends TestCase
     public function test_administrator_can_create_supervisor_account(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
+        $company = Company::create(['name' => 'PT Uji Coba Supervisor']);
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
             'name' => 'Supervisor Baru',
@@ -53,10 +54,34 @@ class AdminUserControllerTest extends TestCase
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'supervisor',
+            'company_id' => $company->id,
         ]);
 
-        $response->assertCreated()->assertJsonPath('role', 'supervisor');
-        $this->assertDatabaseHas('users', ['email' => 'supervisor-new@example.com', 'role' => 'supervisor']);
+        $response->assertCreated()->assertJsonPath('role', 'supervisor')->assertJsonPath('company_id', $company->id);
+        $this->assertDatabaseHas('users', [
+            'email' => 'supervisor-new@example.com', 'role' => 'supervisor', 'company_id' => $company->id,
+        ]);
+    }
+
+    /**
+     * Supervisor company-scoped (fitur Supervisor, 2026-09-08) - beda dari
+     * role lain (administrator/grafolog), sama pola dengan
+     * test_hr_account_requires_company_id() di bawah.
+     */
+    public function test_supervisor_account_requires_company_id(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
+            'name' => 'Supervisor Tanpa Company',
+            'email' => 'supervisor-no-company@example.com',
+            'phone' => '081234567890',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'supervisor',
+        ]);
+
+        $response->assertUnprocessable()->assertJsonValidationErrors('company_id');
     }
 
     public function test_administrator_can_create_another_administrator_account(): void
