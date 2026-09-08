@@ -46,6 +46,7 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\ScoringController;
 use App\Http\Controllers\Api\SindromController;
+use App\Http\Controllers\Api\Supervisor\PotensiController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TokenPurchaseController;
 use App\Http\Controllers\Api\TopikController;
@@ -244,5 +245,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {
         Route::post('/candidates/import', [CandidateImportController::class, 'import']);
+    });
+
+    // Fitur Supervisor Fase 2 (2026-09-08) - lihat CLAUDE.md "Peran Supervisor".
+    Route::middleware('role:supervisor')->prefix('supervisor')->group(function () {
+        Route::get('/potensi', [PotensiController::class, 'index']);
     });
 });

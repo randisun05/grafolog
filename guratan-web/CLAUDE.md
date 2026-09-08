@@ -1183,6 +1183,48 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   **Fase 2 (Dashboard Potensi) and Fase 3 (Chat Interaktif) not yet
   built** — see root `ROADMAP.md`'s "Peran Supervisor" entry.
 
+- **New `SupervisorPotensiView.vue` — Fase 2 of the Supervisor role,
+  2026-09-08** (see `guratan-api/CLAUDE.md`'s matching entry for the
+  backend `PotensiAggregationService`/`PotensiController` this renders).
+  Route `/supervisor/potensi`, `meta: { role: 'supervisor' }`. Fetches
+  `GET /topik` (existing staff-only endpoint, same one `ReportView.vue`'s
+  segment filter already uses) for a checkbox row of category filters,
+  and `GET /supervisor/potensi?topik_ids[]=...` for the aggregate itself
+  — toggling any checkbox refetches. **Reuses the already-installed
+  Chart.js/vue-chartjs stack and `src/lib/chartTheme.js` verbatim** (no
+  new charting library, matches the plan's explicit constraint) — one
+  `<Bar>` per Sindrom returned by the API (not one giant 40-aspek chart),
+  y-axis pinned `0-10` to match the KB's real score scale, each chart
+  paired with a small table underneath spelling out the exact
+  `narasi_level_distribution` counts (Rendah/Sedang/Tinggi/Sangat Tinggi)
+  since a bar chart alone can't show a 4-way distribution per aspect —
+  same "chart shows the headline number, table shows the rest" split
+  `AdminAnalyticsView.vue` already established for its Kinerja
+  Grafolog/Efektivitas Diskon sections. Stat tiles (Kandidat/Laporan)
+  styled identically to that view's `.admin-analytics__tile` (own scoped
+  class names, not a shared component — matches this codebase's
+  established one-file-per-view convention). Intro copy explicitly
+  reinforces "insight reflektif ... bukan alat diagnosis final atau skor
+  kelayakan," per the root `CLAUDE.md` framing constraint that applies
+  doubly hard to B2B-facing aggregate views like this one. Nav link
+  "Dashboard Potensi" in `AppNavbar.vue` + matching `CommandPalette.vue`
+  entry, right after Fase 1's "Laporan Perusahaan".
+  **Browser-verified 2026-09-08** (Playwright, throwaway sqlite + seed
+  via real API calls — same Company/HR/Supervisor/Grafolog shape as Fase
+  1's verification, plus 2 candidates deliberately scored 4 and 8 by the
+  grafolog so the aggregate math is provably non-coincidental): Dashboard
+  Potensi rendered all 8 Sindrom sections (1 chart + 1 table each), stat
+  tiles showed Kandidat=2/Laporan=2, and every Aspek row showed avg skor
+  6 with "Sedang 1 - Tinggi 1" — matching the manual expected average and
+  distribution exactly. Tagged one real Aspek ("Authoritarian") to a new
+  "Karier" Topik via `/admin/knowledge`, checked the "Karier" filter on
+  the Potensi page, and confirmed it narrowed to exactly that 1
+  section/1 chart/1 row — proving the category filter works end-to-end
+  from admin tagging through to what a Supervisor actually sees. 0 real
+  console errors. `npm run lint`/`npm run build` both clean.
+  **Fase 3 (Chat Interaktif) not yet built** — see root `ROADMAP.md`'s
+  "Peran Supervisor" entry.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

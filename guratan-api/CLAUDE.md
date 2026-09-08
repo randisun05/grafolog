@@ -3071,6 +3071,75 @@ baru, `auth.isSupervisor`, nav+CommandPalette).
 **Fase 2 (dashboard potensi & kategori) dan Fase 3 (chat interaktif)
 BELUM dikerjakan** — lihat ROADMAP.md "Peran Supervisor" untuk status.
 
+## Peran Supervisor — Fase 2 (dashboard potensi & kategori), 2026-09-08
+
+Lanjutan Fase 1 (lihat entri di atas untuk konteks penuh 3-fase). Kapabilitas
+#4 ("dashboard potensi") dan #5 ("potensi sesuai kategori") dari permintaan
+awal user — dikerjakan sekaligus karena satu method yang sama melayani
+keduanya.
+
+- **`App\Services\Supervisor\PotensiAggregationService::aggregate(Collection
+  $reports, array $topikIds = []): array`** (baru) — meratakan
+  `personality_reports.data` dari BANYAK laporan company sekaligus jadi 1
+  ringkasan agregat (rata-rata skor + distribusi `narasi_level` per Aspek,
+  dikelompokkan per Sindrom). Memakai ulang **`TopikFilterService::filter()`
+  APA ADANYA** (sudah ada sejak "Topik (kategorisasi)", 2026-08-22) — kalau
+  `$topikIds` kosong, tiap laporan diratakan penuh (kapabilitas #4); kalau
+  berisi, tiap laporan disaring ke Aspek yang ditag topik itu dulu sebelum
+  diratakan (kapabilitas #5). Satu method, dua kapabilitas — tidak ada
+  logic filter kategori yang ditulis ulang. **TIDAK PERNAH memanggil ulang
+  mesin skoring/AI** — murni transformasi PHP atas `data` yang sudah
+  tersimpan, sama filosofi seluruh service turunan Topik. `candidate_count`
+  dihitung dari `sample.user_id` unik (bukan cuma `report_count`) — 1
+  kandidat bisa punya >1 laporan (koreksi skor menulis ulang row yang sama,
+  bukan baris baru, jadi ini jarang terjadi dalam praktik, tapi method-nya
+  tetap benar untuk kasus itu).
+- **`App\Http\Controllers\Api\Supervisor\PotensiController::index()`**
+  (`GET /supervisor/potensi`, `role:supervisor`) — `?topik_ids[]=` opsional
+  (query param, mem-filter numerik saja lewat `is_numeric()` sebelum
+  di-cast int, defensif terhadap input sampah). 422 kalau `company_id`
+  null (pesan identik dengan `DashboardController::supervisorDashboard()`
+  Fase 1 — sama guard, sama pesan). Sumber laporan tetap
+  `$user->company->sampleIds()` (Fase 1's `Company::sampleIds()`, dipakai
+  ulang, bukan query baru), difilter `status='completed'` saja (laporan
+  yang belum selesai tidak ada `data` untuk diratakan).
+- Route baru: `Route::middleware('role:supervisor')->prefix('supervisor')`
+  (grup baru di `routes/api.php`, akan diisi lagi oleh Fase 3's endpoint
+  chat) → `GET /potensi`. `GET /api/topik` (staff-only, sudah ada sejak
+  B2B Fase 2) dipakai ulang apa adanya untuk dropdown filter kategori di
+  frontend — tidak ada endpoint baca-Topik baru.
+- Test baru: `Unit\Services\Supervisor\PotensiAggregationServiceTest` (5 -
+  agregasi rata-rata+distribusi lintas laporan, filter topik menyaring
+  benar, topik kosong = tanpa filter, `candidate_count` beda dari
+  `report_count` saat 1 kandidat >1 laporan, collection kosong = hasil
+  nol bukan error) dan `Feature\Api\Supervisor\PotensiControllerTest` (6 -
+  guard auth/role/company_id null, agregasi cocok fixture seeded PERSIS,
+  isolasi lintas-company, filter topik lewat query param). 573 backend
+  test total (up from 562 di akhir Fase 1 — 11 test baru fase ini), 572
+  lolos (1 kegagalan `ExampleTest` pre-existing tidak terkait, `.env`
+  kosong di sandbox verifikasi). `pint --test` lolos.
+- **Browser-verified 2026-09-08** (Playwright, throwaway sqlite + seed
+  lewat API sungguhan — Company → HR+Supervisor+Grafolog → HR impor 2
+  kandidat → grafolog skor keduanya dengan nilai SENGAJA BEDA, 4 dan 8,
+  supaya rata-rata 6 dan distribusi 1 medium+1 high bisa dibuktikan cocok
+  angka manual, bukan kebetulan sama): Dashboard Potensi tampil 8 section
+  Sindrom (1 bar chart + 1 tabel per section), tile Kandidat=2/Laporan=2,
+  tiap Aspek menunjukkan rata-rata skor 6 dan distribusi "Sedang 1 - Tinggi
+  1" — cocok PERSIS hitungan manual dari data seed. Tag 1 Aspek
+  ("Authoritarian") ke Topik baru "Karier" lewat `/admin/knowledge` →
+  centang filter "Karier" di Dashboard Potensi → menyempit ke 1 section/1
+  chart/1 baris (cuma Aspek yang ditag) — filter kategori terbukti bekerja
+  end-to-end dari admin tagging sampai Supervisor melihat hasilnya. 0 error
+  konsol nyata (`ERR_CONNECTION_RESET` adalah artefak `php artisan serve`
+  PHP built-in server yang sudah dicatat berulang kali di file ini, bukan
+  request gagal sungguhan). `npm run lint`/`npm run build` (guratan-web)
+  lolos. Lihat `guratan-web/CLAUDE.md` untuk detail frontend
+  (`SupervisorPotensiView.vue` baru, chart Chart.js/vue-chartjs yang
+  dipakai ulang apa adanya dari `AdminAnalyticsView.vue`).
+
+**Fase 3 (chat interaktif) BELUM dikerjakan** — lihat ROADMAP.md "Peran
+Supervisor" untuk status.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

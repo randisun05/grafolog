@@ -1011,10 +1011,10 @@ backup") dan `guratan-web/CLAUDE.md`.
   user: lihat semua laporan karyawan/kandidat company (company-scoped,
   seperti HR), tarik/unduh laporan, dashboard potensi, chat interaktif,
   potensi per kategori Topik. 3 fase, dieksekusi berurutan. **Fase 1
-  (fondasi company-scoping + lihat/tarik laporan) SELESAI 2026-09-08** —
-  lihat `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md` untuk detail
-  teknis lengkap. Fase 2 (dashboard potensi & kategori) dan Fase 3 (chat
-  interaktif) masih berjalan.
+  (fondasi company-scoping + lihat/tarik laporan) SELESAI 2026-09-08**,
+  **Fase 2 (dashboard potensi & kategori) SELESAI 2026-09-08** — lihat
+  `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md` untuk detail teknis
+  lengkap kedua fase. Fase 3 (chat interaktif) masih berjalan.
 - [x] **Sistem "produk"/tier data-driven — SELESAI 2026-09-03, 4 fase** —
   user konfirmasi beberapa varian produk akan ditambahkan dalam waktu
   dekat, sepadan dibangun tabel `products` sungguhan. Lihat "Inisiatif —

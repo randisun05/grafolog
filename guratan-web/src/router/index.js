@@ -192,6 +192,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'supervisor' },
     },
     {
+      path: '/supervisor/potensi',
+      name: 'supervisor-potensi',
+      component: () => import('../views/SupervisorPotensiView.vue'),
+      meta: { requiresAuth: true, role: 'supervisor' },
+    },
+    {
       path: '/kebijakan-privasi',
       name: 'privacy-policy',
       component: () => import('../views/PrivacyPolicyView.vue'),
