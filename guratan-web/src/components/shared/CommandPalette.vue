@@ -38,6 +38,7 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })
     items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
     items.push({ label: 'Log Audit', to: { name: 'admin-audit-logs' } })
+    items.push({ label: 'Log Notifikasi', to: { name: 'admin-notification-logs' } })
     items.push({ label: 'Verifikasi Grafolog', to: { name: 'admin-grafolog-applications' } })
     items.push({ label: 'Rekap Pengguna', to: { name: 'admin-recap-users' } })
     items.push({ label: 'Rekap Grafolog', to: { name: 'admin-recap-grafolog' } })

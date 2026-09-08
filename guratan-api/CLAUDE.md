@@ -2910,6 +2910,77 @@ pengiriman, bukan cuma lolos validasi. 0 error konsol di semua alur.
 [fonnte.com](https://fonnte.com), scan QR device, isi `FONNTE_TOKEN` di
 `.env` produksi — tidak ada perubahan kode lagi setelah itu.
 
+## Monitoring notifikasi (`NotificationLog` + `NotificationDispatcher`) — 2026-09-08
+
+Follow-up langsung dari bagian "Notifikasi WhatsApp" di atas — user tanya
+"statusnya seperti apa" soal email/WA yang sudah dikirim, dan sebelum
+perubahan ini **tidak ada cara membacanya kembali sama sekali** kecuali
+grep log server manual (sama gap-nya dengan `AuditLog` sebelum
+`AuditLogController` dibuat — lihat entri itu).
+
+**Refactor kunci**: kedua titik pengiriman notifikasi (job laporan
+selesai, `AuthController::forgotPassword()`) TIDAK LAGI memanggil
+`Mail::to()->send()`/`WhatsAppService::send()` langsung — keduanya lewat
+`NotificationDispatcher` baru (`app/Services/NotificationDispatcher.php`),
+satu-satunya titik yang menulis ke tabel `notification_logs` baru. Kalau
+ada titik notifikasi baru di masa depan (email/WA), **wajib** lewat
+dispatcher ini juga supaya otomatis kelihatan di
+`/admin/notification-logs` — jangan panggil `Mail::`/`WhatsAppService`
+langsung lagi.
+
+**`NotificationLog` model** (`notification_logs` table) — kolom `channel`
+(email/whatsapp), `type` (slug bebas, dipakai: `laporan_selesai`,
+`reset_password`), `user_id` nullable, `recipient` (alamat email atau
+nomor HP yang dipakai), `status`, `error_message` nullable. Static
+`record()` helper persis pola `AuditLog::record()`. Read-only lewat
+aplikasi (append-only oleh dispatcher, sama seperti `audit_logs`).
+
+**3 nilai `status`, sengaja dibedakan** (bukan cuma boolean
+sukses/gagal): `sent` (berhasil dikirim ke provider), `failed` (BENAR-
+BENAR dicoba, provider menolak atau exception), `skipped` (MEMANG BELUM
+DICOBA — nomor WA kosong atau `FONNTE_TOKEN` belum diisi). Beda akar
+masalah, beda tindak lanjut admin: `failed` berarti ada yang salah di
+sisi provider/kredensial yang SUDAH diisi (perlu dicek Fonnte
+dashboard/kuota), `skipped` berarti memang belum pernah dicoba (perlu
+minta user lengkapi profil, atau admin isi `FONNTE_TOKEN`). Ditambahkan
+`WhatsAppService::isConfigured(): bool` supaya dispatcher bisa
+membedakan `skipped`-karena-token-kosong dari `failed`-karena-ditolak,
+sesuatu yang sebelumnya tidak bisa dibedakan dari nilai balik `send()`
+yang sama-sama `false`.
+
+**`NotificationDispatcher::sendEmail()` vs `::sendWhatsApp()` beda
+filosofi exception** (disengaja, bukan inkonsistensi): `sendEmail()`
+mencatat log `failed` lalu **melempar ulang** exception aslinya - logging
+tidak boleh mengubah keandalan yang sudah ada (job tetap retry lewat
+queue, request sinkron `forgotPassword` tetap terlihat gagal kalau SMTP
+down). `sendWhatsApp()` **tidak pernah melempar** apa pun - WA selalu
+pelengkap di samping email (lihat catatan class `WhatsAppService`),
+kegagalannya cuma tercatat sebagai baris `failed`, tidak pernah
+menggagalkan pemanggil.
+
+**`Admin\NotificationLogController::index()`** — `GET
+/admin/notification-logs`, gated `role:administrator`, filter
+`channel`/`status`/`type`/`from`/`to`, paginated 25/halaman. Pola persis
+`AuditLogController` (eager-load `user:id,name,email`, `when()` chain,
+`latest()`).
+
+**Test baru**: `tests/Unit/NotificationDispatcherTest.php` (6 skenario:
+email sent, email failed+rethrow pakai `Mail::shouldReceive('to')->
+andThrow()`, WA skipped-no-phone, WA skipped-not-configured, WA sent, WA
+failed) + `tests/Feature/Api/Admin/NotificationLogControllerTest.php`
+(auth/forbidden + 3 filter) + test di
+`SendReportCompletedNotificationTest`/`AuthControllerTest` diperluas
+untuk assert baris `NotificationLog` tercatat dengan channel/type/status
+yang benar, bukan cuma "email terkirim"/"WA dicoba" seperti sebelumnya.
+
+**Browser-verified 2026-09-08**: trigger forgot-password dua kali (email
++ WA, admin seed belum punya nomor HP) → buka `/admin/notification-logs`
+→ baris email menampilkan badge hijau "Terkirim", baris WhatsApp
+menampilkan badge abu-abu "Dilewati" dengan keterangan persis "Nomor
+WhatsApp belum diisi." → filter channel=email menyisakan 1 baris tanpa
+badge WhatsApp. Link nav "Log Notifikasi" muncul di navbar admin. 0 error
+konsol.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

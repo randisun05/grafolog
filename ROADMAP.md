@@ -982,7 +982,12 @@ backup") dan `guratan-web/CLAUDE.md`.
   scan QR device, isi `FONNTE_TOKEN` di `.env` produksi. Tidak ada
   perubahan kode lagi setelah itu. Detail teknis lengkap di
   `guratan-api/CLAUDE.md` "Notifikasi WhatsApp paralel dengan email
-  (Fonnte)".
+  (Fonnte)". **2026-09-08**: status pengiriman (Terkirim/Gagal/Dilewati)
+  sekarang bisa dipantau admin di `/admin/notification-logs` — lihat
+  `guratan-api/CLAUDE.md` "Monitoring notifikasi (`NotificationLog` +
+  `NotificationDispatcher`)" — jadi begitu `FONNTE_TOKEN` diisi, admin
+  langsung bisa lihat di situ apakah WA benar-benar terkirim atau masih
+  gagal (mis. kuota Fonnte habis), tanpa perlu akses log server.
 
 ### Tertunda — butuh keputusan bisnis
 

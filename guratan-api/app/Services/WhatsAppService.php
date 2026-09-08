@@ -36,6 +36,18 @@ class WhatsAppService
     }
 
     /**
+     * Dipakai NotificationDispatcher untuk membedakan status 'skipped'
+     * (kredensial memang belum diisi, belum pernah dicoba dikirim) dari
+     * 'failed' (dicoba, Fonnte menolak/exception) di NotificationLog -
+     * tanpa ini pemanggil harus menebak dari nilai balik `send()` yang
+     * sama-sama `false` untuk kedua kasus.
+     */
+    public function isConfigured(): bool
+    {
+        return (bool) $this->token;
+    }
+
+    /**
      * Kirim satu pesan WA. Return true kalau Fonnte menerima permintaan
      * (bukan jaminan pesan sampai di HP penerima - itu di luar kendali
      * kita), false kalau token belum diisi atau pengiriman gagal (dicatat

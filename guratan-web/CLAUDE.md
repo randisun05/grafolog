@@ -1109,6 +1109,34 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   the saved value immediately after creating a staff account. 0 console
   errors. `npm run lint` and `npm run build` both clean.
 
+- **New `AdminNotificationLogsView.vue` — monitoring for sent email/WA,
+  2026-09-08** (see `guratan-api/CLAUDE.md`'s matching entry — direct
+  follow-up to the WhatsApp feature above, user asked "what's the status
+  of what's already been sent"). Route `/admin/notification-logs`, nav
+  link "Log Notifikasi" in `AppNavbar.vue` right after "Log Audit", entry
+  in `CommandPalette.vue`. Structurally a near-copy of
+  `AdminAuditLogView.vue` (same filter-bar-above-table-with-pagination
+  layout, same `load(page)`/`goToPage()`/`formatDate()` pattern) — copied
+  deliberately rather than extracting a shared component, matching how
+  every other Admin*View in this codebase is self-contained rather than
+  sharing generic list/table components.
+  Filters: `channel` (Semua/Email/WhatsApp), `status` (Semua/Terkirim/
+  Gagal/Dilewati), `type` (Semua/Laporan Selesai/Reset Kata Sandi), plus
+  the usual `from`/`to` date range. Table columns: Waktu, Channel (badge,
+  gold for email / sage-green for WhatsApp — reused `--color-gold-soft`/
+  `--color-sage-soft` tokens, no new colors introduced), Tipe, Penerima,
+  User, Status (badge — reused the existing `.badge--active`/
+  `.badge--inactive` classes for sent/skipped, added one new
+  `.badge--danger` using `--color-seal` for failed), Keterangan (the
+  `error_message`, or `-`).
+  **Browser-verified 2026-09-08**: triggered forgot-password (which hits
+  both channels) as a client with no phone number, opened the page as
+  admin, confirmed both rows render with correct badges (email → green
+  "Terkirim", WhatsApp → gray "Dilewati" with "Nomor WhatsApp belum
+  diisi." in the Keterangan column) and the channel filter correctly
+  narrows to 1 row. 0 console errors, `npm run lint`/`npm run build` both
+  clean.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

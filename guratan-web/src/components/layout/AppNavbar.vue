@@ -123,6 +123,7 @@ function formatNotifDate(iso) {
         <RouterLink v-if="auth.isAdministrator" to="/admin/tokens">Kelola Token</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/knowledge">Knowledge Base</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/audit-logs">Log Audit</RouterLink>
+        <RouterLink v-if="auth.isAdministrator" to="/admin/notification-logs">Log Notifikasi</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/grafolog-applications">Verifikasi Grafolog</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/recap/users">Rekap Pengguna</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/recap/grafolog">Rekap Grafolog</RouterLink>

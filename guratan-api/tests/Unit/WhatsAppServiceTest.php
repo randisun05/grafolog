@@ -68,4 +68,13 @@ class WhatsAppServiceTest extends TestCase
         $this->assertFalse($result);
         Http::assertSent(fn ($request) => $request->url() === 'https://api.fonnte.com/send');
     }
+
+    public function test_is_configured_reflects_whether_token_is_set(): void
+    {
+        config(['services.fonnte.token' => null]);
+        $this->assertFalse((new WhatsAppService)->isConfigured());
+
+        config(['services.fonnte.token' => 'fake-token']);
+        $this->assertTrue((new WhatsAppService)->isConfigured());
+    }
 }

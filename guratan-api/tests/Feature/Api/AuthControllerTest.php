@@ -192,6 +192,10 @@ class AuthControllerTest extends TestCase
         $response->assertOk();
         Mail::assertSent(ResetPasswordMail::class, fn ($mail) => str_contains($mail->resetUrl, 'ada%40example.com'));
         $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+        $this->assertDatabaseHas('notification_logs', [
+            'channel' => 'email', 'type' => 'reset_password', 'user_id' => $user->id,
+            'recipient' => 'ada@example.com', 'status' => 'sent',
+        ]);
     }
 
     /**
@@ -202,11 +206,29 @@ class AuthControllerTest extends TestCase
         Mail::fake();
         config(['services.fonnte.token' => 'fake-token']);
         Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
-        User::factory()->create(['email' => 'ada@example.com', 'phone' => '08123456789']);
+        $user = User::factory()->create(['email' => 'ada@example.com', 'phone' => '08123456789']);
 
         $this->postJson('/api/auth/forgot-password', ['email' => 'ada@example.com'])->assertOk();
 
         Http::assertSent(fn ($request) => $request['target'] === '628123456789');
+        $this->assertDatabaseHas('notification_logs', [
+            'channel' => 'whatsapp', 'type' => 'reset_password', 'user_id' => $user->id,
+            'recipient' => '08123456789', 'status' => 'sent',
+        ]);
+    }
+
+    public function test_forgot_password_records_a_skipped_whatsapp_log_when_fonnte_not_configured(): void
+    {
+        Mail::fake();
+        config(['services.fonnte.token' => null]);
+        $user = User::factory()->create(['email' => 'ada@example.com', 'phone' => '08123456789']);
+
+        $this->postJson('/api/auth/forgot-password', ['email' => 'ada@example.com'])->assertOk();
+
+        $this->assertDatabaseHas('notification_logs', [
+            'channel' => 'whatsapp', 'type' => 'reset_password', 'user_id' => $user->id,
+            'recipient' => '08123456789', 'status' => 'skipped',
+        ]);
     }
 
     /**

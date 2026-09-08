@@ -138,6 +138,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/notification-logs',
+      name: 'admin-notification-logs',
+      component: () => import('../views/AdminNotificationLogsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/grafolog-applications',
       name: 'admin-grafolog-applications',
       component: () => import('../views/AdminGrafologApplicationsView.vue'),

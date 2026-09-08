@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\Admin\KombinasiSyaratController;
 use App\Http\Controllers\Api\Admin\KombinasiTemuanController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
+use App\Http\Controllers\Api\Admin\NotificationLogController;
 use App\Http\Controllers\Api\Admin\PaymentRecapController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
@@ -143,6 +144,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::patch('/company-contracts/{companyContract}', [CompanyContractController::class, 'update']);
         Route::delete('/company-contracts/{companyContract}', [CompanyContractController::class, 'destroy']);
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        Route::get('/notification-logs', [NotificationLogController::class, 'index']);
         Route::get('/grafolog-applications', [AdminGrafologApplicationController::class, 'index']);
         Route::get('/grafolog-applications/{grafologApplication}/document', [AdminGrafologApplicationController::class, 'document']);
         Route::post('/grafolog-applications/{grafologApplication}/approve', [AdminGrafologApplicationController::class, 'approve']);
