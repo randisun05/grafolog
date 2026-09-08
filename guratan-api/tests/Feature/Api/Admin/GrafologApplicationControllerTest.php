@@ -66,17 +66,23 @@ class GrafologApplicationControllerTest extends TestCase
     public function test_administrator_can_approve_application(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
-        $application = $this->makeApplicationRecord(['email' => 'disetujui@example.com']);
+        $application = $this->makeApplicationRecord(['email' => 'disetujui@example.com', 'phone' => '08123456789']);
 
         $response = $this->actingAs($admin, 'sanctum')
             ->postJson("/api/admin/grafolog-applications/{$application->id}/approve");
 
         $response->assertOk()
             ->assertJsonPath('email', 'disetujui@example.com')
+            ->assertJsonPath('phone', '08123456789')
             ->assertJsonPath('role', 'grafolog')
             ->assertJsonPath('is_active', true);
 
-        $this->assertDatabaseHas('users', ['email' => 'disetujui@example.com', 'role' => 'grafolog', 'is_active' => true]);
+        // Nomor WA yang diajukan ikut dipindah ke akun user - lihat catatan
+        // WhatsAppService kenapa ini penting (notifikasi laporan/reset
+        // password grafolog nantinya bisa lewat WA juga, bukan cuma email).
+        $this->assertDatabaseHas('users', [
+            'email' => 'disetujui@example.com', 'phone' => '08123456789', 'role' => 'grafolog', 'is_active' => true,
+        ]);
         $this->assertDatabaseHas('grafolog_applications', ['id' => $application->id, 'status' => 'approved']);
         $application->refresh();
         $this->assertSame($admin->id, $application->reviewed_by);

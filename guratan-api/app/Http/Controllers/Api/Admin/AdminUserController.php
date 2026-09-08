@@ -20,7 +20,7 @@ class AdminUserController extends Controller
     public function index(Request $request): JsonResponse
     {
         $users = User::query()
-            ->select(['id', 'name', 'email', 'role', 'company_id', 'is_active', 'created_at'])
+            ->select(['id', 'name', 'email', 'phone', 'role', 'company_id', 'is_active', 'created_at'])
             ->latest()
             ->paginate(20);
 
@@ -32,6 +32,7 @@ class AdminUserController extends Controller
         $user = User::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
+            'phone' => $request->validated('phone'),
             'password' => $request->validated('password'),
             'role' => $request->validated('role'),
             'company_id' => $request->validated('company_id'),
@@ -39,7 +40,7 @@ class AdminUserController extends Controller
 
         AuditLog::record('buat_akun_staf', User::class, $user->id, $request->user()->id, $request->ip());
 
-        return response()->json($user->only(['id', 'name', 'email', 'role', 'company_id', 'is_active']), 201);
+        return response()->json($user->only(['id', 'name', 'email', 'phone', 'role', 'company_id', 'is_active']), 201);
     }
 
     /**
@@ -68,6 +69,7 @@ class AdminUserController extends Controller
         $user->fill([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
+            'phone' => $request->validated('phone'),
             'role' => $request->validated('role'),
             'company_id' => $request->validated('company_id'),
             'is_active' => $request->validated('is_active'),
@@ -85,6 +87,6 @@ class AdminUserController extends Controller
 
         AuditLog::record('ubah_akun_staf', User::class, $user->id, $request->user()->id, $request->ip());
 
-        return response()->json($user->only(['id', 'name', 'email', 'role', 'company_id', 'is_active']));
+        return response()->json($user->only(['id', 'name', 'email', 'phone', 'role', 'company_id', 'is_active']));
     }
 }

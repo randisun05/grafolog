@@ -2824,8 +2824,96 @@ produk benar-benar baru: kurasi opsional badge/daftar fitur marketing di
 `cardMeta` (`LandingView.vue`) - disengaja, bukan gap (fitur marketing per
 produk itu keputusan konten, bukan keputusan data).
 
+## Notifikasi WhatsApp paralel dengan email (Fonnte) — 2026-09-07
+
+User minta "semua pemberitahuan selain di email juga lewat WA" — audit
+sebelum implementasi mengonfirmasi cuma **2 titik pengiriman email** di
+seluruh backend (tidak ada sistem Laravel Notification, semua pakai
+`Mail::to()->send()` langsung): laporan selesai
+(`SendReportCompletedNotification` job) dan reset password
+(`AuthController::forgotPassword()`). Keputusan user lewat
+`AskUserQuestion`: provider **Fonnte** (WA gateway lokal, kuota gratis
+untuk mulai, tidak butuh verifikasi Facebook Business seperti Meta Cloud
+API resmi), nomor wajib diisi di **setiap form pendaftaran** (bukan
+diimpor retroaktif — akun lama tetap `phone = null`, WA otomatis
+dilewati untuk mereka), kredensial **di-scaffold dulu tanpa akun asli**
+(pola sama `MAIL_MAILER=log` — no-op aman sampai `FONNTE_TOKEN` diisi).
+
+**Kolom baru**: `users.phone` (migrasi `add_phone_to_users_table`,
+nullable di skema — akun lama tidak bisa diisi retroaktif, wajib cuma di
+lapisan validasi Form Request untuk pendaftaran BARU). Ditambahkan ke
+`#[Fillable]` `User.php`.
+
+**`WhatsAppService`** (`app/Services/WhatsAppService.php`) — satu method
+publik `send(?string $phone, string $message): bool`. Env-gated via
+`config('services.fonnte.token')`/`FONNTE_TOKEN`: kosong → log info +
+return `false` tanpa exception. **Beda filosofi dengan `DokuService`**:
+DOKU melempar `RuntimeException` kalau kredensial kosong (pembayaran
+gagal harus kelihatan ke user), `WhatsAppService` diam-diam skip — WA di
+sini murni pelengkap di samping email yang sudah terkirim duluan di
+setiap titik pemanggilan, kegagalan/absennya WA TIDAK BOLEH menggagalkan
+alur utama (laporan tetap selesai, reset password tetap jalan). Nomor
+lokal (`08...`) dinormalisasi ke format internasional Fonnte (`628...`)
+otomatis di `normalizePhone()`; nomor yang sudah `628...` tidak
+di-double-prefix.
+
+**Diwire ke 2 titik existing** (email tidak diubah, WA ditambah sebagai
+langkah tambahan setelahnya): `SendReportCompletedNotification::handle()`
+kirim WA ke `$owner->phone` (link ke `/riwayat`), `AuthController::
+forgotPassword()` kirim WA ke `$user->phone` (link reset password yang
+sama persis dengan yang di email). Keduanya lewat method injection
+(`WhatsAppService $whatsApp` sebagai parameter), bukan `app()` helper
+langsung, supaya gampang di-mock di test.
+
+**`phone` jadi wajib** (bukan cuma di `users.phone` DB, tapi divalidasi
+`required` di Form Request) di SEMUA jalur pembuatan `User` baru:
+`RegisterRequest` (self-register), `StoreGrafologApplicationRequest`
+(dulu `nullable`, sekarang `required` — field-nya sudah ada dari sesi
+sebelumnya, cuma validasinya yang berubah), `StoreStaffUserRequest` +
+`UpdateStaffUserRequest` (admin buat/edit staf), `StoreClientRequest`
+(walk-in client oleh grafolog lewat Portal Grafolog), dan
+`ImportCandidatesRequest`/`CandidateImportController` (CSV HR — kolom
+`phone` baru **wajib** di header CSV, divalidasi per-baris sama seperti
+`name`/`email`, ditambahkan ke `parseCsv()`/`validateRows()`/
+`findOrCreateCandidate()`). `Admin\GrafologApplicationController::
+approve()` menyalin `$grafologApplication->phone` ke `users.phone` saat
+akun grafolog benar-benar dibuat (field itu sudah ada di
+`grafolog_applications` dari alur verifikasi data, cuma belum pernah
+dipindah ke `users` sebelum perubahan ini).
+
+**Test baru**: `tests/Unit/WhatsAppServiceTest.php` (skip saat token
+kosong, skip saat phone null, sukses dengan normalisasi nomor, tidak
+double-prefix nomor `628...`, gagal-dengan-anggun saat Fonnte menolak) +
+`tests/Feature/Jobs/SendReportCompletedNotificationTest.php` (baru —
+sebelumnya job ini tidak punya test khusus sama sekali, cuma tercakup
+implisit lewat test lain yang memicu penyelesaian laporan) + test baru
+di `AuthControllerTest`/`Admin\GrafologApplicationControllerTest` untuk
+pengiriman WA & penyalinan `phone` saat approve. Semua `Http::fake()`,
+tidak pernah memanggil Fonnte sungguhan. `UserFactory` sekarang set
+`phone` default (`fake()->numerify('08##########')`) supaya user hasil
+factory realistis dan test lama yang meng-edit user via `updatePayload()`-
+style helper tidak butuh perubahan besar.
+
+**Browser-verified 2026-09-07/08 (Playwright)**: field "Nomor WhatsApp"
+wajib (HTML `required`) muncul & berfungsi di `/register`,
+`/daftar-grafolog` (label diubah dari "opsional" jadi wajib),
+`/admin/users` (form buat staf + panel edit + kolom baru "Nomor WA" di
+tabel), dan form daftar klien walk-in di Portal Grafolog (tombol
+"Daftarkan Klien" tetap `disabled` sampai nomor diisi). Trigger
+forgot-password dengan `FONNTE_TOKEN` kosong dikonfirmasi lewat log
+server: `WhatsAppService: FONNTE_TOKEN belum diisi, pengiriman WA
+dilewati` dengan nomor sudah ternormalisasi (`081234500001` →
+`6281234500001`) — membuktikan wiring benar-benar jalan sampai titik
+pengiriman, bukan cuma lolos validasi. 0 error konsol di semua alur.
+
+**Prasyarat sebelum WA sungguhan terkirim**: buat akun di
+[fonnte.com](https://fonnte.com), scan QR device, isi `FONNTE_TOKEN` di
+`.env` produksi — tidak ada perubahan kode lagi setelah itu.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
   frontend trigger point is an open product question).
 - Production DOKU credentials (sandbox-only scaffolding so far).
+- Production Fonnte credentials (sandbox/scaffolding-only so far, sama
+  seperti DOKU — lihat bagian "Notifikasi WhatsApp" di atas).

@@ -49,6 +49,7 @@ class AdminUserControllerTest extends TestCase
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
             'name' => 'Supervisor Baru',
             'email' => 'supervisor-new@example.com',
+            'phone' => '081234567890',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'supervisor',
@@ -65,6 +66,7 @@ class AdminUserControllerTest extends TestCase
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
             'name' => 'Admin Kedua',
             'email' => 'admin-two@example.com',
+            'phone' => '081234567890',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'administrator',
@@ -88,6 +90,7 @@ class AdminUserControllerTest extends TestCase
         $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
             'name' => 'Grafolog Baru',
             'email' => 'grafolog-new@example.com',
+            'phone' => '081234567890',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'grafolog',
@@ -105,6 +108,7 @@ class AdminUserControllerTest extends TestCase
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
             'name' => 'HR Baru',
             'email' => 'hr-new@example.com',
+            'phone' => '081234567890',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'role' => 'hr',
@@ -168,6 +172,7 @@ class AdminUserControllerTest extends TestCase
         return array_merge([
             'name' => $user->name,
             'email' => $user->email,
+            'phone' => $user->phone,
             'role' => $user->role,
             'company_id' => $user->company_id,
             'is_active' => true,
@@ -238,7 +243,7 @@ class AdminUserControllerTest extends TestCase
 
         $this->actingAs($admin, 'sanctum')->patchJson(
             "/api/admin/users/{$client->id}",
-            ['name' => $client->name, 'email' => $client->email, 'role' => 'grafolog', 'is_active' => true]
+            ['name' => $client->name, 'email' => $client->email, 'phone' => $client->phone, 'role' => 'grafolog', 'is_active' => true]
         )->assertNotFound();
     }
 

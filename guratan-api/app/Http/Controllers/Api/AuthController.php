@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
+use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
+            'phone' => $request->validated('phone'),
             'password' => $request->validated('password'),
             'role' => $request->validated('role', 'user'),
         ]);
@@ -85,7 +87,7 @@ class AuthController extends Controller
      * versi mentahnya yang dikirim lewat email (dipakai user), sama pola
      * dengan password user sendiri.
      */
-    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    public function forgotPassword(ForgotPasswordRequest $request, WhatsAppService $whatsApp): JsonResponse
     {
         $email = $request->validated('email');
         $user = User::where('email', $email)->first();
@@ -101,6 +103,15 @@ class AuthController extends Controller
                 .'/reset-password?email='.urlencode($email).'&token='.$token;
 
             Mail::to($email)->send(new ResetPasswordMail($resetUrl));
+
+            // WA cuma pelengkap - lihat catatan class WhatsAppService kenapa
+            // ini tidak boleh mengganggu respons sukses di atas.
+            $whatsApp->send(
+                $user->phone,
+                "Halo {$user->name}, ada permintaan reset kata sandi untuk akun Guratan Anda. ".
+                "Buka tautan berikut untuk membuat kata sandi baru: {$resetUrl} ".
+                '(berlaku 60 menit, abaikan pesan ini kalau bukan Anda yang meminta).'
+            );
         }
 
         return response()->json(['message' => 'Kalau email terdaftar, tautan reset kata sandi sudah dikirim.']);

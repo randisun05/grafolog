@@ -1078,6 +1078,37 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   screenshot comparison), confirming zero regression for the primary
   admin workflow. `npm run lint` and `npm run build` both clean.
 
+- **Nomor WhatsApp wajib di semua form pendaftaran, 2026-09-07** (see
+  `guratan-api/CLAUDE.md`'s matching entry — backend now sends every
+  notification that used to go by email in parallel over WhatsApp via
+  Fonnte, which needs a phone number on the `User` first). Added a
+  required "Nomor WhatsApp" text input to every place this codebase
+  creates a `User`:
+  - `RegisterView.vue` — new field between email and password.
+  - `RegisterGrafologView.vue` — the field already existed (backend
+    already had `grafolog_applications.phone`) but was optional; label
+    changed from "Nomor HP/WhatsApp (opsional)" to just "Nomor
+    HP/WhatsApp" and the `<input>` got `required`.
+  - `AdminUsersView.vue` — added to the create-staff form, the inline
+    expand-row edit panel, and as a new "Nomor WA" column in the staff
+    table (shows `-` for old accounts created before this change, which
+    have no phone).
+  - `PortalGrafologView.vue` — added to the walk-in-client registration
+    panel (`newClientPhone` ref); the "Daftarkan Klien" button's
+    `:disabled` condition now also requires it, matching the existing
+    requirement for `newClientName`.
+  - `HrCandidatesView.vue` — the CSV-import instructions text now lists
+    `phone` as a third required column alongside `name`/`email` (the
+    actual parsing/validation of that column is backend-side in
+    `CandidateImportController`, this file only has the help text, no
+    structured form fields to add).
+  **Browser-verified 2026-09-07/08**: `required` HTML attribute confirmed
+  present (blocks submit without it) on every field above, the walk-in
+  form's submit button toggles from disabled to enabled exactly when the
+  phone field gets a value, and the new "Nomor WA" table column renders
+  the saved value immediately after creating a staff account. 0 console
+  errors. `npm run lint` and `npm run build` both clean.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

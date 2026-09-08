@@ -63,6 +63,7 @@ class GrafologApplicationController extends Controller
             $user = User::create([
                 'name' => $grafologApplication->name,
                 'email' => $grafologApplication->email,
+                'phone' => $grafologApplication->phone,
                 'password' => $grafologApplication->password,
                 'role' => 'grafolog',
                 'is_active' => true,
@@ -79,7 +80,7 @@ class GrafologApplicationController extends Controller
 
         AuditLog::record('setujui_akun_grafolog', User::class, $user->id, $request->user()->id, $request->ip());
 
-        return response()->json($user->only(['id', 'name', 'email', 'role', 'is_active']));
+        return response()->json($user->only(['id', 'name', 'email', 'phone', 'role', 'is_active']));
     }
 
     public function reject(RejectGrafologApplicationRequest $request, GrafologApplication $grafologApplication): JsonResponse

@@ -104,4 +104,19 @@ class GrafologApplicationControllerTest extends TestCase
         $this->postJson('/api/grafolog-applications', $payload)
             ->assertUnprocessable()->assertJsonValidationErrors('document');
     }
+
+    /**
+     * Sejak 2026-09-07: phone wajib diisi (dulu nullable) - semua form
+     * pendaftaran di aplikasi ini sekarang wajib minta nomor WhatsApp,
+     * dipakai WhatsAppService buat kirim notifikasi paralel dengan email.
+     */
+    public function test_phone_is_required(): void
+    {
+        Storage::fake('local');
+        $payload = $this->validPayload();
+        unset($payload['phone']);
+
+        $this->postJson('/api/grafolog-applications', $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors('phone');
+    }
 }

@@ -12,6 +12,7 @@ const router = useRouter()
 const form = ref({
   name: '',
   email: '',
+  phone: '',
   password: '',
   password_confirmation: '',
 })
@@ -47,6 +48,12 @@ async function submit() {
         <input v-model="form.email" type="email" required />
       </label>
       <p v-if="errors.email" class="error">{{ errors.email[0] }}</p>
+
+      <label>
+        Nomor WhatsApp
+        <input v-model="form.phone" type="text" placeholder="mis. 08123456789" required />
+      </label>
+      <p v-if="errors.phone" class="error">{{ errors.phone[0] }}</p>
 
       <label>
         Kata Sandi

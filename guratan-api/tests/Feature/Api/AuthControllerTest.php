@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -19,6 +20,7 @@ class AuthControllerTest extends TestCase
         $response = $this->postJson('/api/auth/register', [
             'name' => 'Budi Santoso',
             'email' => 'budi@example.com',
+            'phone' => '081234567890',
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
@@ -190,6 +192,21 @@ class AuthControllerTest extends TestCase
         $response->assertOk();
         Mail::assertSent(ResetPasswordMail::class, fn ($mail) => str_contains($mail->resetUrl, 'ada%40example.com'));
         $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+    }
+
+    /**
+     * WA cuma pelengkap di samping email - lihat catatan class WhatsAppService.
+     */
+    public function test_forgot_password_also_sends_whatsapp_when_phone_present_and_fonnte_configured(): void
+    {
+        Mail::fake();
+        config(['services.fonnte.token' => 'fake-token']);
+        Http::fake(['api.fonnte.com/*' => Http::response(['status' => true], 200)]);
+        User::factory()->create(['email' => 'ada@example.com', 'phone' => '08123456789']);
+
+        $this->postJson('/api/auth/forgot-password', ['email' => 'ada@example.com'])->assertOk();
+
+        Http::assertSent(fn ($request) => $request['target'] === '628123456789');
     }
 
     /**

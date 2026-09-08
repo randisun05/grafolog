@@ -44,14 +44,14 @@ class CandidateImportControllerTest extends TestCase
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $this->actingAs($grafolog, 'sanctum')
-            ->post('/api/hr/candidates/import', ['file' => $this->csv("name,email\nA,a@example.com\n")])
+            ->post('/api/hr/candidates/import', ['file' => $this->csv("name,email,phone\nA,a@example.com,08123456789\n")])
             ->assertForbidden();
     }
 
     public function test_successful_import_creates_project_candidates_and_samples(): void
     {
         $hr = $this->hrUser();
-        $csv = "name,email\nBudi Kandidat,budi.kandidat@example.com\nSiti Kandidat,siti.kandidat@example.com\n";
+        $csv = "name,email,phone\nBudi Kandidat,budi.kandidat@example.com,08111111111\nSiti Kandidat,siti.kandidat@example.com,08222222222\n";
 
         $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
             'file' => $this->csv($csv),
@@ -64,10 +64,35 @@ class CandidateImportControllerTest extends TestCase
             ->assertJsonCount(2, 'samples');
 
         $this->assertDatabaseHas('users', [
-            'email' => 'budi.kandidat@example.com', 'role' => 'user', 'company_id' => $hr->company_id,
+            'email' => 'budi.kandidat@example.com', 'phone' => '08111111111', 'role' => 'user', 'company_id' => $hr->company_id,
         ]);
         $this->assertDatabaseCount('handwriting_samples', 2);
         $this->assertDatabaseHas('handwriting_samples', ['tier' => 'comprehensive', 'status' => 'pending']);
+    }
+
+    public function test_csv_without_phone_column_is_rejected(): void
+    {
+        $hr = $this->hrUser();
+
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+            'file' => $this->csv("name,email\nBudi,budi@example.com\n"),
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertDatabaseCount('projects', 0);
+    }
+
+    public function test_row_with_missing_phone_rejects_whole_import(): void
+    {
+        $hr = $this->hrUser();
+        $csv = "name,email,phone\nBudi,budi@example.com,08111111111\nTanpaHp,tanpahp@example.com,\n";
+
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+            'file' => $this->csv($csv),
+        ]);
+
+        $response->assertStatus(422)->assertJsonPath('errors.0.line', 3);
+        $this->assertDatabaseCount('projects', 0);
     }
 
     public function test_invalid_csv_header_rejected(): void
@@ -85,7 +110,7 @@ class CandidateImportControllerTest extends TestCase
     public function test_row_with_invalid_email_rejects_whole_import(): void
     {
         $hr = $this->hrUser();
-        $csv = "name,email\nBudi,budi@example.com\nRusak,not-an-email\n";
+        $csv = "name,email,phone\nBudi,budi@example.com,08111111111\nRusak,not-an-email,08222222222\n";
 
         $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
             'file' => $this->csv($csv),
@@ -100,7 +125,7 @@ class CandidateImportControllerTest extends TestCase
     {
         $hr = $this->hrUser();
         $grafolog = User::factory()->create(['role' => 'grafolog', 'email' => 'staff@example.com']);
-        $csv = "name,email\nStaf,staff@example.com\n";
+        $csv = "name,email,phone\nStaf,staff@example.com,08111111111\n";
 
         $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
             'file' => $this->csv($csv),
@@ -115,7 +140,7 @@ class CandidateImportControllerTest extends TestCase
         $hr = $this->hrUser();
         $otherCompany = Company::create(['name' => 'PT Lain']);
         User::factory()->create(['role' => 'user', 'email' => 'taken@example.com', 'company_id' => $otherCompany->id]);
-        $csv = "name,email\nDiambil,taken@example.com\n";
+        $csv = "name,email,phone\nDiambil,taken@example.com,08111111111\n";
 
         $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
             'file' => $this->csv($csv),
@@ -128,7 +153,7 @@ class CandidateImportControllerTest extends TestCase
     {
         $hr = $this->hrUser();
         $client = User::factory()->create(['role' => 'user', 'email' => 'independen@example.com', 'company_id' => null]);
-        $csv = "name,email\nIndependen,independen@example.com\n";
+        $csv = "name,email,phone\nIndependen,independen@example.com,08111111111\n";
 
         $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
             'file' => $this->csv($csv),
@@ -145,7 +170,7 @@ class CandidateImportControllerTest extends TestCase
     {
         Product::create(['code' => 'deluxe', 'name' => 'Deluxe', 'is_active' => true]);
         $hr = $this->hrUser();
-        $csv = "name,email\nCalon Deluxe,deluxe@example.com\n";
+        $csv = "name,email,phone\nCalon Deluxe,deluxe@example.com,08111111111\n";
 
         $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
             'file' => $this->csv($csv), 'tier' => 'deluxe',

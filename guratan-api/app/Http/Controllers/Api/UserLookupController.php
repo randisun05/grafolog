@@ -56,6 +56,7 @@ class UserLookupController extends Controller
         $client = User::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
+            'phone' => $request->validated('phone'),
             'password' => $password,
             'role' => 'user',
         ]);

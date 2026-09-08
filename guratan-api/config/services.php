@@ -68,4 +68,18 @@ return [
         'callback_url' => env('DOKU_CALLBACK_URL', rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/dashboard'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Fonnte (WhatsApp gateway)
+    |--------------------------------------------------------------------------
+    |
+    | Token perangkat dari https://fonnte.com (Perangkat > pilih perangkat >
+    | Token). Kosong = WhatsAppService diam-diam skip pengiriman (lihat
+    | catatan class-nya) - tidak menggagalkan alur utama yang memanggilnya.
+    |
+    */
+    'fonnte' => [
+        'token' => env('FONNTE_TOKEN'),
+    ],
+
 ];

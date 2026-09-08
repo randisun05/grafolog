@@ -17,6 +17,7 @@ const companies = ref([])
 const form = ref({
   name: '',
   email: '',
+  phone: '',
   password: '',
   password_confirmation: '',
   role: 'grafolog',
@@ -68,7 +69,7 @@ async function submit() {
     const { data } = await api.post('/admin/users', payload)
     users.value = [{ ...data, created_at: new Date().toISOString() }, ...users.value]
     toast.push(`Akun ${roleLabel[data.role]} untuk ${data.name} berhasil dibuat.`, 'success')
-    form.value = { name: '', email: '', password: '', password_confirmation: '', role: 'grafolog', company_id: '' }
+    form.value = { name: '', email: '', phone: '', password: '', password_confirmation: '', role: 'grafolog', company_id: '' }
   } catch (e) {
     errors.value = e.response?.data?.errors ?? {}
     toast.push(e.response?.data?.message ?? 'Gagal membuat akun.')
@@ -90,6 +91,7 @@ function startEditUser(u) {
   editForm.value = {
     name: u.name,
     email: u.email,
+    phone: u.phone ?? '',
     role: u.role,
     company_id: u.company_id ?? '',
     is_active: u.is_active,
@@ -109,6 +111,7 @@ async function saveUser(u) {
     const payload = {
       name: editForm.value.name,
       email: editForm.value.email,
+      phone: editForm.value.phone,
       role: editForm.value.role,
       company_id: editForm.value.role === 'hr' ? editForm.value.company_id || null : null,
       is_active: editForm.value.is_active,
@@ -260,6 +263,12 @@ async function deleteContract(company, contract) {
       <p v-if="errors.email" class="error">{{ errors.email[0] }}</p>
 
       <label>
+        Nomor WhatsApp
+        <input v-model="form.phone" type="text" placeholder="mis. 08123456789" required />
+      </label>
+      <p v-if="errors.phone" class="error">{{ errors.phone[0] }}</p>
+
+      <label>
         Kata Sandi
         <input v-model="form.password" type="password" required />
       </label>
@@ -303,6 +312,7 @@ async function deleteContract(company, contract) {
         <tr>
           <th>Nama</th>
           <th>Email</th>
+          <th>Nomor WA</th>
           <th>Role</th>
           <th>Perusahaan</th>
           <th>Status</th>
@@ -314,6 +324,7 @@ async function deleteContract(company, contract) {
           <tr>
             <td>{{ u.name }}</td>
             <td>{{ u.email }}</td>
+            <td>{{ u.phone ?? '-' }}</td>
             <td>
               <span class="admin-users__role-badge">{{ roleLabel[u.role] ?? u.role }}</span>
             </td>
@@ -335,7 +346,7 @@ async function deleteContract(company, contract) {
             </td>
           </tr>
           <tr v-if="editingId === u.id" class="admin-users__edit-row">
-            <td colspan="6">
+            <td colspan="7">
               <div class="admin-users__edit-panel">
                 <div class="admin-users__row">
                   <label>
@@ -345,6 +356,10 @@ async function deleteContract(company, contract) {
                   <label>
                     Email
                     <input v-model="editForm.email" type="email" required />
+                  </label>
+                  <label>
+                    Nomor WhatsApp
+                    <input v-model="editForm.phone" type="text" required />
                   </label>
                   <label>
                     Role
@@ -358,6 +373,7 @@ async function deleteContract(company, contract) {
                 </div>
                 <p v-if="editErrors.name" class="error">{{ editErrors.name[0] }}</p>
                 <p v-if="editErrors.email" class="error">{{ editErrors.email[0] }}</p>
+                <p v-if="editErrors.phone" class="error">{{ editErrors.phone[0] }}</p>
                 <p v-if="editErrors.role" class="error">{{ editErrors.role[0] }}</p>
 
                 <div class="admin-users__row">

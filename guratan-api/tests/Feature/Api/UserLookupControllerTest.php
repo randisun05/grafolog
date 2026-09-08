@@ -53,7 +53,7 @@ class UserLookupControllerTest extends TestCase
         $hr = User::factory()->create(['role' => 'hr']);
 
         $this->actingAs($hr, 'sanctum')
-            ->postJson('/api/clients', ['name' => 'Klien Baru', 'email' => 'klien@example.com'])
+            ->postJson('/api/clients', ['name' => 'Klien Baru', 'email' => 'klien@example.com', 'phone' => '08123456789'])
             ->assertForbidden();
     }
 
@@ -64,6 +64,7 @@ class UserLookupControllerTest extends TestCase
         $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
             'name' => 'Klien Walk-in',
             'email' => 'walkin@example.com',
+            'phone' => '08123456789',
             'password' => 'Password123',
         ]);
 
@@ -82,6 +83,7 @@ class UserLookupControllerTest extends TestCase
         $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
             'name' => 'Klien Tanpa Sandi',
             'email' => 'nopassword@example.com',
+            'phone' => '08123456789',
         ]);
 
         $response->assertCreated();

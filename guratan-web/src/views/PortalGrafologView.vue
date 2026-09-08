@@ -46,6 +46,7 @@ const creatingSample = ref(false)
 
 const showRegisterForm = ref(false)
 const newClientName = ref('')
+const newClientPhone = ref('')
 const newClientPassword = ref('')
 const registering = ref(false)
 const registerError = ref('')
@@ -194,6 +195,7 @@ function openRegisterForm() {
   showRegisterForm.value = true
   registerError.value = ''
   newClientName.value = ''
+  newClientPhone.value = ''
   newClientPassword.value = ''
 }
 
@@ -208,6 +210,7 @@ async function registerClient() {
     const { data } = await api.post('/clients', {
       name: newClientName.value,
       email: clientEmail.value,
+      phone: newClientPhone.value,
       password: newClientPassword.value || undefined,
     })
     client.value = { id: data.id, name: data.name, email: data.email }
@@ -287,6 +290,10 @@ function viewReport() {
             <input v-model="newClientName" type="text" placeholder="Nama lengkap klien" />
           </label>
           <label>
+            Nomor WhatsApp Klien
+            <input v-model="newClientPhone" type="text" placeholder="mis. 08123456789" />
+          </label>
+          <label>
             Kata Sandi Awal (opsional)
             <input v-model="newClientPassword" type="text" placeholder="Kosongkan untuk dibuatkan otomatis" />
           </label>
@@ -295,7 +302,7 @@ function viewReport() {
             <button
               type="button"
               class="btn btn--primary"
-              :disabled="!newClientName || registering"
+              :disabled="!newClientName || !newClientPhone || registering"
               @click="registerClient"
             >
               {{ registering ? 'Mendaftarkan...' : 'Daftarkan Klien' }}

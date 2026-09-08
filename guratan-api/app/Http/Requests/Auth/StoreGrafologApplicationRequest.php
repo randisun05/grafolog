@@ -31,7 +31,7 @@ class StoreGrafologApplicationRequest extends FormRequest
                 Rule::unique('grafolog_applications', 'email')->where('status', 'pending'),
             ],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30'],
             'catatan' => ['nullable', 'string', 'max:2000'],
             'document' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
         ];

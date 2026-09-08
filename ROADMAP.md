@@ -975,6 +975,14 @@ backup") dan `guratan-web/CLAUDE.md`.
   `DEPLOYMENT.md` "Catatan email production").
 - [ ] **Verifikasi DOKU sandbox** — payment gateway belum pernah dites
   lawan notifikasi sungguhan dari DOKU.
+- [ ] **Kredensial Fonnte asli** — **2026-09-07**: integrasi WhatsApp
+  (`WhatsAppService`) sudah lengkap dan browser-verified end-to-end
+  (dikonfirmasi lewat log server: pengiriman dilewati dengan anggun
+  karena `FONNTE_TOKEN` masih kosong), tinggal buat akun di fonnte.com,
+  scan QR device, isi `FONNTE_TOKEN` di `.env` produksi. Tidak ada
+  perubahan kode lagi setelah itu. Detail teknis lengkap di
+  `guratan-api/CLAUDE.md` "Notifikasi WhatsApp paralel dengan email
+  (Fonnte)".
 
 ### Tertunda — butuh keputusan bisnis
 

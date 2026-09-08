@@ -117,8 +117,9 @@ onMounted(() => {
   <div class="hr-candidates">
     <h1>Kandidat</h1>
     <p class="hr-candidates__note">
-      Impor daftar kandidat dari CSV (kolom wajib: <code>name</code>, <code>email</code>). Setiap
-      kandidat otomatis dibuatkan sample - tugaskan grafolog langsung dari tabel di bawah.
+      Impor daftar kandidat dari CSV (kolom wajib: <code>name</code>, <code>email</code>,
+      <code>phone</code>). Setiap kandidat otomatis dibuatkan sample - tugaskan grafolog
+      langsung dari tabel di bawah.
     </p>
 
     <form class="hr-candidates__form" @submit.prevent="submitImport">

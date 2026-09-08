@@ -29,7 +29,7 @@ class CandidateImportController extends Controller
         abort_if(
             $rows === null,
             422,
-            'Format CSV tidak valid - baris pertama harus header dengan kolom "name" dan "email".'
+            'Format CSV tidak valid - baris pertama harus header dengan kolom "name", "email", dan "phone".'
         );
 
         [$candidates, $errors] = $this->validateRows($rows, $user);
@@ -80,6 +80,7 @@ class CandidateImportController extends Controller
             return User::create([
                 'name' => $row['name'],
                 'email' => $row['email'],
+                'phone' => $row['phone'],
                 'password' => Str::random(32),
                 'role' => 'user',
                 'company_id' => $hr->company_id,
@@ -96,7 +97,7 @@ class CandidateImportController extends Controller
     }
 
     /**
-     * @return array{0: array<int, array{name: string, email: string}>, 1: array<int, array{line: int, errors: array<string>}>}
+     * @return array{0: array<int, array{name: string, email: string, phone: string}>, 1: array<int, array{line: int, errors: array<string>}>}
      */
     private function validateRows(array $rows, User $hr): array
     {
@@ -109,6 +110,7 @@ class CandidateImportController extends Controller
             $validator = Validator::make($row, [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email', 'max:255'],
+                'phone' => ['required', 'string', 'max:30'],
             ]);
 
             if ($validator->fails()) {
@@ -138,7 +140,7 @@ class CandidateImportController extends Controller
     }
 
     /**
-     * @return array<int, array{name: string, email: string}>|null
+     * @return array<int, array{name: string, email: string, phone: string}>|null
      */
     private function parseCsv(string $path): ?array
     {
@@ -157,8 +159,9 @@ class CandidateImportController extends Controller
         $header = array_map(fn ($h) => strtolower(trim((string) $h)), $header);
         $nameIdx = array_search('name', $header, true);
         $emailIdx = array_search('email', $header, true);
+        $phoneIdx = array_search('phone', $header, true);
 
-        if ($nameIdx === false || $emailIdx === false) {
+        if ($nameIdx === false || $emailIdx === false || $phoneIdx === false) {
             fclose($handle);
 
             return null;
@@ -173,6 +176,7 @@ class CandidateImportController extends Controller
             $rows[] = [
                 'name' => trim((string) ($line[$nameIdx] ?? '')),
                 'email' => trim((string) ($line[$emailIdx] ?? '')),
+                'phone' => trim((string) ($line[$phoneIdx] ?? '')),
             ];
         }
         fclose($handle);

@@ -89,8 +89,8 @@ async function submit() {
       </label>
 
       <label>
-        Nomor HP/WhatsApp (opsional)
-        <input v-model="form.phone" type="text" />
+        Nomor HP/WhatsApp
+        <input v-model="form.phone" type="text" placeholder="mis. 08123456789" required />
       </label>
       <p v-if="errors.phone" class="error">{{ errors.phone[0] }}</p>
 
