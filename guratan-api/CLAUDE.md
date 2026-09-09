@@ -3557,11 +3557,47 @@ cuma di laporan sungguhan.
   serve` PHP built-in server yang sudah berulang kali dikonfirmasi bukan
   request gagal sungguhan di sesi-sesi sebelumnya). `npm run lint`/
   `npm run build` lolos.
-- **Belum dikerjakan**: Fase 4 (integrasi navigasi publik ketiga domain
-  konten + landing page teaser + verifikasi akhir lintas-fitur) — nav
-  admin "Kelola Games" sudah ada, tapi `/games` publik (dan `/artikel`/
-  `/kegiatan` dari fase-fase sebelumnya) belum ditautkan dari navbar/
-  landing untuk pengunjung.
+## Konten publik — Fase 4 (penutup: integrasi navigasi publik + landing), 2026-09-09
+
+**Fase terakhir dari inisiatif konten publik 4-fase** (Artikel/Kegiatan/
+Games/integrasi — lihat entri Fase 1-3 di atas). **Murni frontend, tidak
+ada perubahan backend sama sekali** — lihat `guratan-web/CLAUDE.md` untuk
+detail lengkap (`AppNavbar.vue`/`CommandPalette.vue` menampilkan
+Artikel/Kegiatan/Games untuk tamu, `LandingView.vue` dapat 2 seksi teaser
++ 1 CTA banner ke `/games`). Rute publik yang sudah ada sejak Fase 1-3
+(`/artikel`, `/kegiatan`, `/games`) tidak diubah — cuma ditautkan.
+
+**Browser-verified 2026-09-09** (Playwright, sqlite throwaway lintas
+KETIGA domain sekaligus — artikel+kegiatan+games dalam satu skenario,
+bukan per-fitur terpisah seperti Fase 1-3): admin buat 1 artikel
+published + 1 kegiatan published lewat API langsung → **tamu** (belum
+login) buka landing page, navbar menampilkan Artikel/Kegiatan/Games →
+command palette (Ctrl/Cmd+K, sebelumnya diam total untuk tamu — guard
+`if (!auth.isAuthenticated) return` di `openPalette()` dihapus) terbuka
+dan menampilkan ketiga entri publik → landing page menampilkan teaser
+"Artikel Terbaru"/"Kegiatan Mendatang" dengan JUDUL SUNGGUHAN dari data
+yang baru dibuat (bukan placeholder) + banner CTA "Uji Wawasan
+Grafologimu" ke `/games` → klik kartu teaser artikel benar-benar
+menavigasi ke halaman detail sungguhan dengan isi body yang benar → akses
+langsung `/artikel`/`/kegiatan`/`/games` semuanya tampil tanpa login. Lalu
+login sebagai admin — navbar TETAP menampilkan link publik (bukan
+tergantikan oleh menu admin) DAN link "Kelola Artikel/Kegiatan/Games",
+command palette menampilkan kedua set sekaligus — membuktikan penambahan
+ini aditif murni, tidak meregresi navigasi admin yang sudah ada. Full
+backend suite (658/658) dijalankan ulang di titik ini juga tetap hijau
+(fase ini tidak menyentuh backend sama sekali, dijalankan sebagai
+sanity-check penutup, bukan karena ada perubahan untuk diuji). 0 error
+konsol nyata (`ERR_CONNECTION_RESET` artefak PHP built-in server yang
+sudah berulang kali dicatat di file ini). `npm run lint`/`npm run build`
+lolos.
+
+**Ini menutup seluruh inisiatif 4-fase Konten Publik** — Artikel/Berita,
+Kegiatan+pendaftaran, Mini Games+leaderboard, dan integrasi navigasi
+publik semuanya selesai dikerjakan. Item tertunda yang masih terbuka
+(lihat `ROADMAP.md`): ide mini game ke-4+ di luar 3 yang sudah dibangun
+(belum dijelaskan user, sengaja tidak ditebak), dan pemeriksaan throttle
+tumpuk-tanpa-prefix di `narasi-terpadu/generate`/`supervisor/chat` yang
+ditemukan sebagai efek samping investigasi bug throttle Fase 3.
 
 ## Not built yet
 

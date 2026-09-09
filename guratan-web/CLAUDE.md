@@ -1464,6 +1464,64 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   leaderboard confirmation. 0 real console errors. `npm run lint`/
   `npm run build` both clean.
 
+- **Konten publik — Fase 4 (penutup: navigasi publik + landing teasers),
+  2026-09-09** (see `guratan-api/CLAUDE.md`'s matching entry — this closes
+  the whole 4-phase Konten Publik initiative, no backend changes at all in
+  this phase). Routes `/artikel`, `/kegiatan`, `/games` themselves are
+  unchanged from Fase 1-3 — this phase only makes them discoverable.
+  **`AppNavbar.vue`** — 3 plain `RouterLink`s (Artikel/Kegiatan/Games)
+  added directly inside `<nav>`, **before** both the
+  `v-if="auth.isAuthenticated"`/`v-else` blocks — confirmed via research
+  before writing this that Vue allows multiple root-level children in a
+  template block, so no restructuring of either existing branch was
+  needed; they render identically for guests and logged-in users of every
+  role. **`CommandPalette.vue`** — `commands` computed now builds a
+  `publicItems` array (Artikel/Kegiatan/Games) first and returns it
+  immediately for guests (`if (!auth.isAuthenticated) return publicItems`,
+  was `return []`); for authenticated users it spreads `publicItems` at
+  the front of the existing role-gated `items` array, so nothing else in
+  that long `if (auth.isAdministrator)`/etc. chain needed to change.
+  **A second guard also had to be removed**, found only by testing
+  end-to-end rather than assumed from the plan: `openPalette()` itself
+  had `if (!auth.isAuthenticated) return`, so Ctrl/Cmd+K did nothing at
+  all for a guest even after `commands` started returning real items —
+  removed, since a guest now has real commands worth opening the palette
+  for.
+  **`LandingView.vue`** — 2 new teaser sections + 1 CTA banner, inserted
+  right before the existing closing `cta-band` section. "Artikel
+  Terbaru" fetches `GET /articles` (public, already paginated
+  `published`-only) and shows the first 3 as cards (cover/date/title/
+  excerpt) linking to `artikel-detail`; "Kegiatan Mendatang" fetches
+  `GET /events?when=upcoming` the same way, cards link to
+  `kegiatan-detail`. Both fetches follow the file's **existing**
+  fetch-with-fallback convention (separate `try/catch`, `v-if` on a
+  non-empty array) — a slow/failing fetch just skips the section
+  entirely rather than showing an error or blocking the rest of the
+  page, same philosophy as the `/content` fetch already in this file. A
+  small new `.cta-band--games` banner (sage-green variant of the
+  existing dark `.cta-band`, reusing the class rather than a new
+  component) links to `/games` with copy that stays consistent with
+  `GamesHubView.vue`'s own disclaimer framing ("santai"/"bukan hasil
+  resmi", not competitive/diagnostic language).
+  **Browser-verified 2026-09-09** (Playwright, sqlite throwaway, first
+  end-to-end scenario in this initiative to cover Artikel+Kegiatan+Games
+  TOGETHER in one script rather than per-phase): admin created 1
+  published article + 1 published event via direct API calls → as a
+  **guest**, confirmed the navbar shows all 3 public links, confirmed
+  Ctrl/Cmd+K now opens the palette at all for a guest and lists the 3
+  public commands, confirmed the landing page's two teaser sections show
+  the REAL seeded titles (not placeholder text) plus the games CTA
+  banner, clicked the article teaser card and landed on the real article
+  detail page with the real body text rendered, then hit `/artikel`,
+  `/kegiatan`, `/games` directly by URL and confirmed each renders with
+  the seeded content and no login prompt. Then logged in as
+  administrator and re-checked: navbar still shows the 3 public links
+  **alongside** (not replaced by) "Kelola Artikel"/"Kelola Kegiatan"/
+  "Kelola Games", and the command palette lists both sets together —
+  confirming this phase is purely additive with zero regression to the
+  existing admin navigation. 0 real console errors. `npm run lint`/
+  `npm run build` both clean.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

@@ -107,6 +107,10 @@ function formatNotifDate(iso) {
       :class="{ 'app-navbar__nav--open': mobileMenuOpen }"
       @click="closeMobileMenuOnLinkClick"
     >
+      <RouterLink to="/artikel">Artikel</RouterLink>
+      <RouterLink to="/kegiatan">Kegiatan</RouterLink>
+      <RouterLink to="/games">Games</RouterLink>
+
       <template v-if="auth.isAuthenticated">
         <RouterLink to="/dashboard">Dashboard</RouterLink>
         <RouterLink to="/riwayat">Riwayat</RouterLink>

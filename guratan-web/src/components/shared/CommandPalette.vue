@@ -14,9 +14,15 @@ const activeIndex = ref(0)
 const inputRef = ref(null)
 
 const commands = computed(() => {
-  if (!auth.isAuthenticated) return []
+  const publicItems = [
+    { label: 'Artikel', to: { name: 'artikel-list' } },
+    { label: 'Kegiatan', to: { name: 'kegiatan-list' } },
+    { label: 'Games', to: { name: 'games-hub' } },
+  ]
 
-  const items = [
+  if (!auth.isAuthenticated) return publicItems
+
+  const items = [...publicItems,
     { label: 'Dashboard', to: { name: 'dashboard' } },
     { label: 'Riwayat', to: { name: 'riwayat' } },
   ]
@@ -73,7 +79,6 @@ watch(query, () => {
 })
 
 function openPalette() {
-  if (!auth.isAuthenticated) return
   open.value = true
   query.value = ''
   activeIndex.value = 0

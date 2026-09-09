@@ -107,6 +107,13 @@ function registerStat(el) {
   if (el && !statNums.value.includes(el)) statNums.value.push(el)
 }
 
+const latestArticles = ref([])
+const upcomingEvents = ref([])
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 onMounted(async () => {
   try {
     const { data } = await api.get('/content')
@@ -136,6 +143,20 @@ onMounted(async () => {
     if (Array.isArray(data) && data.length) products.value = data
   } catch {
     // Tetap pakai daftar hardcoded di atas - halaman jualan tidak boleh kosong.
+  }
+
+  try {
+    const { data } = await api.get('/articles')
+    latestArticles.value = data.data.slice(0, 3)
+  } catch {
+    // Teaser artikel opsional - halaman utama tetap tampil tanpa itu.
+  }
+
+  try {
+    const { data } = await api.get('/events', { params: { when: 'upcoming' } })
+    upcomingEvents.value = data.data.slice(0, 3)
+  } catch {
+    // Teaser kegiatan opsional - halaman utama tetap tampil tanpa itu.
   }
 
   await nextTick()
@@ -321,6 +342,58 @@ onMounted(async () => {
         <div class="signup-arrow"></div>
         <div class="signup-node"><div class="signup-node__dot">3</div><p>Bayar &amp; tunggu laporan Anda</p></div>
       </div>
+    </section>
+
+    <section v-if="latestArticles.length" class="band">
+      <div class="section-head">
+        <span class="eyebrow">Baca lebih lanjut</span>
+        <h2>Artikel Terbaru</h2>
+      </div>
+      <div class="teaser-grid">
+        <RouterLink
+          v-for="article in latestArticles"
+          :key="article.slug"
+          :to="{ name: 'artikel-detail', params: { slug: article.slug } }"
+          class="teaser-card"
+        >
+          <img v-if="article.cover_image_url" :src="article.cover_image_url" :alt="article.title" class="teaser-card__cover" />
+          <div class="teaser-card__body">
+            <span class="teaser-card__date">{{ formatDate(article.published_at) }}</span>
+            <h4>{{ article.title }}</h4>
+            <p v-if="article.excerpt">{{ article.excerpt }}</p>
+          </div>
+        </RouterLink>
+      </div>
+      <RouterLink to="/artikel" class="btn btn--ghost teaser-more">Lihat Semua Artikel</RouterLink>
+    </section>
+
+    <section v-if="upcomingEvents.length">
+      <div class="section-head">
+        <span class="eyebrow">Ikut serta</span>
+        <h2>Kegiatan Mendatang</h2>
+      </div>
+      <div class="teaser-grid">
+        <RouterLink
+          v-for="event in upcomingEvents"
+          :key="event.slug"
+          :to="{ name: 'kegiatan-detail', params: { slug: event.slug } }"
+          class="teaser-card"
+        >
+          <img v-if="event.cover_image_url" :src="event.cover_image_url" :alt="event.title" class="teaser-card__cover" />
+          <div class="teaser-card__body">
+            <span class="teaser-card__date">{{ formatDate(event.starts_at) }}</span>
+            <h4>{{ event.title }}</h4>
+            <p v-if="event.location">{{ event.is_online ? 'Online' : event.location }}</p>
+          </div>
+        </RouterLink>
+      </div>
+      <RouterLink to="/kegiatan" class="btn btn--ghost teaser-more">Lihat Semua Kegiatan</RouterLink>
+    </section>
+
+    <section class="cta-band cta-band--games">
+      <h2>Uji Wawasan Grafologimu</h2>
+      <p>Main tebak-tebakan santai seputar tulisan tangan - untuk hiburan &amp; edukasi, bukan hasil resmi.</p>
+      <RouterLink to="/games" class="btn btn--primary">Main Sekarang</RouterLink>
     </section>
 
     <section class="cta-band">
@@ -861,5 +934,65 @@ onMounted(async () => {
   color: color-mix(in srgb, var(--color-paper) 72%, transparent);
   margin-bottom: 26px;
   font-size: 14.5px;
+}
+.cta-band--games {
+  background: var(--color-sage);
+}
+
+.teaser-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.teaser-card {
+  display: block;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.teaser-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
+}
+.teaser-card__cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+.teaser-card__body {
+  padding: 16px 18px;
+}
+.teaser-card__date {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-soft);
+}
+.teaser-card__body h4 {
+  margin: 6px 0 6px;
+  font-size: 15.5px;
+}
+.teaser-card__body p {
+  font-size: 13px;
+  color: var(--color-text-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.teaser-more {
+  display: table;
+  margin: 0 auto;
+}
+@media (max-width: 780px) {
+  .teaser-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

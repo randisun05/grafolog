@@ -1433,9 +1433,15 @@ luar).
   kemungkinan kena masalah SERUPA, belum diperbaiki — lihat item baru di
   bawah). Detail teknis penuh di `guratan-api/CLAUDE.md`/
   `guratan-web/CLAUDE.md` "Konten publik — Fase 3".
-- [ ] **Fase 4 (penutup)**: integrasi navigasi publik (navbar/command
-  palette tampil untuk tamu, bukan cuma user login) + teaser Artikel/
-  Kegiatan/Games di landing page + verifikasi end-to-end penuh.
+- [x] **Fase 4 (selesai 2026-09-09, penutup)**: integrasi navigasi publik
+  — 3 `RouterLink` (Artikel/Kegiatan/Games) di `AppNavbar.vue` untuk tamu
+  maupun user login, `CommandPalette.vue` direlaksasi supaya command
+  publik + Ctrl/Cmd+K sendiri tidak lagi diam total untuk tamu, 2 seksi
+  teaser + 1 CTA banner ke `/games` di `LandingView.vue`. Murni frontend,
+  tidak ada perubahan backend. Verifikasi end-to-end lintas ketiga domain
+  sekaligus (bukan per-fitur terpisah) — detail lengkap di
+  `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md` "Konten publik — Fase
+  4". **Ini menutup seluruh inisiatif 4-fase Konten Publik.**
 - [ ] **Ide mini game ke-4+ di luar 3 yang dikonfirmasi** — user sempat
   menyebut ada ide lain tapi belum dijelaskan konsepnya, sengaja
   ditunda sampai user menjelaskan sendiri (jangan ditebak/dibangun
