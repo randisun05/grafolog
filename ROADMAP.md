@@ -1416,8 +1416,23 @@ luar).
   dari navbar/landing publik — itu Fase 4, sama seperti Artikel). Detail
   teknis di `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md` "Konten
   publik — Fase 2".
-- [ ] **Fase 3**: Mini Games (3 jenis) + trivia/glosarium admin-manageable
-  + leaderboard publik.
+- [x] **Fase 3 (selesai 2026-09-09)**: Mini Games (3 jenis) + trivia/
+  glosarium admin-manageable + leaderboard publik — tabel
+  `trivia_questions`/`glossary_terms`/`game_scores`,
+  `Api\Games\{TebakKepribadianController,TriviaController,
+  MemoryMatchController,ScoreController}` (publik, tanpa login),
+  `Api\Admin\{TriviaQuestionController,GlossaryTermController,
+  GameScoreController}` (CRUD + moderasi). Seluruh konten trivia/glosarium
+  digrounding dari KB nyata (bukan dikarang). Frontend: `GamesHubView.vue`
+  (+ disclaimer permanen), 3 game view publik, `AdminGamesView.vue` (dibangun
+  proaktif supaya CRUD backend tidak jadi admin-endpoint-tanpa-UI).
+  **Bug throttle nyata ditemukan+diperbaiki saat verifikasi** — 2 throttle
+  ditumpuk tanpa prefix eksplisit diam-diam berbagi 1 counter (lihat
+  `guratan-api/CLAUDE.md` untuk detail lengkap + catatan bahwa
+  `narasi-terpadu/generate` dan `supervisor/chat`'s throttle tumpuk
+  kemungkinan kena masalah SERUPA, belum diperbaiki — lihat item baru di
+  bawah). Detail teknis penuh di `guratan-api/CLAUDE.md`/
+  `guratan-web/CLAUDE.md` "Konten publik — Fase 3".
 - [ ] **Fase 4 (penutup)**: integrasi navigasi publik (navbar/command
   palette tampil untuk tamu, bukan cuma user login) + teaser Artikel/
   Kegiatan/Games di landing page + verifikasi end-to-end penuh.
@@ -1425,3 +1440,15 @@ luar).
   menyebut ada ide lain tapi belum dijelaskan konsepnya, sengaja
   ditunda sampai user menjelaskan sendiri (jangan ditebak/dibangun
   spekulatif).
+- [ ] **Periksa throttle tumpuk tanpa prefix di endpoint lain** —
+  ditemukan sebagai efek samping investigasi bug throttle Fase 3 Mini
+  Games (lihat di atas): `POST /reports/{report}/narasi-terpadu/generate`
+  (`throttle:20,60`) dan `POST /supervisor/chat/conversations/{c}/messages`
+  (`throttle:30,60`), keduanya ditumpuk di atas `throttle:60,1` grup
+  `auth:sanctum` TANPA prefix eksplisit ke-3 — berpotensi diam-diam
+  berbagi 1 counter dengan SEMUA rute `auth:sanctum` lain untuk user yang
+  sama (bukan cuma rute itu sendiri), sama akar masalah dengan bug games
+  yang sudah diperbaiki. Belum dikonfirmasi apakah ini benar-benar
+  bermasalah dalam praktik (frekuensi pemakaian 2 endpoint ini jauh lebih
+  jarang dari games), tapi layak diperiksa+diperbaiki dengan pola yang
+  sama (prefix eksplisit per-endpoint).

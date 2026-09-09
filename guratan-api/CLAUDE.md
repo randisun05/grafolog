@@ -3459,6 +3459,110 @@ eksternal) — perlu login, admin bisa lihat+export daftar peserta.
   Kegiatan" sudah ada, tapi `/kegiatan` publik belum ditautkan dari
   navbar/landing untuk pengunjung, sama seperti `/artikel`).
 
+## Konten publik — Fase 3 (Mini Games + leaderboard), 2026-09-09
+
+Lanjutan Fase 1-2 (Artikel/Kegiatan, lihat entri di atas). User konfirmasi
+lewat `AskUserQuestion`: 3 game dibangun sekaligus (Tebak Kepribadian dari
+Tulisan/Trivia Grafologi/Memory Match Istilah), leaderboard publik
+nama-saja tanpa login, ide game ke-4 di luar 3 ini **ditunda** (tidak
+ditebak konsepnya). Prinsip root `CLAUDE.md` "insight reflektif bukan
+diagnosis klinis" diterapkan eksplisit di dalam konteks kuis kasual, bukan
+cuma di laporan sungguhan.
+
+- **`trivia_questions`/`glossary_terms`/`game_scores`** (3 tabel baru,
+  berdiri sendiri tanpa relasi FK ke tabel lain). `game_scores` pakai
+  `$table->timestamps()` PENUH (bukan `created_at`-saja seperti klaim awal
+  di rencana — dicek ulang ke migrasi `AuditLog`/`NotificationLog` yang
+  sesungguhnya sebelum ditulis, keduanya juga pakai `timestamps()` penuh)
+  + index komposit `['game_type', 'skor']` untuk query leaderboard.
+- **`Api\Games\TebakKepribadianController`**: `question()` mengambil 1
+  `Indikator` acak (`whereNotNull('keterangan')`) + 3 distractor Aspek
+  acak, balas 4 pilihan teracak TANPA menyertakan mana yang benar sama
+  sekali. `answer()` sengaja balas `Aspek::keterangan_umum` (deskripsi
+  netral) sebagai `penjelasan`, **BUKAN** `narasi_high`/dst (framing
+  "interpretasi level skor laporan sungguhan" — kalau dipakai di kuis
+  tebak-tebakan bisa terkesan mendiagnosis pemain sungguhan, melanggar
+  prinsip root `CLAUDE.md` langsung).
+- **`Api\Games\TriviaController::check()`** menghitung `skor` **SERVER-
+  SIDE** dari `jawaban_benar_index` sungguhan yang tersimpan — frontend
+  TIDAK PERNAH menghitung/mengirim skornya sendiri, mencegah cara curang
+  paling gampang (dikunci test `test_check_rejects_score_client_could_
+  fabricate`).
+- **`Api\Games\MemoryMatchController::terms()`** balas N pasang istilah
+  aktif flat (`{id, istilah, definisi}`) — pengacakan jadi 16 kartu
+  dilakukan client-side (Fisher-Yates), server tidak tahu urutan kartu.
+- **`Api\Games\ScoreController::store()`** — publik, `nama` bebas
+  (max:30, tanpa akun), `leaderboard(gameType)` — top 20, urut `skor desc,
+  durasi_detik asc nulls last, created_at asc` (tie-break: lebih cepat/
+  lebih dulu menang).
+- **Seeder** `TriviaQuestionSeeder` (15 soal) + `GlossaryTermSeeder` (10
+  istilah) — SEMUA konten diverifikasi langsung dari fakta nyata di KB
+  sumber JSON aplikasi ini sendiri (jumlah 8 Sindrom/40 Aspek/704
+  Indikator/37 variabel ukur, nama istilah grafometrik nyata seperti
+  Middle Zone/Baseline/Slant/Pressure/Letter Spacing/Word Spacing/
+  Margin/Ductus) — dicek langsung lewat inspeksi `python3` ke JSON sumber,
+  bukan dikarang, konsisten prinsip "tidak pernah mengarang interpretasi
+  psikologi dari nol" yang diperluas ke konten game.
+- **Admin CRUD** (`Admin\TriviaQuestionController`/`GlossaryTermController`/
+  `GameScoreController`, `role:administrator`) — CRUD standar +
+  moderasi skor (hapus entri nama tidak pantas). Audit log
+  `buat_trivia`/`ubah_trivia`/`hapus_trivia`, `buat_istilah`/..., `hapus_skor_game`.
+- **Bug throttle nyata ditemukan & diperbaiki saat verifikasi sesi ini**:
+  `throttle:60,1` (grup `/games`) dan `throttle:10,1` (khusus `/scores`,
+  ditumpuk di atasnya) awalnya DITULIS TANPA prefix eksplisit ke-3 —
+  `ThrottleRequests::resolveRequestSignature()` (dicek langsung ke source
+  vendor) mengunci key HANYA dari `domain+IP` (untuk tamu tanpa login),
+  **TIDAK PERNAH menyertakan rute/method sama sekali** kecuali diberi
+  prefix eksplisit. Akibatnya kedua throttle tanpa prefix diam-diam
+  berbagi SATU counter yang sama — GET biasa (muat soal/leaderboard
+  selama bermain wajar) ikut memakan jatah 10/menit yang seharusnya
+  KHUSUS `/scores`, membuat submit skor gagal 429 padahal baru beberapa
+  request wajar, bukan penyalahgunaan. **Fix**: kedua throttle diberi
+  prefix eksplisit berbeda (`throttle:60,1,games-group`/
+  `throttle:10,1,games-scores`) sehingga jadi 2 bucket independen sesuai
+  desain aslinya. Ditemukan lewat verifikasi Playwright sesi ini (bukan
+  lewat test unit — test `test_score_submission_is_rate_limited` tetap
+  lolos baik sebelum maupun sesudah fix karena cuma menguji ambang 10
+  panggilan `/scores` berturutan, tidak menguji interferensi lintas-rute).
+  **Catatan untuk throttle tumpuk lain di aplikasi ini** (`narasi-terpadu/
+  generate`'s `throttle:20,60` di atas `throttle:60,1` grup
+  `auth:sanctum`, dan `supervisor/chat`'s `throttle:30,60`) — SAMA-SAMA
+  TANPA prefix eksplisit, jadi berpotensi kena masalah serupa (key
+  dibagi antar SEMUA rute `auth:sanctum` di seluruh app untuk user yang
+  sama, bukan cuma rute itu sendiri). **BELUM diperbaiki** — di luar
+  scope fitur games sesi ini, ditemukan murni sebagai efek samping
+  investigasi bug ini; catat sebagai item tertunda di `ROADMAP.md`.
+- Test: `Admin\TriviaQuestionControllerTest`/`GlossaryTermControllerTest`/
+  `GameScoreControllerTest` (CRUD+moderasi), `Games\TebakKepribadianControllerTest`
+  (jawaban benar tidak bocor di `question()`, `answer()` menilai benar/
+  salah tepat, penjelasan pakai `keterangan_umum` bukan narasi level),
+  `Games\TriviaControllerTest` (skor server-side cocok jumlah benar
+  sungguhan, tolak skor hasil karangan client), `Games\MemoryMatchControllerTest`
+  (cuma pasangan aktif), `Games\ScoreControllerTest` (submit+leaderboard
+  urut benar, throttle 10/menit teruji). 658/658 backend test lolos
+  (naik dari 631 di akhir Fase 2), `pint --test` lolos.
+- **Browser-verified 2026-09-09** (Playwright, sqlite throwaway +
+  `storage:link`): Hub tampil 3 kartu game + strip disclaimer permanen →
+  Tebak Kepribadian dimainkan 8 ronde penuh (bot pilih jawaban pertama
+  tiap ronde) → layar skor akhir → submit nama → nama muncul di
+  leaderboard → Trivia dijawab semua soal → layar review skor → submit →
+  leaderboard benar → Memory Match dimainkan penuh oleh bot pencocokan
+  kartu SUNGGUHAN (fetch `GET /games/memory-match/terms` dulu untuk tahu
+  pemetaan istilah↔definisi per `id`, karena kartu pasangan TIDAK punya
+  teks yang identik — 1 sisi istilah, 1 sisi definisi berbeda teks sama
+  sekali, jadi bot pencocokan awal yang membandingkan teks mentah gagal
+  total sampai diperbaiki pakai `pairId` dari API) → 8/8 pasangan
+  cocok → layar selesai → submit skor → nama muncul di leaderboard. 0
+  error konsol nyata (`ERR_CONNECTION_RESET` adalah artefak `php artisan
+  serve` PHP built-in server yang sudah berulang kali dikonfirmasi bukan
+  request gagal sungguhan di sesi-sesi sebelumnya). `npm run lint`/
+  `npm run build` lolos.
+- **Belum dikerjakan**: Fase 4 (integrasi navigasi publik ketiga domain
+  konten + landing page teaser + verifikasi akhir lintas-fitur) — nav
+  admin "Kelola Games" sudah ada, tapi `/games` publik (dan `/artikel`/
+  `/kegiatan` dari fase-fase sebelumnya) belum ditautkan dari navbar/
+  landing untuk pengunjung.
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

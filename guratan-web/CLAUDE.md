@@ -1389,6 +1389,81 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   regression, just a cleaner test run than usual). `npm run lint`/
   `npm run build` both clean.
 
+- **Konten publik — Fase 3 (Mini Games + leaderboard), 2026-09-09** (see
+  `guratan-api/CLAUDE.md`'s matching entry for the full backend picture,
+  including a real throttle bug found and fixed during this phase's
+  verification). 3 game views + a shared hub, all fully public (no
+  `meta.requiresAuth`).
+  **`GamesHubView.vue`** (`/games`) — 3 cards linking into each game, plus
+  a **permanent** disclaimer strip ("Game ini untuk hiburan & edukasi
+  ringan, bukan alat diagnosis kepribadian") — same non-dismissible-banner
+  pattern as `SupervisorChatView.vue`'s chat disclaimer, reused because
+  the same root `CLAUDE.md` framing principle applies here even harder (a
+  casual quiz reads as more "diagnosis-like" to a player than an internal
+  B2B tool, if not explicitly framed otherwise).
+  **`components/games/GameLeaderboard.vue`** (new, shared by all 3 games)
+  — fetches `GET /games/{gameType}/leaderboard` on mount, exposes a
+  `load()` method via `defineExpose()` (not currently called from
+  outside — each game view instead conditionally `v-if`-mounts this
+  component only after a successful score submission, which triggers its
+  own fresh `onMounted` fetch; simpler than manually re-triggering a
+  shared instance).
+  **`src/lib/handwritingStyle.js`** (new) — `styleForKeterangan(text)`,
+  simple keyword matching (besar/kecil, miring kanan/kiri, rapat/renggang,
+  tebal/tipis) over real `Indikator.keterangan` text, returning inline CSS
+  (font-size/skew/letter-spacing/weight) applied to the quiz prompt in
+  `GameTebakKepribadianView.vue` via the **already-existing**
+  `--font-accent: Caveat` design token — makes the prompt visually read
+  like a handwriting sample without inventing a new font or a real
+  rendering engine.
+  **`GameTebakKepribadianView.vue`** (`/games/tebak-kepribadian`) — 8
+  rounds, `keterangan` shown via the handwriting-style card, 4 shuffled
+  choices, answer feedback (`Aspek.keterangan_umum` from the API — see
+  backend note on why this specific field, not the narasi-level text),
+  then a name+submit screen followed by `GameLeaderboard`.
+  **`GameTriviaView.vue`** (`/games/trivia`) — fetches a batch of
+  questions, one per screen, submits everything at once to `check()`,
+  shows a per-question review (correct/incorrect + `penjelasan`), then
+  name+submit+leaderboard. The frontend never computes its own score —
+  it only ever displays what `check()`'s response says.
+  **`GameMemoryMatchView.vue`** (`/games/memory-match`) — fetches 8 term
+  pairs, builds 16 shuffled cards client-side (Fisher-Yates), classic
+  flip-2-cards logic (`locked` ref blocks input during the 500ms
+  match/900ms mismatch resolution window), score formula `max(100, 1000 -
+  moves*15 - seconds*3)`, name+submit+leaderboard after all pairs match.
+  **`AdminGamesView.vue`** (`/admin/games`, `role: administrator`, nav
+  "Kelola Games" + `CommandPalette.vue` entry) — built **proactively**,
+  not explicitly itemized in the original approved plan's frontend bullet
+  list, specifically because the backend's admin CRUD for
+  TriviaQuestion/GlossaryTerm/GameScore moderation would otherwise have
+  no UI at all — same class of gap as "Company API existed since MGA Fase
+  06 but had never had a frontend caller" (see `AdminUsersView.vue`'s
+  2026-08-23 entry above), deliberately not repeated here. 3 tabs (local
+  `activeTab` ref, same "several small entities, one screen" convention
+  as `AdminTokensView.vue`/`AdminKnowledgeView.vue`): Trivia (CRUD +
+  active toggle), Glosarium (CRUD + active toggle), Moderasi Skor
+  (paginated table filtered by `game_type`, delete-only — for removing
+  inappropriate player names from the public leaderboard).
+  **Test-script gotcha, not an app bug** (documented here since it cost
+  real debugging time and is worth remembering for any future
+  Playwright script against this game): a naive "matching bot" that
+  compares two flipped cards' raw `innerText()` for equality will never
+  find a real match in Memory Match — one card in a pair shows the
+  `istilah` (term name) and its partner shows a **completely different-text**
+  `definisi` (definition), by design (that's the whole point of the
+  game). A correct bot must first fetch `GET /games/memory-match/terms`
+  to build a text→`pairId` map, then compare cards by that id, not by
+  raw displayed text.
+  **Browser-verified 2026-09-09** (Playwright): Hub renders all 3 cards +
+  the disclaimer (a first script run under-waited — 800ms — for Vue to
+  mount/fetch and read the page too early, reporting false negatives that
+  a longer wait cleared; not an app bug), Tebak Kepribadian played to
+  completion with real score submission and the submitted name appearing
+  on the leaderboard, Trivia the same, Memory Match fully solved (8/8
+  pairs) by a `pairId`-aware bot with real score submission and
+  leaderboard confirmation. 0 real console errors. `npm run lint`/
+  `npm run build` both clean.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

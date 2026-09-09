@@ -108,6 +108,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/games',
+      name: 'admin-games',
+      component: () => import('../views/AdminGamesView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/pricing',
       name: 'admin-pricing',
       component: () => import('../views/AdminPricingView.vue'),
@@ -236,6 +242,26 @@ const router = createRouter({
       name: 'kegiatan-detail',
       component: () => import('../views/KegiatanDetailView.vue'),
       props: true,
+    },
+    {
+      path: '/games',
+      name: 'games-hub',
+      component: () => import('../views/GamesHubView.vue'),
+    },
+    {
+      path: '/games/tebak-kepribadian',
+      name: 'game-tebak-kepribadian',
+      component: () => import('../views/GameTebakKepribadianView.vue'),
+    },
+    {
+      path: '/games/trivia',
+      name: 'game-trivia',
+      component: () => import('../views/GameTriviaView.vue'),
+    },
+    {
+      path: '/games/memory-match',
+      name: 'game-memory-match',
+      component: () => import('../views/GameMemoryMatchView.vue'),
     },
     {
       path: '/kebijakan-privasi',

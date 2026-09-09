@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockCo
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Api\Admin\EventRegistrationController as AdminEventRegistrationController;
+use App\Http\Controllers\Api\Admin\GameScoreController;
+use App\Http\Controllers\Api\Admin\GlossaryTermController as AdminGlossaryTermController;
 use App\Http\Controllers\Api\Admin\GrafologApplicationController as AdminGrafologApplicationController;
 use App\Http\Controllers\Api\Admin\GrafologRecapController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
@@ -32,6 +34,7 @@ use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
 use App\Http\Controllers\Api\Admin\TokenPurchaseRecapController;
 use App\Http\Controllers\Api\Admin\TopikController as AdminTopikController;
+use App\Http\Controllers\Api\Admin\TriviaQuestionController as AdminTriviaQuestionController;
 use App\Http\Controllers\Api\Admin\UserRecapController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\ArticleController;
@@ -42,6 +45,10 @@ use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventRegistrationController;
+use App\Http\Controllers\Api\Games\MemoryMatchController;
+use App\Http\Controllers\Api\Games\ScoreController as GameScoreApiController;
+use App\Http\Controllers\Api\Games\TebakKepribadianController;
+use App\Http\Controllers\Api\Games\TriviaController as GameTriviaController;
 use App\Http\Controllers\Api\GrafologApplicationController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\MeasurementController;
@@ -88,6 +95,28 @@ Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 // guratan-api/CLAUDE.md. Cuma status=published.
 Route::get('/events', [EventController::class, 'index']);
 Route::get('/events/{slug}', [EventController::class, 'show']);
+
+// Mini Games publik (fitur konten publik Fase 3, 2026-09-09) - lihat
+// guratan-api/CLAUDE.md. Tanpa login sama sekali - throttle:60,1 di
+// seluruh grup, /scores dapat throttle tambahan 10,1 TUMPUK di atasnya
+// (pola sama narasi-terpadu/generate) supaya submit skor tidak bisa
+// disepam skrip. Kedua throttle diberi PREFIX BERBEDA ('games-group'/
+// 'games-scores') - tanpa ini, ThrottleRequests::resolveRequestSignature()
+// mengunci key HANYA dari domain+IP (tidak menyertakan rute sama sekali),
+// jadi throttle:60,1 dan throttle:10,1 tanpa prefix akan diam-diam berbagi
+// SATU counter yang sama - GET biasa (muat soal/leaderboard) ikut memakan
+// jatah 10/menit yang seharusnya khusus /scores. Ditemukan lewat
+// verifikasi Playwright sesi ini (leaderboard gagal submit padahal baru
+// beberapa request wajar).
+Route::middleware('throttle:60,1,games-group')->prefix('games')->group(function () {
+    Route::get('/tebak-kepribadian/question', [TebakKepribadianController::class, 'question']);
+    Route::post('/tebak-kepribadian/answer', [TebakKepribadianController::class, 'answer']);
+    Route::get('/trivia/questions', [GameTriviaController::class, 'questions']);
+    Route::post('/trivia/check', [GameTriviaController::class, 'check']);
+    Route::get('/memory-match/terms', [MemoryMatchController::class, 'terms']);
+    Route::middleware('throttle:10,1,games-scores')->post('/scores', [GameScoreApiController::class, 'store']);
+    Route::get('/{gameType}/leaderboard', [GameScoreApiController::class, 'leaderboard']);
+});
 
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);
@@ -282,6 +311,19 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::patch('/events/{event}', [AdminEventController::class, 'update']);
         Route::get('/events/{event}/registrations', [AdminEventRegistrationController::class, 'index']);
         Route::get('/events/{event}/registrations/export', [AdminEventRegistrationController::class, 'export']);
+
+        // Mini Games - kelola konten trivia/glosarium + moderasi skor
+        // leaderboard (fitur konten publik Fase 3, 2026-09-09) - lihat CLAUDE.md.
+        Route::get('/trivia-questions', [AdminTriviaQuestionController::class, 'index']);
+        Route::post('/trivia-questions', [AdminTriviaQuestionController::class, 'store']);
+        Route::patch('/trivia-questions/{triviaQuestion}', [AdminTriviaQuestionController::class, 'update']);
+        Route::delete('/trivia-questions/{triviaQuestion}', [AdminTriviaQuestionController::class, 'destroy']);
+        Route::get('/glossary-terms', [AdminGlossaryTermController::class, 'index']);
+        Route::post('/glossary-terms', [AdminGlossaryTermController::class, 'store']);
+        Route::patch('/glossary-terms/{glossaryTerm}', [AdminGlossaryTermController::class, 'update']);
+        Route::delete('/glossary-terms/{glossaryTerm}', [AdminGlossaryTermController::class, 'destroy']);
+        Route::get('/game-scores', [GameScoreController::class, 'index']);
+        Route::delete('/game-scores/{gameScore}', [GameScoreController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

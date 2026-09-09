@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             PricingPlanSeeder::class,
             ContentBlockSeeder::class,
+            TriviaQuestionSeeder::class,
+            GlossaryTermSeeder::class,
         ]);
     }
 }
