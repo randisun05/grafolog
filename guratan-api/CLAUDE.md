@@ -3368,11 +3368,96 @@ artikel, bukan markdown/teks polos). 4 fase; ini Fase 1.
   berulang kali dikonfirmasi bukan request gagal sungguhan di sesi-sesi
   sebelumnya, 404 yang muncul adalah cek draft-slug yang MEMANG
   diharapkan). `npm run lint`/`npm run build` lolos.
-- **Belum dikerjakan**: Fase 2 (Kegiatan + pendaftaran), Fase 3 (Mini
-  Games + leaderboard), Fase 4 (integrasi navigasi publik + landing page
-  teaser — link "Artikel" BELUM muncul di navbar publik/landing sampai
-  Fase 4, cuma bisa diakses lewat URL langsung `/artikel` atau nav admin
-  "Kelola Artikel" untuk sekarang). Lihat `ROADMAP.md` "Konten publik".
+- **Belum dikerjakan (di titik ini)**: Fase 2 (Kegiatan + pendaftaran),
+  Fase 3 (Mini Games + leaderboard), Fase 4 (integrasi navigasi publik +
+  landing page teaser — link "Artikel" BELUM muncul di navbar publik/
+  landing sampai Fase 4, cuma bisa diakses lewat URL langsung `/artikel`
+  atau nav admin "Kelola Artikel" untuk sekarang). Lihat `ROADMAP.md`
+  "Konten publik".
+
+## Konten publik — Fase 2 (Kegiatan + Pendaftaran), 2026-09-09
+
+Lanjutan Fase 1 (Artikel, lihat entri di atas). User konfirmasi lewat
+`AskUserQuestion`: pendaftaran kegiatan DI DALAM Guratan (bukan cuma link
+eksternal) — perlu login, admin bisa lihat+export daftar peserta.
+
+- **`events` table / `App\Models\Event`**: `title`, `slug` (unik, sekali
+  generate saat dibuat - sama pola persis `Article`), `description`
+  (longText, HTML — dipakai ulang `RichTextEditor`/`RichTextViewer` Fase 1
+  APA ADANYA, tidak ditulis ulang), `cover_image_path` (disk publik,
+  sama pola Article), `location`, `is_online`, `starts_at`, `ends_at`
+  (nullable), `capacity` (nullable — `null` = tanpa batas), `status`
+  (draft/published/cancelled), `created_by`. **Tidak ada status
+  "selesai" di skema** — dihitung client-side dari `starts_at`/`ends_at`
+  vs waktu sekarang, sama filosofi badge "Kadaluarsa" computed
+  client-side di Kontrak B2B (`AdminUsersView.vue`, lihat
+  `guratan-web/CLAUDE.md`). Accessor `spots_remaining` (appended) —
+  `null` kalau `capacity` null, else `capacity` dikurangi jumlah
+  registrasi `status=registered` (baris `cancelled` tidak memakan kuota).
+- **`event_registrations` table / `App\Models\EventRegistration`**: satu
+  baris per pasangan `(event_id, user_id)` — UNIQUE constraint, bukan
+  banyak baris per user. `status` (registered/cancelled). **Data peserta
+  (nama/email/phone) TIDAK di-snapshot ke kolom sendiri** — admin baca
+  lewat eager-load `user:id,name,email,phone`, pola sama
+  `Admin\PaymentRecapController` (`sample.user`).
+- **`Api\EventRegistrationController::store()`** pakai
+  `updateOrCreate(['user_id' => ...], ['status' => 'registered', ...])`
+  — ini yang menangani "batal lalu daftar ulang" dengan aman (menimpa
+  baris `cancelled` lama, TIDAK gagal karena UNIQUE constraint) — pola
+  sama persis "reassign update baris yang ada" seperti `Assignment` (lihat
+  bagian HR di atas: "tidak ada riwayat assignment, cuma state
+  terkini"). Guard urutan: `abort_unless(status==='published', 422,
+  ...)` DULU, baru cek kuota (`abort_if(spots_remaining===0, 422,
+  'Kegiatan sudah penuh.')`) — kegiatan draft/dibatalkan ditolak dengan
+  pesan yang sama sekali tidak menyebut kuota.
+- **Keputusan desain — `Api\EventController::show()` (publik) SENGAJA
+  TIDAK menyertakan status pendaftaran user** — kalau digabung, endpoint
+  publik ini butuh "optional auth" (kenali user KALAU ada token, tapi
+  tidak 401 kalau tidak ada — beda dari `auth:sanctum` middleware yang
+  selalu 401 tanpa token). Daripada menambah pola auth baru yang belum
+  pernah ada di codebase ini, frontend yang sudah login memanggil
+  `GET /event-registrations/mine` (auth:sanctum, milik user sendiri saja)
+  secara terpisah lalu mencocokkan `event.id` di client. Trade-off
+  sengaja: 1 request tambahan untuk user login, tapi 0 kerumitan
+  arsitektur otorisasi baru.
+- **`Api\Admin\EventRegistrationController`** (nested di bawah Event,
+  pola persis `CompanyContractController`): `index(Event $event)` (daftar
+  peserta `status=registered` saja, TIDAK termasuk yang sudah batal),
+  `export(Event $event)` (CSV via `App\Support\CsvStreamer`, dipakai
+  ulang apa adanya — `->cursor()` bukan `->get()`, pola persis
+  `Admin\PaymentRecapController`). Audit log `ekspor_peserta_kegiatan`.
+- Test: `Admin\EventControllerTest` (guard, cover upload, slug, index
+  termasuk draft), `EventControllerTest` publik (list published-only,
+  filter `?when=upcoming|past`, draft 404), `EventRegistrationControllerTest`
+  (daftar sukses, ditolak kalau penuh — **dites 2-arah, client-side
+  DAN server-side langsung lewat API** — ditolak kalau daftar ke event
+  draft, batal-lalu-daftar-ulang berhasil lewat `updateOrCreate`,
+  `mine()` cuma balas milik user login), `Admin\EventRegistrationControllerTest`
+  (guard, list cuma `registered` bukan `cancelled`, export CSV berisi
+  data benar + audit log tercatat). 630/631 → **631/631 lolos** (lihat
+  catatan browser-verify di bawah untuk kenapa `ExampleTest` yang
+  biasanya gagal sekarang ikut hijau), `pint --test` lolos.
+- **Browser-verified 2026-09-09** (Playwright, sqlite throwaway +
+  `storage:link`, kali ini dengan `.env` bersih ber-`APP_KEY` asli — jadi
+  `ExampleTest`'s "No application encryption key" yang biasanya jadi
+  satu-satunya kegagalan pre-existing IKUT lolos, 631/631 murni hijau,
+  bukan regresi kebalik): admin buat kegiatan published berkapasitas 1
+  (cover gambar sungguhan + deskripsi rich text) → tamu (belum login)
+  lihat di `/kegiatan`, tombol "Login untuk Mendaftar" tampil → Client A
+  login → daftar → berhasil, tombol berubah jadi "Batalkan Pendaftaran"
+  → Client B login → tombol client-side sudah "Kuota Penuh" (disabled)
+  → **dikonfirmasi juga langsung lewat API** (bukan cuma percaya UI)
+  bahwa server benar-benar menolak dengan 422 → admin buka panel Ubah →
+  daftar peserta menunjukkan PERSIS Client A (yang berhasil), BUKAN
+  Client B (yang ditolak) — membuktikan daftar peserta mencerminkan
+  status registrasi sungguhan, bukan sekadar siapa yang pernah mencoba.
+  0 error konsol nyata (artefak koneksi PHP dev-server + 1 respons 422
+  yang MEMANG diharapkan dari cek server-side). `npm run lint`/
+  `npm run build` lolos.
+- **Belum dikerjakan**: Fase 3 (Mini Games + leaderboard), Fase 4
+  (integrasi navigasi publik + landing page teaser — nav admin "Kelola
+  Kegiatan" sudah ada, tapi `/kegiatan` publik belum ditautkan dari
+  navbar/landing untuk pengunjung, sama seperti `/artikel`).
 
 ## Not built yet
 

@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
+use App\Http\Controllers\Api\Admin\EventController as AdminEventController;
+use App\Http\Controllers\Api\Admin\EventRegistrationController as AdminEventRegistrationController;
 use App\Http\Controllers\Api\Admin\GrafologApplicationController as AdminGrafologApplicationController;
 use App\Http\Controllers\Api\Admin\GrafologRecapController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
@@ -38,6 +40,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChecklistController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\EventController;
+use App\Http\Controllers\Api\EventRegistrationController;
 use App\Http\Controllers\Api\GrafologApplicationController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\MeasurementController;
@@ -79,6 +83,11 @@ Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentContr
 // terlihat lewat jalur ini.
 Route::get('/articles', [ArticleController::class, 'index']);
 Route::get('/articles/{slug}', [ArticleController::class, 'show']);
+
+// Kegiatan publik (fitur konten publik Fase 2, 2026-09-09) - lihat
+// guratan-api/CLAUDE.md. Cuma status=published.
+Route::get('/events', [EventController::class, 'index']);
+Route::get('/events/{slug}', [EventController::class, 'show']);
 
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);
@@ -137,6 +146,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::patch('/reports/{report}/narasi-terpadu', [ReportController::class, 'updateNarasiTerpadu']);
     Route::get('/reports/{report}/revisions', [ReportController::class, 'revisions']);
     Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);
+
+    // Pendaftaran kegiatan (fitur konten publik Fase 2, 2026-09-09) -
+    // siapa pun yang login boleh daftar, bukan cuma role tertentu.
+    Route::post('/events/{event}/register', [EventRegistrationController::class, 'store']);
+    Route::delete('/events/{event}/register', [EventRegistrationController::class, 'destroy']);
+    Route::get('/event-registrations/mine', [EventRegistrationController::class, 'mine']);
 
     Route::get('/sindrom', [SindromController::class, 'index']);
     Route::get('/topik', [TopikController::class, 'index']);
@@ -260,6 +275,13 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
         // Upload gambar generik untuk RichTextEditor.vue (Artikel/Kegiatan).
         Route::post('/media', [MediaController::class, 'store']);
+
+        // Kegiatan (fitur konten publik Fase 2, 2026-09-09) - lihat CLAUDE.md.
+        Route::get('/events', [AdminEventController::class, 'index']);
+        Route::post('/events', [AdminEventController::class, 'store']);
+        Route::patch('/events/{event}', [AdminEventController::class, 'update']);
+        Route::get('/events/{event}/registrations', [AdminEventRegistrationController::class, 'index']);
+        Route::get('/events/{event}/registrations/export', [AdminEventRegistrationController::class, 'export']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

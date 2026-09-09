@@ -117,6 +117,7 @@ function formatNotifDate(iso) {
         <RouterLink v-if="auth.isAdministrator" to="/admin/users">Kelola Staf</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/products">Kelola Produk</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/articles">Kelola Artikel</RouterLink>
+        <RouterLink v-if="auth.isAdministrator" to="/admin/events">Kelola Kegiatan</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/pricing">Kelola Harga</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/discounts">Kelola Diskon</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/content">Kelola Konten</RouterLink>

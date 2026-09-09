@@ -1338,6 +1338,57 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   verification's own intentional draft-slug check). `npm run lint`/
   `npm run build` both clean.
 
+- **Konten publik — Fase 2 (Kegiatan/Events + pendaftaran), 2026-09-09**
+  (see `guratan-api/CLAUDE.md`'s matching entry for the full backend
+  picture and Fase 1's Artikel groundwork this reuses). **`AdminEventsView.vue`**
+  (`/admin/events`, nav "Kelola Kegiatan" + `CommandPalette.vue` entry) —
+  same create-form/expand-row-edit pattern as `AdminArticlesView.vue`,
+  reusing `RichTextEditor` for the description field verbatim (proof the
+  Fase 1 extraction was worth it — zero new rich-text code needed here).
+  Extra fields beyond Article: location/online-toggle,
+  start/end `datetime-local` inputs, an optional capacity number input.
+  The expand-row edit panel gained a second section below the save
+  button — a **participant table** (fetched from
+  `GET /admin/events/{id}/registrations` the moment the row expands) plus
+  an **Export CSV** button reusing `downloadBlob.js` verbatim, same as
+  every Rekap admin page.
+  **`KegiatanListView.vue`** (`/kegiatan`, fully public) — Mendatang/Selesai
+  tabs backed by the API's `?when=upcoming|past` filter (not a
+  client-side date computation over a full unfiltered list — the tab
+  switch re-fetches). **`KegiatanDetailView.vue`** (`/kegiatan/:slug`,
+  fully public) — the interesting one: unauthenticated visitors see a
+  "Login untuk Mendaftar" link (`to="/login?redirect=/kegiatan/:slug"`,
+  the existing redirect-after-login convention already used by the
+  router's `requiresAuth` guard elsewhere); logged-in visitors get a real
+  Daftar/Batalkan Pendaftaran button. Because the backend's `show()` is
+  intentionally public-only (see `guratan-api/CLAUDE.md`'s design note on
+  why "is this user registered" isn't bundled into that response), this
+  view does a **second fetch** to `GET /event-registrations/mine` on
+  mount (only when `auth.isAuthenticated`) and cross-references the
+  current event's `id` client-side to decide which button state to show
+  — a small deliberate trade-off (one extra request for logged-in
+  visitors) chosen over inventing a new optional-auth pattern on the
+  backend. The register button also goes straight to a disabled "Kuota
+  Penuh" state once `spots_remaining` hits 0, computed from data the API
+  already returns — no separate "is full" endpoint needed.
+  **Browser-verified 2026-09-09** (Playwright, two throwaway client
+  accounts registered directly via the API for speed): admin created a
+  published, capacity-1 event with a real cover image and rich-text
+  description; confirmed a logged-out visitor's `/kegiatan` list showed
+  it and the detail page showed "Login untuk Mendaftar"; Client A logged
+  in, registered, and saw the button flip to "Batalkan Pendaftaran";
+  Client B logged in and saw a disabled "Kuota Penuh" button — **and** a
+  direct API call confirmed the server independently rejects the same
+  attempt with a real 422 (not just trusting the disabled button);
+  finally the admin's participant panel showed exactly Client A (the one
+  who actually succeeded) and confirmed Client B — who only ever hit a
+  422 — never appears there. 0 real console errors, and this run's full
+  backend suite came back 631/631 (this session finally had a real
+  `.env`/`APP_KEY` in the throwaway verification environment, so the
+  usually-unrelated `ExampleTest` failure was absent too — not a
+  regression, just a cleaner test run than usual). `npm run lint`/
+  `npm run build` both clean.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

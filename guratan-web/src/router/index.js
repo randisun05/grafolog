@@ -102,6 +102,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/events',
+      name: 'admin-events',
+      component: () => import('../views/AdminEventsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/pricing',
       name: 'admin-pricing',
       component: () => import('../views/AdminPricingView.vue'),
@@ -218,6 +224,17 @@ const router = createRouter({
       path: '/artikel/:slug',
       name: 'artikel-detail',
       component: () => import('../views/ArtikelDetailView.vue'),
+      props: true,
+    },
+    {
+      path: '/kegiatan',
+      name: 'kegiatan-list',
+      component: () => import('../views/KegiatanListView.vue'),
+    },
+    {
+      path: '/kegiatan/:slug',
+      name: 'kegiatan-detail',
+      component: () => import('../views/KegiatanDetailView.vue'),
       props: true,
     },
     {

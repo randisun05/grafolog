@@ -1405,8 +1405,17 @@ luar).
   publik (belum ditautkan dari navbar/landing publik - itu Fase 4).
   Detail teknis di `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md`
   "Konten publik — Fase 1".
-- [ ] **Fase 2**: Kegiatan (Events) + pendaftaran di dalam Guratan, admin
-  bisa lihat+export daftar peserta.
+- [x] **Fase 2 (selesai 2026-09-09)**: Kegiatan (Events) + pendaftaran di
+  dalam Guratan — tabel `events`/`event_registrations`,
+  `Api\Admin\EventController`/`Api\Admin\EventRegistrationController`
+  (index+export CSV peserta), `Api\EventController` publik +
+  `Api\EventRegistrationController` (`auth:sanctum` — daftar/batal/
+  `mine()`). Deskripsi kegiatan dipakai ulang `RichTextEditor`/
+  `RichTextViewer` Fase 1 apa adanya. Frontend: `AdminEventsView.vue`,
+  `KegiatanListView.vue`/`KegiatanDetailView.vue` publik (belum ditautkan
+  dari navbar/landing publik — itu Fase 4, sama seperti Artikel). Detail
+  teknis di `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md` "Konten
+  publik — Fase 2".
 - [ ] **Fase 3**: Mini Games (3 jenis) + trivia/glosarium admin-manageable
   + leaderboard publik.
 - [ ] **Fase 4 (penutup)**: integrasi navigasi publik (navbar/command
