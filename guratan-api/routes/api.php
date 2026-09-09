@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AnalyticsController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\Api\Admin\ArticleController as AdminArticleController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\AuditLogController;
 use App\Http\Controllers\Api\Admin\CompanyContractController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Api\Admin\KombinasiSyaratController;
 use App\Http\Controllers\Api\Admin\KombinasiTemuanController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
+use App\Http\Controllers\Api\Admin\MediaController;
 use App\Http\Controllers\Api\Admin\NotificationLogController;
 use App\Http\Controllers\Api\Admin\PaymentRecapController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
@@ -30,6 +32,7 @@ use App\Http\Controllers\Api\Admin\TokenPurchaseRecapController;
 use App\Http\Controllers\Api\Admin\TopikController as AdminTopikController;
 use App\Http\Controllers\Api\Admin\UserRecapController;
 use App\Http\Controllers\Api\AnnouncementController;
+use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChecklistController;
@@ -70,6 +73,12 @@ Route::middleware('throttle:20,1')->group(function () {
 // DOKU memanggil ini server-to-server, tidak punya token Sanctum kita -
 // keamanan bergantung penuh pada DokuService::verifyNotificationSignature().
 Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentController::class, 'notification']);
+
+// Artikel/Berita publik (fitur konten publik, 2026-09-09) - lihat
+// guratan-api/CLAUDE.md. Cuma status=published, draft tidak pernah
+// terlihat lewat jalur ini.
+Route::get('/articles', [ArticleController::class, 'index']);
+Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);
@@ -242,6 +251,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/knowledge/topik', [AdminTopikController::class, 'store']);
         Route::put('/knowledge/topik/{topik}', [AdminTopikController::class, 'update']);
         Route::delete('/knowledge/topik/{topik}', [AdminTopikController::class, 'destroy']);
+
+        // Artikel/Berita (fitur konten publik, 2026-09-09) - lihat CLAUDE.md.
+        Route::get('/articles', [AdminArticleController::class, 'index']);
+        Route::post('/articles', [AdminArticleController::class, 'store']);
+        Route::patch('/articles/{article}', [AdminArticleController::class, 'update']);
+        Route::delete('/articles/{article}', [AdminArticleController::class, 'destroy']);
+
+        // Upload gambar generik untuk RichTextEditor.vue (Artikel/Kegiatan).
+        Route::post('/media', [MediaController::class, 'store']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

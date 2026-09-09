@@ -1284,6 +1284,60 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   **This closes the entire 3-phase Peran Supervisor initiative** — see
   `guratan-api/CLAUDE.md`'s matching closing note.
 
+- **Konten publik — Fase 1 (Artikel/Berita), 2026-09-09** (see
+  `guratan-api/CLAUDE.md`'s matching entry for the full 4-phase plan and
+  backend detail — first public content feature this app has ever had,
+  previously only marketing copy/internal notifications existed). **First
+  rich-text editor in this codebase** — new dependencies `@tiptap/vue-3`,
+  `@tiptap/starter-kit`, `@tiptap/extension-image`, `@tiptap/extension-link`,
+  `dompurify` (installed `--legacy-peer-deps`, same pre-existing
+  `eslint-plugin-oxlint`/`oxlint` version-pin conflict noted for chart.js
+  earlier, unrelated to these new runtime deps).
+  **`components/shared/RichTextEditor.vue`** (new, shared — will also be
+  used by Kegiatan in Fase 2): small toolbar (bold/italic/H2/H3/bullet
+  list/link/image) wrapping Tiptap's `EditorContent`. The image button
+  uploads through the new generic `POST /admin/media` endpoint and
+  inserts the returned URL as an `<img>` — **not** the same file input as
+  a parent form's own cover-image field, a real gotcha hit while writing
+  this session's own Playwright verification script (the two file inputs
+  sit in the same form, `.first()` grabbed the editor's inline-upload
+  input instead of the cover field — fixed by scoping the selector to the
+  "Gambar Sampul" label specifically, not a code bug, a test-script bug,
+  but worth remembering for any future test against this form shape).
+  **`components/shared/RichTextViewer.vue`** (new, shared) — sanitizes
+  stored HTML via `DOMPurify.sanitize()` before `v-html`, defense-in-depth
+  for public-facing content even though only trusted admins can write it.
+  **`AdminArticlesView.vue`** (`/admin/articles`, `role: administrator`,
+  nav "Kelola Artikel" + `CommandPalette.vue` entry) — same
+  create-form/expand-row-edit pattern as every other Admin*View in this
+  codebase, using `RichTextEditor` for the body and a plain file input
+  for the cover with preview. Saves go through `FormData` (this
+  codebase's 2nd multipart submission after `RegisterGrafologView.vue`'s
+  document upload) — the **edit** save specifically POSTs with a
+  `_method: 'PATCH'` field appended rather than issuing a real HTTP PATCH,
+  because PHP does not populate `$_FILES` for PATCH/PUT multipart bodies
+  at all (a PHP-level limitation, not axios- or Laravel-specific) — see
+  `guratan-api/CLAUDE.md`'s matching entry, this is standard Laravel
+  method-override and required no backend route changes.
+  **`ArtikelListView.vue`** (`/artikel`, fully public) and
+  **`ArtikelDetailView.vue`** (`/artikel/:slug`, fully public) — card
+  grid and single-article read page, both unauthenticated (no
+  `meta.requiresAuth`). **Not yet linked from the public navbar or
+  landing page** — that's Fase 4's job (nav currently only has the admin
+  "Kelola Artikel" link, gated to `auth.isAdministrator`); for now
+  `/artikel` is only reachable by typing the URL directly.
+  Browser-verified 2026-09-09 (Playwright): created one published article
+  with a real uploaded cover image and real Tiptap-typed body text, and
+  one draft; confirmed the admin table showed both with correct status
+  badges; confirmed a logged-out visitor's `/artikel` list showed only
+  the published one; confirmed the detail page rendered both the cover
+  image and the typed body text correctly; confirmed the draft's slug
+  returns a real 404 hitting the API directly. 0 real console errors
+  (the connection-reset entries are the same PHP built-in dev-server
+  artifact noted elsewhere in this file; the one 404 logged was this
+  verification's own intentional draft-slug check). `npm run lint`/
+  `npm run build` both clean.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

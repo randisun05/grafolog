@@ -3287,6 +3287,93 @@ biaya/keselamatan direplikasi persis.
 dashboard potensi + kategori, dan chat interaktif semuanya selesai
 dikerjakan.
 
+## Konten publik — Fase 1 (Artikel/Berita), 2026-09-09
+
+User bertanya apakah ada fungsi artikel/berita/kegiatan/mini games untuk
+publikasi di halaman depan. Dicek ke kode: **tidak ada sama sekali**
+sebelumnya (`ContentBlock` cuma copy marketing statis, `Announcement`
+cuma notifikasi internal per-role, bukan konten publik). User minta
+dibangun semuanya, dikonfirmasi lewat `AskUserQuestion` (rich text untuk
+artikel, bukan markdown/teks polos). 4 fase; ini Fase 1.
+
+- **`articles` table / `App\Models\Article`**: `title`, `slug` (unik,
+  digenerate dari title lewat `Article::generateUniqueSlug()` — SEKALI
+  saat dibuat, tidak pernah berubah lagi di update, supaya URL publik
+  `/artikel/{slug}` stabil), `excerpt`, `body` (longText, HTML dari rich
+  text editor), `cover_image_path`, `status` (draft/published),
+  `published_at` (diisi SEKALI saat transisi pertama ke `published` —
+  pola sama `narasi_status` tapi lebih sederhana, tidak pernah bergeser
+  lagi di update berikutnya supaya tanggal publish asli tidak berubah),
+  `created_by`. Accessor `cover_image_url` (appended) resolve
+  `Storage::disk('public')->url($path)` — `cover_image_path` mentah
+  TIDAK PERNAH diekspos langsung lewat API.
+- **Disk publik dipakai untuk PERTAMA KALINYA di codebase ini** — dicek
+  eksplisit sebelum implementasi (`Storage::disk('public')`/
+  `Storage::url(`/`asset(` — nol hasil grep sebelum fitur ini). Upload
+  yang ada sebelumnya (`GrafologApplicationController::store()`) selalu
+  disk `local` PRIVATE + streaming terautentikasi karena dokumennya
+  memang sensitif (bukti profesi grafolog). Cover artikel BENAR memakai
+  disk publik — kontennya memang untuk publik, bukan mengulang celah
+  "gambar rapid-tier lama" yang sudah didokumentasikan sebagai security
+  finding terpisah di atas.
+- **`Api\Admin\MediaController::store()`** (`POST /admin/media`) — upload
+  gambar generik berdiri sendiri (bukan bagian dari
+  `ArticleController::store`/`update`), dipakai `RichTextEditor.vue` untuk
+  sisipkan gambar INLINE di body — beda dari upload cover yang bundel 1
+  request dengan field lain. Sengaja dipisah karena dipakai ulang lintas
+  entity (Artikel sekarang, Kegiatan menyusul Fase 2) — "upload gambar,
+  dapat URL publik balik" adalah operasi generik, bukan spesifik ke 1
+  entity. Tidak ada audit log di sini (murni convenience infra editor,
+  bukan mutasi konten itu sendiri — mutasi konten yang sesungguhnya tetap
+  di-audit lewat `buat_artikel`/`ubah_artikel`).
+- **`Api\Admin\ArticleController`** (`role:administrator`): `index()`
+  (semua status termasuk draft, paginate), `store()`/`update()` (terima
+  `multipart/form-data`, generate slug sekali, isi `published_at` sekali),
+  `destroy()` (boleh hard-delete, tidak ada FK yang bergantung ke
+  `Article`). Audit log `buat_artikel`/`ubah_artikel`/`hapus_artikel`.
+- **`Api\ArticleController`** (publik, TANPA `auth:sanctum`, ditempatkan
+  sebagai baris polos di luar semua middleware group — pola persis
+  `/pricing`/`/content`/`/products`): `index()` (`status=published` saja,
+  paginate 9), `show(string $slug)` (`published`-only,
+  `firstOrFail()` → 404 otomatis untuk draft/tidak ada, siapa pun yang
+  akses termasuk lewat tebak-URL langsung).
+- **Update-dengan-file-upload via `_method` spoofing**: `PATCH
+  /admin/articles/{article}` dengan cover_image baru dikirim sebagai POST
+  + field `_method=PATCH` di `FormData` (bukan PATCH asli) — PHP TIDAK
+  mengisi `$_FILES` untuk request PATCH/PUT bermetode multipart sama
+  sekali (limitasi PHP-level, bukan spesifik Laravel/axios), jadi upload
+  file di endpoint update HARUS lewat method-override ini. Laravel
+  otomatis mendukung ini (`enableHttpMethodParameterOverride()` sudah
+  dipanggil `Illuminate\Foundation\Http\Kernel` secara default, dicek
+  langsung ke source sebelum diasumsikan) — route `Route::patch(...)`
+  tetap match tanpa perlu route tambahan.
+- Test: `Admin\ArticleControllerTest` (guard auth/role, upload cover +
+  slug tersimpan benar, slug collision dapat suffix `-2`, `published_at`
+  diisi sekali dan tidak bergeser di update berikutnya, index
+  menyertakan draft, delete), `ArticleControllerTest` publik (list cuma
+  published, show by slug, draft 404 lewat show DAN index, slug tidak
+  dikenal 404), `Admin\MediaControllerTest` (guard, upload sukses balas
+  URL, file bukan-gambar ditolak). 611/612 backend test lolos (1
+  kegagalan `ExampleTest` pre-existing tidak terkait), `pint --test`
+  lolos.
+- **Browser-verified 2026-09-09** (Playwright, sqlite throwaway +
+  `storage:link`): admin buat 1 artikel published (judul/ringkasan/isi
+  rich text/cover gambar sungguhan) + 1 draft → tabel admin tampilkan
+  keduanya dengan badge status benar → tamu (belum login) buka `/artikel`
+  → cuma artikel published yang tampil, draft TIDAK bocor → buka detail
+  → cover image + isi rich text (termasuk paragraf yang diketik lewat
+  Tiptap sungguhan) render benar → cek langsung ke API slug draft → 404.
+  0 error konsol nyata (`ERR_CONNECTION_RESET`/`ERR_CONNECTION_REFUSED`
+  adalah artefak `php artisan serve` PHP built-in server yang sudah
+  berulang kali dikonfirmasi bukan request gagal sungguhan di sesi-sesi
+  sebelumnya, 404 yang muncul adalah cek draft-slug yang MEMANG
+  diharapkan). `npm run lint`/`npm run build` lolos.
+- **Belum dikerjakan**: Fase 2 (Kegiatan + pendaftaran), Fase 3 (Mini
+  Games + leaderboard), Fase 4 (integrasi navigasi publik + landing page
+  teaser — link "Artikel" BELUM muncul di navbar publik/landing sampai
+  Fase 4, cuma bisa diakses lewat URL langsung `/artikel` atau nav admin
+  "Kelola Artikel" untuk sekarang). Lihat `ROADMAP.md` "Konten publik".
+
 ## Not built yet
 
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,

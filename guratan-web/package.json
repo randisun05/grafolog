@@ -13,8 +13,13 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@tiptap/extension-image": "^3.31.3",
+    "@tiptap/extension-link": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
+    "@tiptap/vue-3": "^3.31.3",
     "axios": "^1.18.1",
     "chart.js": "^4.5.1",
+    "dompurify": "^3.4.15",
     "pinia": "^4.0.2",
     "vue": "^3.5.40",
     "vue-chartjs": "^5.3.4",

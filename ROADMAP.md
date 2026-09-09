@@ -1379,3 +1379,40 @@ baru otomatis mewarisi semua perilaku itu tanpa sentuh
 menambah varian produk baru dari `/admin/products` tanpa deploy kode
 apa pun sama sekali, langsung mewarisi harga, biaya token, dan seluruh
 alur pemesanan/impor/portal/diskon secara otomatis.
+
+### Inisiatif — Konten Publik (Artikel, Kegiatan, Mini Games), dipecah 4 fase, mulai 2026-09-09
+
+User bertanya apakah ada fungsi artikel/berita, kegiatan, dan mini games
+untuk dipublikasikan di halaman depan. Dicek ke kode: tidak ada sama
+sekali — `ContentBlock` cuma copy marketing statis, `Announcement` cuma
+notifikasi internal per-role (butuh login), tidak ada blog/event/game
+apa pun. User minta dibangun semuanya, dikonfirmasi lewat
+`AskUserQuestion`: 3 jenis mini game sekaligus (Tebak Kepribadian dari
+Tulisan, Trivia Grafologi, Memory Match Istilah — ide game lain di luar
+3 ini ditunda, lihat item terpisah di bawah), leaderboard publik
+(nama/anonim tanpa login), artikel pakai rich text (bukan markdown/teks
+polos), kegiatan pakai pendaftaran DI DALAM Guratan (bukan cuma link
+luar).
+
+- [x] **Fase 1 (selesai 2026-09-09)**: Artikel/Berita — tabel `articles`
+  + `Api\Admin\ArticleController` (CRUD, upload cover ke disk publik -
+  PERTAMA KALI disk publik dipakai di codebase ini) + `Api\ArticleController`
+  publik (`GET /api/articles[/{slug}]`, cuma status published) +
+  `Api\Admin\MediaController` (upload gambar generik untuk rich text,
+  dipakai ulang Fase 2). Frontend: `RichTextEditor.vue`/`RichTextViewer.vue`
+  (Tiptap + DOMPurify, dependency baru, dipakai ulang Kegiatan Fase 2),
+  `AdminArticlesView.vue`, `ArtikelListView.vue`/`ArtikelDetailView.vue`
+  publik (belum ditautkan dari navbar/landing publik - itu Fase 4).
+  Detail teknis di `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md`
+  "Konten publik — Fase 1".
+- [ ] **Fase 2**: Kegiatan (Events) + pendaftaran di dalam Guratan, admin
+  bisa lihat+export daftar peserta.
+- [ ] **Fase 3**: Mini Games (3 jenis) + trivia/glosarium admin-manageable
+  + leaderboard publik.
+- [ ] **Fase 4 (penutup)**: integrasi navigasi publik (navbar/command
+  palette tampil untuk tamu, bukan cuma user login) + teaser Artikel/
+  Kegiatan/Games di landing page + verifikasi end-to-end penuh.
+- [ ] **Ide mini game ke-4+ di luar 3 yang dikonfirmasi** — user sempat
+  menyebut ada ide lain tapi belum dijelaskan konsepnya, sengaja
+  ditunda sampai user menjelaskan sendiri (jangan ditebak/dibangun
+  spekulatif).

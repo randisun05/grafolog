@@ -96,6 +96,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/articles',
+      name: 'admin-articles',
+      component: () => import('../views/AdminArticlesView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/pricing',
       name: 'admin-pricing',
       component: () => import('../views/AdminPricingView.vue'),
@@ -202,6 +208,17 @@ const router = createRouter({
       name: 'supervisor-chat',
       component: () => import('../views/SupervisorChatView.vue'),
       meta: { requiresAuth: true, role: 'supervisor' },
+    },
+    {
+      path: '/artikel',
+      name: 'artikel-list',
+      component: () => import('../views/ArtikelListView.vue'),
+    },
+    {
+      path: '/artikel/:slug',
+      name: 'artikel-detail',
+      component: () => import('../views/ArtikelDetailView.vue'),
+      props: true,
     },
     {
       path: '/kebijakan-privasi',
