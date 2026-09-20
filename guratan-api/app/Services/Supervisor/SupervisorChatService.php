@@ -44,7 +44,7 @@ class SupervisorChatService
      * Simpan pesan user DULU (kalau LLM gagal ATAU belum dikonfigurasi,
      * pertanyaan tidak hilang, grafolog/supervisor bisa retry tanpa
      * kehilangan histori - pola sama PaymentController::store(), yang
-     * juga menyimpan row Payment SEBELUM memanggil DokuService yang bisa
+     * juga menyimpan row Payment SEBELUM memanggil XenditService yang bisa
      * melempar RuntimeException karena kredensial belum diisi), baru
      * panggil Anthropic, baru simpan balasan assistant + token_usage.
      */

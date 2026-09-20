@@ -13,7 +13,7 @@ use Throwable;
  * Business Manager). Satu endpoint REST sederhana: POST token+target+message,
  * tidak ada OAuth/template approval seperti Cloud API.
  *
- * Env-gated sama pola DokuService - TAPI beda filosofi: DOKU melempar
+ * Env-gated sama pola XenditService - TAPI beda filosofi: XenditService melempar
  * RuntimeException kalau kredensial kosong (pembayaran gagal harus
  * kelihatan), WhatsAppService diam-diam SKIP (return false) kalau token
  * kosong - notifikasi WA itu pelengkap di samping email yang sudah

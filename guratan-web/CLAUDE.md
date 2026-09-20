@@ -204,9 +204,9 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   (`/token-saya`, `role: 'grafolog'`) shows `GET /api/tokens/wallet`'s
   balance + last 20 ledger transactions, plus a buy form (quantity +
   optional discount code previewed via `POST /api/tokens/preview`) that
-  posts to `POST /api/tokens/purchase` and hard-redirects to DOKU's
+  posts to `POST /api/tokens/purchase` and hard-redirects to Xendit's
   `payment_url` exactly like `OrderView` does — **same untested-past-503
-  caveat applies**: the actual DOKU redirect has never been exercised
+  caveat applies**: the actual Xendit redirect has never been exercised
   (blocked on Commerce Fase C's sandbox credentials), only the clean-503
   failure path is verified. Nav link "Kelola Token" (administrator) /
   "Token Saya" (grafolog) + `CommandPalette.vue` entries.
@@ -277,13 +277,13 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `POST /api/pricing/preview` for a live total before paying. "Bayar
   Sekarang" calls `POST /api/samples` then `POST /api/samples/{id}/payment`
   — two existing endpoints, no new backend endpoint for this view. On
-  success it does a hard `window.location.href` redirect to DOKU's
-  `payment_url` (leaves the SPA entirely, this is intentional — DOKU's
-  checkout page isn't ours). **The actual DOKU redirect has never been
+  success it does a hard `window.location.href` redirect to Xendit's
+  `payment_url` (leaves the SPA entirely, this is intentional — Xendit's
+  checkout page isn't ours). **The actual Xendit redirect has never been
   tested** — no sandbox credentials yet (Commerce Fase C). What *is*
-  verified: the failure path — with DOKU unconfigured,
+  verified: the failure path — with Xendit unconfigured,
   `PaymentController::store` returns a clean 503 (see
-  `guratan-api/CLAUDE.md`'s "DOKU config errors are caught" note) and this
+  `guratan-api/CLAUDE.md`'s "Payment (Xendit)" note) and this
   view shows it as an inline message + toast, not a crash.
   **`AdminDiscountsView` added 2026-08-06** (Commerce Fase B) —
   `/admin/discounts`, `role: 'administrator'`. Create form (code auto-
@@ -1521,6 +1521,21 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   confirming this phase is purely additive with zero regression to the
   existing admin navigation. 0 real console errors. `npm run lint`/
   `npm run build` both clean.
+
+- **Payment gateway diganti DOKU → Xendit, 2026-09-20** (backend rewrite —
+  see `guratan-api/CLAUDE.md`'s "Payment (Xendit)" for the full picture).
+  **Zero frontend logic changes** — `OrderView.vue`/`TokenWalletView.vue`
+  both consume `payment_url` (from `POST /samples/{id}/payment` /
+  `POST /tokens/purchase`), a field name that stayed identical across the
+  provider swap, so neither file needed a single line touched. Only
+  `PrivacyPolicyView.vue`/`TermsOfServiceView.vue`'s 2 legal-copy mentions
+  of "DOKU" as the payment partner were updated to "Xendit" — a copy
+  change, not a code change. **Browser-verified 2026-09-20**: a freshly
+  registered client's real `POST /samples/{id}/payment` request (through
+  the actual HTTP stack, not `Http::fake()`) returned a clean 503 with no
+  leaked exception/trace (Xendit still unconfigured in dev, same as DOKU
+  always was), and `OrderView.vue` rendered pricing normally with 0
+  console errors — confirming the swap is transparent to the frontend.
 
 ## Stack
 

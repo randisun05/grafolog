@@ -18,27 +18,23 @@ class TokenPurchaseControllerTest extends TestCase
         parent::setUp();
 
         config([
-            'services.doku.client_id' => 'MCH-TEST-0001',
-            'services.doku.secret_key' => 'test-secret-key',
-            'services.doku.base_url' => 'https://api-sandbox.doku.com',
+            'services.xendit.secret_key' => 'xnd_development_test-secret-key',
+            'services.xendit.callback_token' => 'test-callback-token',
+            'services.xendit.base_url' => 'https://api.xendit.co',
         ]);
 
         TokenPrice::create(['price_per_token' => 5000, 'is_active' => true]);
     }
 
-    private function fakeSuccessfulDoku(string $tokenId = 'tok-token-1'): void
+    private function fakeSuccessfulXendit(string $invoiceId = 'inv-token-1'): void
     {
         Http::fake([
-            'api-sandbox.doku.com/*' => Http::response([
-                'message' => ['SUCCESS'],
-                'response' => [
-                    'order' => ['amount' => '50000', 'invoice_number' => 'whatever'],
-                    'payment' => [
-                        'token_id' => $tokenId,
-                        'url' => 'https://sandbox.doku.com/checkout-link-v2/'.$tokenId,
-                        'expired_date' => '20260101000000',
-                    ],
-                ],
+            'api.xendit.co/v2/invoices' => Http::response([
+                'id' => $invoiceId,
+                'external_id' => 'whatever',
+                'status' => 'PENDING',
+                'invoice_url' => 'https://checkout.xendit.co/web/'.$invoiceId,
+                'expiry_date' => '2026-01-01T00:00:00.000Z',
             ], 200),
         ]);
     }
@@ -54,7 +50,7 @@ class TokenPurchaseControllerTest extends TestCase
 
     public function test_grafolog_can_start_token_purchase(): void
     {
-        $this->fakeSuccessfulDoku();
+        $this->fakeSuccessfulXendit();
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $response = $this->actingAs($grafolog, 'sanctum')
@@ -74,7 +70,7 @@ class TokenPurchaseControllerTest extends TestCase
 
     public function test_discount_code_reduces_charged_amount(): void
     {
-        $this->fakeSuccessfulDoku();
+        $this->fakeSuccessfulXendit();
         $discount = DiscountCode::create(['code' => 'TOKEN10', 'type' => 'percentage', 'value' => 10, 'applicable_tiers' => ['token']]);
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
@@ -111,9 +107,9 @@ class TokenPurchaseControllerTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_unconfigured_doku_returns_clean_503(): void
+    public function test_unconfigured_xendit_returns_clean_503(): void
     {
-        config(['services.doku.client_id' => null, 'services.doku.secret_key' => null]);
+        config(['services.xendit.secret_key' => null]);
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $response = $this->actingAs($grafolog, 'sanctum')

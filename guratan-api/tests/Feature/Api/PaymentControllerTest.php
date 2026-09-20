@@ -16,42 +16,28 @@ class PaymentControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const CLIENT_ID = 'MCH-TEST-0001';
+    private const SECRET_KEY = 'xnd_development_test-secret-key';
 
-    private const SECRET_KEY = 'test-secret-key';
+    private const CALLBACK_TOKEN = 'test-callback-token';
 
     protected function setUp(): void
     {
         parent::setUp();
 
         config([
-            'services.doku.client_id' => self::CLIENT_ID,
-            'services.doku.secret_key' => self::SECRET_KEY,
-            'services.doku.base_url' => 'https://api-sandbox.doku.com',
+            'services.xendit.secret_key' => self::SECRET_KEY,
+            'services.xendit.callback_token' => self::CALLBACK_TOKEN,
+            'services.xendit.base_url' => 'https://api.xendit.co',
         ]);
 
         PricingPlan::create(['tier' => 'comprehensive', 'price' => 49000, 'is_active' => true]);
         PricingPlan::create(['tier' => 'master', 'price' => 149000, 'is_active' => true]);
     }
 
-    private function dokuSignature(string $requestId, string $timestamp, string $target, string $rawBody, string $clientId = self::CLIENT_ID): string
+    public function test_unconfigured_xendit_returns_clean_503_not_raw_500(): void
     {
-        $digest = base64_encode(hash('sha256', $rawBody, true));
-        $component = implode("\n", [
-            'Client-Id:'.$clientId,
-            'Request-Id:'.$requestId,
-            'Request-Timestamp:'.$timestamp,
-            'Request-Target:'.$target,
-            'Digest:'.$digest,
-        ]);
-
-        return 'HMACSHA256='.base64_encode(hash_hmac('sha256', $component, self::SECRET_KEY, true));
-    }
-
-    public function test_unconfigured_doku_returns_clean_503_not_raw_500(): void
-    {
-        // Kondisi nyata sekarang di dev - DOKU_CLIENT_ID/SECRET masih kosong.
-        config(['services.doku.client_id' => null, 'services.doku.secret_key' => null]);
+        // Kondisi nyata sekarang di dev - XENDIT_SECRET_KEY masih kosong.
+        config(['services.xendit.secret_key' => null]);
 
         $user = User::factory()->create();
         $sample = HandwritingSample::create([
@@ -69,16 +55,12 @@ class PaymentControllerTest extends TestCase
     public function test_owner_can_create_payment_for_comprehensive_sample(): void
     {
         Http::fake([
-            'api-sandbox.doku.com/*' => Http::response([
-                'message' => ['SUCCESS'],
-                'response' => [
-                    'order' => ['amount' => '49000', 'invoice_number' => 'whatever'],
-                    'payment' => [
-                        'token_id' => 'tok-abc123',
-                        'url' => 'https://sandbox.doku.com/checkout-link-v2/abc123',
-                        'expired_date' => '20260101000000',
-                    ],
-                ],
+            'api.xendit.co/v2/invoices' => Http::response([
+                'id' => 'inv-abc123',
+                'external_id' => 'whatever',
+                'status' => 'PENDING',
+                'invoice_url' => 'https://checkout.xendit.co/web/abc123',
+                'expiry_date' => '2026-01-01T00:00:00.000Z',
             ], 200),
         ]);
 
@@ -91,32 +73,30 @@ class PaymentControllerTest extends TestCase
         $response = $this->actingAs($user, 'sanctum')->postJson("/api/samples/{$sample->id}/payment");
 
         $response->assertCreated()
-            ->assertJsonPath('payment_url', 'https://sandbox.doku.com/checkout-link-v2/abc123')
+            ->assertJsonPath('payment_url', 'https://checkout.xendit.co/web/abc123')
             ->assertJsonStructure(['invoice_number']);
 
         $this->assertDatabaseHas('payments', [
             'sample_id' => $sample->id,
             'amount' => 49000,
             'status' => 'pending',
-            'doku_token_id' => 'tok-abc123',
+            'xendit_invoice_id' => 'inv-abc123',
         ]);
 
         Http::assertSent(function ($request) {
-            return $request->hasHeader('Client-Id', self::CLIENT_ID)
-                && $request->hasHeader('Signature')
-                && str_starts_with($request->header('Signature')[0], 'HMACSHA256=');
+            return $request->url() === 'https://api.xendit.co/v2/invoices'
+                && $request->hasHeader('Authorization')
+                && str_starts_with($request->header('Authorization')[0], 'Basic ');
         });
     }
 
     public function test_valid_discount_code_reduces_charged_amount(): void
     {
         Http::fake([
-            'api-sandbox.doku.com/*' => Http::response([
-                'message' => ['SUCCESS'],
-                'response' => [
-                    'order' => ['amount' => '44100', 'invoice_number' => 'whatever'],
-                    'payment' => ['token_id' => 'tok-disc', 'url' => 'https://sandbox.doku.com/checkout-link-v2/disc', 'expired_date' => '20260101000000'],
-                ],
+            'api.xendit.co/v2/invoices' => Http::response([
+                'id' => 'inv-disc', 'external_id' => 'whatever', 'status' => 'PENDING',
+                'invoice_url' => 'https://checkout.xendit.co/web/disc',
+                'expiry_date' => '2026-01-01T00:00:00.000Z',
             ], 200),
         ]);
 
@@ -198,7 +178,7 @@ class PaymentControllerTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_notification_marks_payment_paid_on_valid_signature(): void
+    public function test_notification_marks_payment_paid_on_valid_callback_token(): void
     {
         $user = User::factory()->create();
         $sample = HandwritingSample::create([
@@ -210,18 +190,10 @@ class PaymentControllerTest extends TestCase
             'amount' => 49000, 'status' => 'pending',
         ]);
 
-        $body = ['order' => ['invoice_number' => 'INV-NOTIF-1', 'amount' => '49000'], 'transaction' => ['status' => 'SUCCESS']];
-        $rawBody = json_encode($body);
-        $requestId = 'req-notif-1';
-        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
-        $signature = $this->dokuSignature($requestId, $timestamp, '/api/payments/notification', $rawBody);
+        $body = ['external_id' => 'INV-NOTIF-1', 'status' => 'PAID', 'amount' => 49000];
 
-        $response = $this->withHeaders([
-            'Client-Id' => self::CLIENT_ID,
-            'Request-Id' => $requestId,
-            'Request-Timestamp' => $timestamp,
-            'Signature' => $signature,
-        ])->postJson('/api/payments/notification', $body);
+        $response = $this->withHeaders(['x-callback-token' => self::CALLBACK_TOKEN])
+            ->postJson('/api/payments/notification', $body);
 
         $response->assertOk();
         $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'paid']);
@@ -236,22 +208,15 @@ class PaymentControllerTest extends TestCase
             'tier' => 'comprehensive', 'status' => 'pending',
         ]);
         $discount = DiscountCode::create(['code' => 'INCR1', 'type' => 'fixed', 'value' => 5000, 'used_count' => 0]);
-        $payment = Payment::create([
+        Payment::create([
             'sample_id' => $sample->id, 'invoice_number' => 'INV-NOTIF-DISC',
             'base_amount' => 49000, 'amount' => 44000, 'discount_code_id' => $discount->id, 'status' => 'pending',
         ]);
 
-        $body = ['order' => ['invoice_number' => 'INV-NOTIF-DISC', 'amount' => '44000'], 'transaction' => ['status' => 'SUCCESS']];
-        $rawBody = json_encode($body);
-        $requestId = 'req-notif-disc';
-        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
-        $signature = $this->dokuSignature($requestId, $timestamp, '/api/payments/notification', $rawBody);
-        $headers = [
-            'Client-Id' => self::CLIENT_ID, 'Request-Id' => $requestId,
-            'Request-Timestamp' => $timestamp, 'Signature' => $signature,
-        ];
+        $body = ['external_id' => 'INV-NOTIF-DISC', 'status' => 'PAID', 'amount' => 44000];
+        $headers = ['x-callback-token' => self::CALLBACK_TOKEN];
 
-        // Kirim notifikasi SUCCESS dua kali (DOKU bisa retry) - kuota cuma
+        // Kirim notifikasi PAID dua kali (Xendit bisa retry) - kuota cuma
         // boleh naik sekali, bukan dua kali.
         $this->withHeaders($headers)->postJson('/api/payments/notification', $body)->assertOk();
         $this->withHeaders($headers)->postJson('/api/payments/notification', $body)->assertOk();
@@ -259,7 +224,7 @@ class PaymentControllerTest extends TestCase
         $this->assertSame(1, $discount->fresh()->used_count);
     }
 
-    public function test_notification_rejects_invalid_signature(): void
+    public function test_notification_rejects_invalid_callback_token(): void
     {
         $user = User::factory()->create();
         $sample = HandwritingSample::create([
@@ -271,22 +236,35 @@ class PaymentControllerTest extends TestCase
             'amount' => 49000, 'status' => 'pending',
         ]);
 
-        $body = ['order' => ['invoice_number' => 'INV-NOTIF-2', 'amount' => '49000'], 'transaction' => ['status' => 'SUCCESS']];
+        $body = ['external_id' => 'INV-NOTIF-2', 'status' => 'PAID', 'amount' => 49000];
 
-        $response = $this->withHeaders([
-            'Client-Id' => self::CLIENT_ID,
-            'Request-Id' => 'req-notif-2',
-            'Request-Timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
-            'Signature' => 'HMACSHA256=not-the-right-signature',
-        ])->postJson('/api/payments/notification', $body);
+        $response = $this->withHeaders(['x-callback-token' => 'not-the-right-token'])
+            ->postJson('/api/payments/notification', $body);
 
         $response->assertStatus(400);
         $this->assertDatabaseHas('payments', ['id' => $payment->id, 'status' => 'pending']);
     }
 
+    public function test_notification_rejects_missing_callback_token(): void
+    {
+        $user = User::factory()->create();
+        $sample = HandwritingSample::create([
+            'user_id' => $user->id, 'created_by' => $user->id,
+            'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+        Payment::create([
+            'sample_id' => $sample->id, 'invoice_number' => 'INV-NOTIF-3',
+            'amount' => 49000, 'status' => 'pending',
+        ]);
+
+        $body = ['external_id' => 'INV-NOTIF-3', 'status' => 'PAID', 'amount' => 49000];
+
+        $this->postJson('/api/payments/notification', $body)->assertStatus(400);
+    }
+
     public function test_notification_credits_token_balance_on_successful_token_purchase(): void
     {
-        // Satu Notification URL DOKU dipakai untuk Payment (sample klien) DAN
+        // Satu Callback URL Xendit dipakai untuk Payment (sample klien) DAN
         // TokenPurchase (token grafolog) - dibedakan lewat prefix invoice_number.
         $grafolog = User::factory()->create(['role' => 'grafolog', 'token_balance' => 2]);
         $purchase = TokenPurchase::create([
@@ -294,18 +272,10 @@ class PaymentControllerTest extends TestCase
             'amount' => 50000, 'status' => 'pending', 'invoice_number' => 'TOKEN-NOTIF-1',
         ]);
 
-        $body = ['order' => ['invoice_number' => 'TOKEN-NOTIF-1', 'amount' => '50000'], 'transaction' => ['status' => 'SUCCESS']];
-        $rawBody = json_encode($body);
-        $requestId = 'req-token-notif-1';
-        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
-        $signature = $this->dokuSignature($requestId, $timestamp, '/api/payments/notification', $rawBody);
+        $body = ['external_id' => 'TOKEN-NOTIF-1', 'status' => 'PAID', 'amount' => 50000];
 
-        $response = $this->withHeaders([
-            'Client-Id' => self::CLIENT_ID,
-            'Request-Id' => $requestId,
-            'Request-Timestamp' => $timestamp,
-            'Signature' => $signature,
-        ])->postJson('/api/payments/notification', $body);
+        $response = $this->withHeaders(['x-callback-token' => self::CALLBACK_TOKEN])
+            ->postJson('/api/payments/notification', $body);
 
         $response->assertOk();
         $this->assertDatabaseHas('token_purchases', ['id' => $purchase->id, 'status' => 'paid']);
@@ -324,15 +294,8 @@ class PaymentControllerTest extends TestCase
             'amount' => 25000, 'status' => 'pending', 'invoice_number' => 'TOKEN-NOTIF-2',
         ]);
 
-        $body = ['order' => ['invoice_number' => 'TOKEN-NOTIF-2', 'amount' => '25000'], 'transaction' => ['status' => 'SUCCESS']];
-        $rawBody = json_encode($body);
-        $requestId = 'req-token-notif-2';
-        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
-        $signature = $this->dokuSignature($requestId, $timestamp, '/api/payments/notification', $rawBody);
-        $headers = [
-            'Client-Id' => self::CLIENT_ID, 'Request-Id' => $requestId,
-            'Request-Timestamp' => $timestamp, 'Signature' => $signature,
-        ];
+        $body = ['external_id' => 'TOKEN-NOTIF-2', 'status' => 'PAID', 'amount' => 25000];
+        $headers = ['x-callback-token' => self::CALLBACK_TOKEN];
 
         $this->withHeaders($headers)->postJson('/api/payments/notification', $body)->assertOk();
         $this->withHeaders($headers)->postJson('/api/payments/notification', $body)->assertOk();

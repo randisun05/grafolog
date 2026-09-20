@@ -4,7 +4,7 @@
 - [ScoringEngineService design](feedback_scoring_engine_design.md) — corrected 2026-07-26: very_high IS used (4-way narasi_level), deskriptif_lookup is dead code
 - [Roadmap pointer](reference_roadmap.md) — ordered work backlog lives in ROADMAP.md at project root, phased 0-3
 - [MGA pivot](project_mga_pivot.md) — Guratan→"Master Graphology Assistant", 5 roles; 7-phase roadmap COMPLETE 2026-08-06, see file for deferred items list
-- [Commerce & CMS initiative](project_commerce_initiative.md) — pricing/discount/checkout/CMS/promo; Fase A/B/D/E/F all done 2026-08-06, only Fase C (DOKU sandbox creds) left
+- [Commerce & CMS initiative](project_commerce_initiative.md) — pricing/discount/checkout/CMS/promo; Fase A/B/D/E/F all done 2026-08-06, only Fase C (sandbox creds) left. **Payment provider swapped DOKU→Xendit 2026-09-20** (user request, not a DOKU problem) — DokuService deleted, replaced by XenditService; see guratan-api/CLAUDE.md "Payment (Xendit)" for current details, the file below still describes the DOKU-era build only
 - [Token system for grafolog](project_token_system.md) — built 2026-08-07, complete but gated off until admin sets real price/cost in /admin/tokens
 - [FE redesign](project_fe_redesign.md) — homepage rebuilt 2026-08-07, "Kertas Berani" palette, CMS expanded to 21 fields, dashboards not yet touched
 - [Knowledge Management System](project_km_system.md) — KM-A through H ALL COMPLETE 2026-08-08: admin CRUD, rule builder, measurement worksheet wired into real scoring, visual concept map. Nothing outstanding.

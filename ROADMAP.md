@@ -52,8 +52,10 @@ detail teknis tiap repo. Centang `[x]` saat selesai, urut dari atas.
   HMAC-SHA256 sesuai dokumentasi resmi DOKU), `PaymentController` (buat
   pembayaran + terima webhook notifikasi), 6 test baru (total 47), semua
   lolos. Yang masih perlu:
-  - [ ] Isi `DOKU_CLIENT_ID`/`DOKU_SECRET_KEY` sandbox nyata di `.env` (masih
-    kosong/placeholder) dan uji satu transaksi sungguhan.
+  - [ ] **Provider diganti DOKU → Xendit 2026-09-20** (lihat entri
+    tersendiri di bawah) — isi `XENDIT_SECRET_KEY`/`XENDIT_CALLBACK_TOKEN`
+    sandbox nyata di `.env` (masih kosong/placeholder) dan uji satu
+    transaksi sungguhan.
   - [ ] Konfirmasi harga tier Master (`config/pricing.php` — 149000 masih
     tebakan, comprehensive 49000 sudah sesuai `CLAUDE.md` root).
   - [ ] **Keputusan produk terbuka**: belum ada UI checkout self-service sama
@@ -61,10 +63,9 @@ detail teknis tiap repo. Centang `[x]` saat selesai, urut dari atas.
     klien (`PortalGrafologView`), klien sendiri tidak pernah membuka
     aplikasi untuk pesan/bayar. Perlu diputuskan dulu alur pemesanannya
     seperti apa sebelum tombol "Bayar" bisa di-wire ke frontend.
-  - [ ] Verifikasi payload webhook notifikasi DOKU sungguhan (field yang
-    dipakai sekarang, `order.invoice_number` & `transaction.status`,
-    berdasarkan dokumentasi resmi tapi belum dicocokkan ke notifikasi nyata
-    dari DOKU Sandbox).
+  - [ ] Verifikasi payload webhook notifikasi Xendit sungguhan (field yang
+    dipakai sekarang, `external_id` & `status`, berdasarkan dokumentasi
+    resmi tapi belum dicocokkan ke notifikasi nyata dari Xendit test mode).
   `guratan-api`
 - [ ] Privacy Policy & Terms of Service — **draft sudah ditulis** di
   `legal/privacy-policy.md` dan `legal/terms-of-service.md` (2026-07-27),
@@ -312,9 +313,11 @@ di repo, lihat riwayat chat kalau perlu detail visual/diagram.
   aktif/nonaktif. Diverifikasi browser sungguhan + query DB langsung: buat
   kode 15%, nonaktifkan, aktifkan lagi, hitung preview harga — semua
   benar secara matematis (Rp52.069 → potongan Rp7.810 → akhir Rp44.259).
-- [ ] **Fase C — Aktivasi DOKU sandbox.** Isi kredensial asli, kirim 1
-  transaksi test, cocokkan payload webhook sungguhan melawan asumsi yang
-  dipakai kode sekarang (`order.invoice_number`, `transaction.status`).
+- [ ] **Fase C — Aktivasi Xendit test mode** (provider diganti dari DOKU
+  2026-09-20, lihat entri tersendiri "Payment gateway diganti DOKU →
+  Xendit"). Isi kredensial asli, kirim 1 transaksi test, cocokkan payload
+  webhook sungguhan melawan asumsi yang dipakai kode sekarang
+  (`external_id`, `status`).
 - [x] **Selesai 2026-08-06. Fase D — Halaman checkout mandiri.** Backend:
   `PaymentController::store` terima `discount_code` opsional (pakai
   `DiscountCode::isValidFor()`/`amountOff()` yang sama dari Fase B, tidak
@@ -382,9 +385,10 @@ di repo, lihat riwayat chat kalau perlu detail visual/diagram.
 ---
 
 **Status Inisiatif Commerce & CMS:** Fase A, B, D, E, F **semua selesai**
-(2026-08-06). Yang tersisa hanya **Fase C — aktivasi DOKU sandbox**, dan itu
-bukan lagi soal keputusan/kode — murni menunggu user memasukkan kredensial
-sandbox DOKU asli (`DOKU_CLIENT_ID`/`DOKU_SECRET_KEY`) supaya redirect
+(2026-08-06). Yang tersisa hanya **Fase C — aktivasi Xendit test mode**
+(provider diganti dari DOKU 2026-09-20), dan itu bukan lagi soal
+keputusan/kode — murni menunggu user memasukkan kredensial test mode
+Xendit asli (`XENDIT_SECRET_KEY`/`XENDIT_CALLBACK_TOKEN`) supaya redirect
 pembayaran sungguhan (bukan cuma jalur error 503-nya) bisa akhirnya diuji
 end-to-end.
 
@@ -393,8 +397,8 @@ lama (payment/legal/deployment) jalan paralel, tidak diblokir pivot MGA.
 Fase 3 lama sebagian diserap ke Pivot MGA di atas. Pivot MGA 01→07 **sudah
 tuntas semua** (2026-08-01 → 2026-08-06) — baseline rollback:
 `guratan-api@9dcca3d`, `guratan-web@c30d5e2`. Inisiatif Commerce & CMS
-(A-F) **hampir tuntas** — hanya Fase C (kredensial DOKU sandbox) yang masih
-menunggu user.
+(A-F) **hampir tuntas** — hanya Fase C (kredensial Xendit test mode) yang
+masih menunggu user.
 
 ---
 
@@ -973,8 +977,9 @@ backup") dan `guratan-web/CLAUDE.md`.
   `LLM_PROVIDER=none`, belum pernah dites generate sungguhan.
 - [ ] **SMTP production** — masih `MAIL_MAILER=log`/Gmail pribadi (lihat
   `DEPLOYMENT.md` "Catatan email production").
-- [ ] **Verifikasi DOKU sandbox** — payment gateway belum pernah dites
-  lawan notifikasi sungguhan dari DOKU.
+- [ ] **Verifikasi Xendit test mode** — payment gateway (diganti dari
+  DOKU 2026-09-20) belum pernah dites lawan notifikasi sungguhan dari
+  Xendit.
 - [ ] **Kredensial Fonnte asli** — **2026-09-07**: integrasi WhatsApp
   (`WhatsAppService`) sudah lengkap dan browser-verified end-to-end
   (dikonfirmasi lewat log server: pengiriman dilewati dengan anggun
@@ -1458,3 +1463,38 @@ luar).
   bermasalah dalam praktik (frekuensi pemakaian 2 endpoint ini jauh lebih
   jarang dari games), tapi layak diperiksa+diperbaiki dengan pola yang
   sama (prefix eksplisit per-endpoint).
+
+## Payment gateway diganti DOKU → Xendit, 2026-09-20
+
+User minta langsung ("payment gateway pake xendit saja") — bukan karena
+DOKU bermasalah secara teknis, murni pilihan provider. DOKU **belum
+pernah dikonfigurasi/dites lawan sandbox sungguhan** sejak diintegrasikan
+2026-07-27 (lihat "Fase 2 — Kesiapan produksi" di atas), jadi ini ganti
+bersih tanpa migrasi data produksi — `App\Services\Payment\DokuService`
+dihapus total, digantikan `App\Services\Payment\XenditService`.
+
+- Kontrak API Xendit (endpoint Invoice, skema autentikasi Basic Auth,
+  verifikasi webhook via header `x-callback-token` statis) dicek langsung
+  ke dokumentasi resmi sebelum implementasi — sama kehati-hatian dengan
+  integrasi DOKU dulu, bukan ditebak dari memori model.
+- Migrasi rename kolom `doku_token_id`/`doku_payment_url` (+
+  `doku_payment_channel` di `payments`, yang sudah dead sejak awal) jadi
+  `xendit_invoice_id`/`xendit_invoice_url` di tabel `payments` DAN
+  `token_purchases`.
+- **Zero perubahan frontend logic** — field response `payment_url` yang
+  dikonsumsi `OrderView.vue`/`TokenWalletView.vue` namanya identik di
+  kedua provider. Cuma 2 baris teks legal (`PrivacyPolicyView.vue`/
+  `TermsOfServiceView.vue`) yang berubah dari "DOKU" jadi "Xendit".
+- 20 test (`PaymentControllerTest`/`TokenPurchaseControllerTest`) ditulis
+  ulang total untuk kontrak Xendit, semua lolos. `php artisan test`
+  658/658 real test lolos, `pint --test` lolos. Browser-verified lewat
+  request HTTP sungguhan (bukan `Http::fake()`) — client baru daftar,
+  buat sample, `POST /samples/{id}/payment` balas 503 bersih tanpa
+  exception/trace bocor (Xendit belum dikonfigurasi, sama seperti DOKU
+  dulu selalu belum dikonfigurasi), `OrderView.vue` tetap render normal.
+- Detail teknis penuh di `guratan-api/CLAUDE.md`/`guratan-web/CLAUDE.md`
+  "Payment (Xendit)".
+- **Belum diverifikasi**: redirect Xendit sungguhan + payload webhook test
+  mode asli — sama persis status DOKU dulu, cuma menunggu kredensial
+  `XENDIT_SECRET_KEY`/`XENDIT_CALLBACK_TOKEN` asli sekarang, bukan lagi
+  `DOKU_CLIENT_ID`/`DOKU_SECRET_KEY`.

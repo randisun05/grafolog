@@ -46,26 +46,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | DOKU Payment Gateway
+    | Xendit Payment Gateway
     |--------------------------------------------------------------------------
     |
-    | client_id & secret_key come from DOKU Back Office (Sandbox and
-    | Production have SEPARATE credentials - don't reuse sandbox keys in
-    | production or vice versa). See guratan-api/CLAUDE.md "Payment (DOKU)"
-    | section for where these are actually used.
+    | secret_key comes from Xendit Dashboard - sandbox vs production is
+    | determined by the key's OWN prefix (xnd_development_... vs
+    | xnd_production_...), not a separate host/flag like the old DOKU
+    | integration had - both modes share the same base_url. callback_token
+    | is the static X-Callback-Token value configured in Xendit Dashboard
+    | (Settings > Webhooks), used to verify incoming webhook calls. See
+    | guratan-api/CLAUDE.md "Payment (Xendit)" section for where these are
+    | actually used.
     |
     */
-    'doku' => [
-        'client_id' => env('DOKU_CLIENT_ID'),
-        'secret_key' => env('DOKU_SECRET_KEY'),
-        'is_production' => env('DOKU_IS_PRODUCTION', false),
-        'base_url' => env('DOKU_IS_PRODUCTION', false)
-            ? 'https://api.doku.com'
-            : 'https://api-sandbox.doku.com',
+    'xendit' => [
+        'secret_key' => env('XENDIT_SECRET_KEY'),
+        'callback_token' => env('XENDIT_CALLBACK_TOKEN'),
+        'base_url' => env('XENDIT_BASE_URL', 'https://api.xendit.co'),
         // Ke mana browser klien diarahkan balik setelah bayar di halaman
-        // DOKU (auto_redirect). Bukan webhook - itu Notification URL,
-        // dikonfigurasi di DOKU Back Office, bukan di sini.
-        'callback_url' => env('DOKU_CALLBACK_URL', rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/dashboard'),
+        // Invoice Xendit (success_redirect_url). Bukan webhook - itu
+        // Callback URL, dikonfigurasi di Xendit Dashboard, bukan di sini.
+        'success_redirect_url' => env('XENDIT_SUCCESS_REDIRECT_URL', rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/dashboard'),
     ],
 
     /*

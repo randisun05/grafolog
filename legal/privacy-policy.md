@@ -24,7 +24,7 @@ kepatuhan hukum final.
 - **Data pembayaran** (tier Comprehensive/Master): nomor invoice, jumlah,
   status transaksi. Detail kartu/rekening/e-wallet Anda **tidak pernah**
   disimpan atau diproses oleh server kami — diproses langsung oleh mitra
-  payment gateway kami, DOKU ([tautan kebijakan privasi DOKU]).
+  payment gateway kami, Xendit ([tautan kebijakan privasi Xendit]).
 - **Log akses**: setiap kali laporan kepribadian Anda dibaca (termasuk oleh
   Anda sendiri), dicatat untuk audit keamanan (waktu, alamat IP, hasil akses
   diterima/ditolak).
@@ -74,7 +74,7 @@ prinsip minimisasi data UU PDP.]
 
 ## 6. Berbagi Data ke Pihak Ketiga
 
-- **DOKU** (payment gateway): menerima nama, email, dan detail transaksi
+- **Xendit** (payment gateway): menerima nama, email, dan detail transaksi
   untuk memproses pembayaran tier berbayar. Tidak menerima foto tulisan
   tangan atau skor kepribadian Anda.
 - **Penyedia email** [isi nama provider SMTP production]: menerima alamat

@@ -68,13 +68,13 @@ berlisensi atau layanan darurat setempat.
 
 ## 5. Pembayaran & Pengembalian Dana (Tier Comprehensive/Master)
 
-- Pembayaran diproses melalui mitra payment gateway pihak ketiga, DOKU.
+- Pembayaran diproses melalui mitra payment gateway pihak ketiga, Xendit.
 - Harga berlaku saat transaksi dilakukan: [ISI HARGA RESMI comprehensive
   dan master - lihat config/pricing.php di guratan-api, angka di sana masih
   PLACEHOLDER untuk tier Master, belum dikonfirmasi bisnis].
 - Kebijakan pengembalian dana: [BELUM DITULIS - wajib diputuskan sebelum
   go-live: apakah ada refund kalau grafolog belum mulai mengerjakan skor?
-  Bagaimana kalau pembayaran DOKU sukses tapi terjadi kegagalan teknis di
+  Bagaimana kalau pembayaran Xendit sukses tapi terjadi kegagalan teknis di
   sisi kami?]
 
 ## 6. Kekayaan Intelektual

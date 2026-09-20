@@ -31,7 +31,7 @@ const contactEmail = computed(() => content.value.legal_contact_email || content
         <li>
           Data pembayaran (invoice, jumlah, status transaksi) — detail kartu/rekening/e-wallet Anda
           <strong>tidak pernah</strong> disimpan atau diproses oleh server kami, diproses langsung oleh mitra
-          payment gateway kami, DOKU.
+          payment gateway kami, Xendit.
         </li>
         <li>Log akses: setiap kali laporan kepribadian Anda dibaca, dicatat untuk audit keamanan (waktu, alamat IP, hasil akses).</li>
       </ul>
@@ -80,7 +80,7 @@ const contactEmail = computed(() => content.value.legal_contact_email || content
       <h2>6. Berbagi Data ke Pihak Ketiga</h2>
       <ul>
         <li>
-          <strong>DOKU</strong> (payment gateway): menerima nama, email, dan detail transaksi untuk memproses
+          <strong>Xendit</strong> (payment gateway): menerima nama, email, dan detail transaksi untuk memproses
           pembayaran tier berbayar. Tidak menerima skor kepribadian Anda.
         </li>
         <li>

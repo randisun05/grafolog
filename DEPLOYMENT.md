@@ -17,8 +17,8 @@ bahwa deployment sudah terjadi.
 | `DB_*` | MySQL lokal `guratan_db` | kredensial DB production - **jangan** pakai kredensial dev |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | domain production `guratan-web` |
 | `MAIL_MAILER` | `smtp` (akun Gmail pribadi) | provider transaksional yang layak untuk volume production (Gmail SMTP punya rate limit harian dan bukan dirancang untuk ini — lihat catatan di bawah) |
-| `DOKU_CLIENT_ID` / `DOKU_SECRET_KEY` | kosong/sandbox | **kredensial PRODUCTION dari DOKU Back Office** — akun sandbox dan production DOKU terpisah total, jangan tertukar |
-| `DOKU_IS_PRODUCTION` | `false` | `true` |
+| `XENDIT_SECRET_KEY` | kosong/test mode | **secret key LIVE (`xnd_production_...`) dari Xendit Dashboard** — mode ditentukan dari prefix key itu sendiri, tidak ada flag terpisah seperti `DOKU_IS_PRODUCTION` dulu |
+| `XENDIT_CALLBACK_TOKEN` | kosong | token webhook dari Xendit Dashboard (Settings > Webhooks) — HARUS diisi sebelum webhook production dipercaya, endpoint menolak semua notifikasi tanpa ini |
 | `PRICE_MASTER` (di `config/pricing.php`) | placeholder 149000 | **konfirmasi angka resmi ke bisnis sebelum go-live** |
 
 ### Langkah deploy
@@ -35,7 +35,7 @@ bahwa deployment sudah terjadi.
    autorestart=true
    numprocs=1
    ```
-6. Daftarkan Notification URL production (`https://api.domain-anda.com/api/payments/notification`) di DOKU Back Office (akun production, bukan sandbox) — kalau tidak didaftarkan, DOKU tidak akan pernah memanggil endpoint ini dan status pembayaran tidak akan pernah ter-update dari `pending`.
+6. Daftarkan Callback URL production (`https://api.domain-anda.com/api/payments/notification`) di Xendit Dashboard (Settings > Webhooks, akun live — bukan test mode) untuk event Invoice Paid — kalau tidak didaftarkan, Xendit tidak akan pernah memanggil endpoint ini dan status pembayaran tidak akan pernah ter-update dari `pending`. Salin token verifikasi yang ditampilkan Xendit ke `XENDIT_CALLBACK_TOKEN` — endpoint menolak semua webhook tanpa token yang cocok.
 7. HTTPS wajib — Sanctum Bearer token dan data psikologis sensitif tidak boleh lewat HTTP polos.
 8. Jalankan `php artisan test` sekali lagi di environment yang mendekati production (PHP version yang sama) sebelum switch DNS/traffic. **CI otomatis ada sejak 2026-08-23** (`.github/workflows/ci.yml` — 2 job paralel: backend menjalankan `vendor/bin/pint --test` + `php artisan test` di PHP 8.3, frontend menjalankan `npm run lint` + `npm run build` di Node 22, keduanya trigger di tiap push/PR ke branch mana pun) — status hijau di GitHub sebelum merge sudah mengonfirmasi ini, langkah manual di atas jadi verifikasi tambahan terakhir, bukan satu-satunya jaring pengaman.
 

@@ -110,7 +110,7 @@ POST /api/samples/{sample}/scores/preview         (auth:sanctum, → ScoringCont
 POST /api/samples/{sample}/scores                (auth:sanctum, → ScoringController@submit)
 POST /api/samples/{sample}/payment               (auth:sanctum, → PaymentController@store)
 POST /api/samples/{sample}/assignment            (auth:sanctum, role:hr,administrator → AssignmentController@store)
-POST /api/payments/notification                  (throttle:30,1, PUBLIC — DOKU webhook, no Sanctum)
+POST /api/payments/notification                  (throttle:30,1, PUBLIC — Xendit webhook, no Sanctum)
 GET  /api/reports, /api/reports/{report}         (auth:sanctum, +log.report_access on show/pdf)
 GET  /api/reports/{report}/pdf                   (auth:sanctum, +log.report_access)
 GET  /api/sindrom                                (auth:sanctum)
@@ -127,7 +127,7 @@ GET/POST/PUT /api/admin/announcements[/{id}]     (auth:sanctum, role:administrat
 GET  /api/tokens/price                           (auth:sanctum → TokenController@price — current price per token, null if unset)
 GET  /api/tokens/wallet                          (auth:sanctum, role:grafolog → TokenController@wallet — balance + recent ledger)
 POST /api/tokens/preview                         (auth:sanctum, role:grafolog → TokenController@preview — quantity + optional code → final amount)
-POST /api/tokens/purchase                        (auth:sanctum, role:grafolog → TokenPurchaseController@store — starts DOKU checkout)
+POST /api/tokens/purchase                        (auth:sanctum, role:grafolog → TokenPurchaseController@store — starts Xendit checkout)
 GET/PUT /api/admin/token-price                   (auth:sanctum, role:administrator → Admin\TokenPriceController)
 GET/PUT /api/admin/token-costs[/{tier}]          (auth:sanctum, role:administrator → Admin\TokenCostController)
 POST /api/hr/candidates/import                   (auth:sanctum, role:hr → CandidateImportController)
@@ -698,84 +698,104 @@ izinkan `role: user`), digantikan alur baru ini.
   admin panel, still not built), and any bulk-reassignment or
   assignment-history UI.
 
-## Payment (DOKU) — added 2026-07-27
+## Payment (Xendit) — added 2026-07-27, provider ganti DOKU → Xendit 2026-09-20
 
-- **Credentials go in `.env`**: `DOKU_CLIENT_ID`, `DOKU_SECRET_KEY`,
-  `DOKU_IS_PRODUCTION` (bool), and `DOKU_CALLBACK_URL` (**new 2026-08-06**,
-  optional — defaults to `{FRONTEND_URL}/dashboard`, where DOKU's
-  `auto_redirect` sends the client's browser after they pay). Get the
-  credentials from DOKU Back Office — **sandbox and production are separate
-  accounts with separate credentials**, don't reuse one for the other. Read
-  via `config('services.doku.*')` (`config/services.php`). Currently empty/
-  placeholder — payment creation throws `RuntimeException` internally
-  (`DokuService::ensureConfigured()`), which `PaymentController::store`
-  **catches** (2026-08-06 fix) and turns into a clean `503` with a generic
-  client-facing message — see the note below, don't let this exception
-  reach the client raw again.
-- **`App\Services\Payment\DokuService`**: `createCheckout(Payment, name,
-  email)` POSTs to `{base_url}/checkout/v1/payment` (sandbox:
-  `api-sandbox.doku.com`, production: `api.doku.com`) and returns
-  `['url', 'token_id', 'expired_date']`. Signature scheme (Digest +
-  Client-Id/Request-Id/Request-Timestamp/Request-Target/Digest → HMAC-SHA256
-  with the secret key) was pulled from developers.doku.com on 2026-07-27, not
-  guessed — see the class docblock before changing it, a wrong signature
-  fails DOKU-side auth with no useful error message.
-- **`App\Http\Controllers\Api\PaymentController::store`**: only the sample's
-  *owner* (`user_id`, i.e. the paying client) can trigger a payment — not the
-  grafolog who may have created the sample on their behalf. Rejects `rapid`
-  tier (free) and samples that already have a `paid` payment. Price comes
-  from `PricingPlan::activePriceFor($tier)` (was `config('pricing.tiers.*')`
-  — that config file is deleted, see "Pricing & commerce" below).
-  `comprehensive` matches the root CLAUDE.md's "~Rp49rb" as of writing;
-  **both tiers' real prices are admin-managed** now via `/admin/pricing`,
-  not hardcoded anywhere — check the DB, not this file, for the current
-  number. **Accepts an optional `discount_code`** (2026-08-06, Commerce
-  Fase D) — validated through `DiscountCode::isValidFor()`, same method the
-  Fase B preview endpoint uses. Stores `base_amount` (pre-discount) and
-  `discount_code_id` alongside `amount` (what's actually charged) so a
-  discounted invoice stays traceable.
-- **DOKU config errors are caught, not leaked** (2026-08-06 fix): if
-  `DokuService::createCheckout()` throws (unconfigured credentials, DOKU
-  rejects the request), `PaymentController::store` catches the
-  `RuntimeException`, logs the real message via `Log::error()`, and returns
-  a generic `503 {"message": "Pembayaran sedang tidak tersedia, coba lagi
-  nanti."}` to the client. Before this fix it was an uncaught 500 with a
-  full stack trace in the response body whenever `APP_DEBUG=true` — fine in
-  dev, a real information-leak risk if debug mode is ever left on in
-  production. `tests/Feature/Api/PaymentControllerTest.php::
-  test_unconfigured_doku_returns_clean_503_not_raw_500` locks this in —
-  don't remove the try/catch without understanding why that test exists.
-- **`::notification`** is DOKU's webhook (public route, no `auth:sanctum` —
-  DOKU has no Sanctum token). Security depends entirely on
-  `DokuService::verifyNotificationSignature()`; never relax or bypass it.
-  On a `SUCCESS` status transition (checked via a `$wasAlreadyPaid` guard so
-  a duplicate webhook retry doesn't double-count), it also calls
-  `$payment->discountCode?->incrementUsage()` — usage quota is consumed at
-  actual payment success, never at preview or at payment creation.
-  **Still not fully verified against a real DOKU sandbox notification** —
-  the body field names used (`order.invoice_number`, `transaction.status`)
-  are sourced from DOKU's official docs but a literal example payload
-  couldn't be fetched. Send one real test transaction from DOKU Sandbox and
-  compare against what lands in `payments.notification_payload` before
-  trusting this in production (this is Commerce Fase C, not yet done).
-- **Migration**: `payments` table (`sample_id`, `invoice_number` unique,
-  `amount`, `base_amount` nullable, `discount_code_id` nullable FK,
-  `status`: pending/paid/failed/expired, `doku_token_id`,
-  `doku_payment_url`, `notification_payload` json, `paid_at`).
-- **Frontend checkout UI now exists** (`OrderView.vue`, `/pesan`,
-  `role: 'user'` — added 2026-08-06, Commerce Fase D, see
-  `guratan-web/CLAUDE.md`). It orchestrates the two existing endpoints
-  (`POST /api/samples` then this controller's `store`) from the frontend —
-  no new combined "create order" endpoint was added, both pieces already
-  existed and just needed a UI pointing at them together. The real DOKU
-  redirect itself has **not** been tested end-to-end (no sandbox
-  credentials yet) — only verified up to the point of calling `store` and
-  handling its response/error correctly.
-- Tests: `tests/Feature/Api/PaymentControllerTest.php` — mocks DOKU's HTTP
-  response via `Http::fake()`, covers authorization (only owner pays),
-  rapid-tier rejection, already-paid rejection, and both valid/invalid
-  webhook signature verification (computed independently in the test to
-  cross-check the production algorithm, not just re-using the same code path).
+**Provider diganti dari DOKU ke Xendit 2026-09-20**, permintaan langsung
+user ("payment gateway pake xendit saja") — bukan karena DOKU bermasalah,
+murni pilihan provider. DOKU **belum pernah dikonfigurasi/dites lawan
+sandbox sungguhan** (lihat catatan lama di bawah), jadi ini benar-benar
+ganti bersih (rename kolom `doku_*`→`xendit_*` via migrasi baru, tidak ada
+data produksi yang perlu dipertahankan) — bukan menambah provider ke-2 di
+samping yang lama. `App\Services\Payment\DokuService` **dihapus total**,
+digantikan `App\Services\Payment\XenditService`. Kontrak API Xendit di
+bawah dicek langsung ke dokumentasi resmi (GitHub `xendit-php` docs +
+`docs.xendit.co`'s webhook-verification article, beberapa domain resmi
+Xendit diblok egress proxy sandbox ini jadi dicek lewat cache Google/
+GitHub mirror-nya, bukan ditebak) sebelum implementasi — sama standar
+kehati-hatian dengan integrasi DOKU dulu.
+
+- **Credentials go in `.env`**: `XENDIT_SECRET_KEY` dan
+  `XENDIT_CALLBACK_TOKEN`. **Beda mendasar dari DOKU**: Xendit CUMA punya
+  SATU base URL (`https://api.xendit.co`) untuk test maupun live mode —
+  mode ditentukan dari PREFIX secret key itu sendiri
+  (`xnd_development_...` vs `xnd_production_...`), tidak ada
+  `XENDIT_IS_PRODUCTION` terpisah seperti `DOKU_IS_PRODUCTION` dulu.
+  Autentikasi request pakai HTTP Basic Auth (secret key sebagai username,
+  password kosong) — bukan HMAC signature per-request seperti DOKU.
+  `callback_token` adalah string statis dari Xendit Dashboard (Settings >
+  Webhooks), dibandingkan APA ADANYA lewat `hash_equals()` — jauh lebih
+  sederhana dari skema Digest+HMAC DOKU. Read via `config('services.xendit.*')`
+  (`config/services.php`). Currently empty/placeholder — invoice creation
+  throws `RuntimeException` internally (`XenditService::ensureConfigured()`),
+  yang `PaymentController::store` **catches** dan mengubahnya jadi `503`
+  bersih dengan pesan client-facing generik — jangan biarkan exception ini
+  bocor mentah lagi.
+- **`App\Services\Payment\XenditService`**: `createInvoice(externalId,
+  amount, currency, customerName, customerEmail)` POSTs ke
+  `{base_url}/v2/invoices` dan mengembalikan `['url', 'id', 'expiry_date']`
+  (dipetakan dari response Xendit `invoice_url`/`id`/`expiry_date`).
+  `verifyWebhookToken(Request)` baca header `x-callback-token`, bandingkan
+  `hash_equals()` ke `callback_token` yang dikonfigurasi — **TIDAK pernah
+  melempar exception** (beda dari `ensureConfigured()`'s dipakai
+  `createInvoice()`) karena ini dipanggil dari endpoint publik, lebih aman
+  selalu balas `bool` daripada berisiko 500 mentah kalau env belum diisi.
+- **`App\Http\Controllers\Api\PaymentController::store`**: TIDAK berubah
+  otorisasinya sama sekali (masih owner-only, tolak `rapid`/sudah-dibayar,
+  harga dari `PricingPlan::activePriceFor()`, `discount_code` opsional) —
+  murni ganti pemanggilan `$this->doku->createCheckout(...)` jadi
+  `$this->xendit->createInvoice(...)` dan field yang disimpan
+  (`xendit_invoice_id`/`xendit_invoice_url`, dulu `doku_token_id`/
+  `doku_payment_url`).
+- **Config errors tetap dicatch, tidak bocor** (perilaku dipertahankan dari
+  fix DOKU 2026-08-06): kalau `XenditService::createInvoice()` melempar
+  (kredensial belum diisi, Xendit menolak request), `PaymentController::store`
+  catch `RuntimeException`, log pesan asli via `Log::error()`, balas `503
+  {"message": "Pembayaran sedang tidak tersedia, coba lagi nanti."}` ke
+  client. `tests/Feature/Api/PaymentControllerTest.php::
+  test_unconfigured_xendit_returns_clean_503_not_raw_500` mengunci ini —
+  jangan hapus try/catch tanpa paham kenapa test ini ada. **Browser-
+  verified 2026-09-20** lewat request HTTP sungguhan (bukan cuma
+  `Http::fake()` di PHPUnit) — client baru daftar, sample dibuat, panggil
+  `POST /samples/{id}/payment` langsung dan konfirmasi respons 503 bersih
+  tanpa `exception`/`trace` di body, `OrderView.vue` sendiri tetap render
+  normal tanpa crash.
+- **`::notification`** adalah webhook Xendit (public route, no
+  `auth:sanctum` — Xendit tidak punya token kita). Keamanan bergantung
+  penuh pada `XenditService::verifyWebhookToken()`; jangan pernah dilewati.
+  Body-nya **flat/top-level** (`external_id`, `status`, `amount`) — BEDA
+  dari DOKU dulu yang nested (`order.invoice_number`, `transaction.status`).
+  `status` dicek terhadap `in_array($status, ['PAID', 'SETTLED'], true)`
+  (Xendit's invoice status enum: PENDING/PAID/SETTLED/EXPIRED) — diperlakukan
+  sebagai sukses kalau salah satu, dijaga idempoten lewat `$wasAlreadyPaid`
+  guard yang sama seperti sebelumnya (retry webhook tidak dobel-proses).
+  **Masih belum diverifikasi lawan notifikasi sungguhan dari Xendit test
+  mode** — field body di atas berasal dari dokumentasi resmi
+  (`InvoiceCallback` object di `xendit-php` SDK docs), sama caveat seperti
+  DOKU dulu: kirim satu transaksi test dan bandingkan payload asli (cek
+  `notification_payload` yang tersimpan) sebelum dipercaya penuh di
+  production.
+- **Migration**: `2026_09_20_...replace_doku_columns_with_xendit.php` —
+  tambah `xendit_invoice_id`/`xendit_invoice_url` ke `payments` DAN
+  `token_purchases`, hapus `doku_token_id`/`doku_payment_url` dari
+  keduanya + `doku_payment_channel` dari `payments` (kolom itu sudah dead
+  sejak awal — schema-only, tidak pernah ditulis controller manapun, tidak
+  dibawa ke skema baru). Rename bersih (bukan migrasi data) karena tidak
+  ada baris produksi nyata dengan nilai `doku_*` yang perlu dipertahankan.
+- **Frontend checkout UI tidak berubah** (`OrderView.vue`, `/pesan`,
+  `role: 'user'`, lihat `guratan-web/CLAUDE.md`) — field response
+  `payment_url` yang dikonsumsi frontend nama-nya sama persis di kedua
+  provider, jadi ZERO perubahan logic frontend, cuma 2 baris teks di
+  halaman legal (`PrivacyPolicyView.vue`/`TermsOfServiceView.vue`) yang
+  menyebut nama provider diganti dari "DOKU" jadi "Xendit". Redirect
+  Xendit sungguhan sendiri **belum** ditest end-to-end (belum ada
+  kredensial asli) — sama persis status DOKU dulu, cuma provider-nya
+  yang beda.
+- Tests: `tests/Feature/Api/PaymentControllerTest.php` (20 test total
+  gabung dengan TokenPurchaseControllerTest — ditulis ulang total untuk
+  kontrak Xendit) — mocks respons HTTP Xendit via `Http::fake()`, cek
+  Basic Auth header terkirim (bukan lagi Client-Id/Signature ala DOKU),
+  cakupan sama seperti sebelumnya (otorisasi, rapid-tier, sudah-dibayar,
+  webhook token valid/invalid/hilang, idempotensi kredit token/diskon).
 
 ## Pricing & commerce — added 2026-08-06 (Commerce Fase A)
 
@@ -984,19 +1004,20 @@ izinkan `role: user`), digantikan alur baru ini.
   attribute so `User::factory()->create(['token_balance' => N])` works in
   tests) but `TokenWalletService` still writes it via `forceFill()` as the
   one authorized path — no controller should ever set it directly.
-- **Token purchases reuse the DOKU integration, not a second payment
-  flow.** `DokuService::createCheckout()` no longer type-hints `Payment` —
-  it takes `(string $invoiceNumber, int $amount, string $currency, ...)`
-  as plain arguments, so both `Payment` (sample checkout) and the new
-  `TokenPurchase` share one implementation. **DOKU Back Office only has
-  ONE Notification URL** (configured outside this codebase, not per
-  request), so `PaymentController::notification` now looks up the
+- **Token purchases reuse the Xendit integration, not a second payment
+  flow** (provider was DOKU when this was built, see "Payment (Xendit)"
+  above for the 2026-09-20 swap). `XenditService::createInvoice()` doesn't
+  type-hint `Payment` — it takes `(string $externalId, int $amount, string
+  $currency, ...)` as plain arguments, so both `Payment` (sample checkout)
+  and `TokenPurchase` share one implementation. **Xendit Dashboard only has
+  ONE Callback URL per event** (configured outside this codebase, not per
+  request), so `PaymentController::notification` looks up the
   invoice_number in `Payment` first, then `TokenPurchase` — distinguished
   by prefix (`INV-` vs `TOKEN-`) — and dispatches to
   `handleSamplePaymentNotification()` or `handleTokenPurchaseNotification()`
   accordingly. Tokens are only credited (`TokenWalletService::credit()`)
-  on a genuine `SUCCESS` transition, guarded by `$wasAlreadyPaid` against
-  double-crediting a retried webhook — same pattern as discount usage.
+  on a genuine `PAID`/`SETTLED` transition, guarded by `$wasAlreadyPaid`
+  against double-crediting a retried webhook — same pattern as discount usage.
 - **Discount codes now also apply to token purchases.**
   `StoreDiscountCodeRequest`'s `applicable_tiers.*` accepts `token` in
   addition to `comprehensive`/`master` — `DiscountCode::isValidFor('token')`
@@ -1004,7 +1025,7 @@ izinkan `role: user`), digantikan alur baru ini.
   logic for tokens anywhere.
 - **`TokenController`** (public/authenticated reads only — `price()`,
   `wallet()`, `preview()`) is kept separate from **`TokenPurchaseController`**
-  (the one action that actually starts a DOKU checkout), mirroring the
+  (the one action that actually starts a Xendit checkout), mirroring the
   `PricingController` (read) vs `PaymentController` (action) split
   elsewhere in this codebase.
 - `DashboardController`'s grafolog KPI list gained `token_balance` /
@@ -1648,7 +1669,7 @@ docblock `LlmProviderInterface`). Narasi terpadu genuinely per-laporan
 **tidak** lewat abstraksi itu — `NarasiTerpaduService` berdiri sendiri,
 manggil Anthropic langsung pakai `config('services.llm.*')` yang sama.
 Kalau `LLM_PROVIDER` masih `none` (default `.env.example`), generate akan
-gagal dengan 503 yang bersih (pola sama dengan `DokuService::
+gagal dengan 503 yang bersih (pola sama dengan `XenditService::
 ensureConfigured()`), bukan silent passthrough — beda dari
 `NullLlmProvider` karena di sini tidak ada "teks asli" yang masuk akal
 untuk di-passthrough (ini sintesis, bukan terjemahan).
@@ -2096,7 +2117,7 @@ config/langkah aktivasi ada di root `DEPLOYMENT.md`, ini ringkasannya:
   `DEPLOYMENT.md`). `source.files.include` SENGAJA dipersempit dari default
   paket (`base_path()`, seluruh direktori aplikasi) jadi cuma `storage/app`
   — kode sudah aman di git, dan `base_path()` ikut menyeret `.env`
-  (kredensial DB/DOKU/SMTP/Anthropic) ke arsip backup, riskan kalau
+  (kredensial DB/Xendit/SMTP/Anthropic) ke arsip backup, riskan kalau
   `BACKUP_DESTINATION_DISK` diarahkan ke cloud storage. Notifikasi cuma
   untuk kegagalan/tidak-sehat (bukan email "sukses" harian yang jadi
   noise), tujuan default `ADMIN_EMAIL` (dipakai ulang dari
@@ -2876,8 +2897,8 @@ lapisan validasi Form Request untuk pendaftaran BARU). Ditambahkan ke
 **`WhatsAppService`** (`app/Services/WhatsAppService.php`) — satu method
 publik `send(?string $phone, string $message): bool`. Env-gated via
 `config('services.fonnte.token')`/`FONNTE_TOKEN`: kosong → log info +
-return `false` tanpa exception. **Beda filosofi dengan `DokuService`**:
-DOKU melempar `RuntimeException` kalau kredensial kosong (pembayaran
+return `false` tanpa exception. **Beda filosofi dengan `XenditService`**:
+Xendit melempar `RuntimeException` kalau kredensial kosong (pembayaran
 gagal harus kelihatan ke user), `WhatsAppService` diam-diam skip — WA di
 sini murni pelengkap di samping email yang sudah terkirim duluan di
 setiap titik pemanggilan, kegagalan/absennya WA TIDAK BOLEH menggagalkan
@@ -3202,7 +3223,7 @@ biaya/keselamatan direplikasi persis.
     muncul dua kali di array `messages` yang dikirim ke Anthropic), lalu
     pesan user disimpan, **BARU** `ensureConfigured()` dipanggil. Ini pola
     yang SAMA dengan `PaymentController::store()` (row `Payment` disimpan
-    SEBELUM memanggil `DokuService` yang bisa melempar
+    SEBELUM memanggil `XenditService` yang bisa melempar
     `RuntimeException` karena kredensial belum diisi) — **bukan urutan
     yang jelas dari nama fungsinya**, jadi sempat salah ditulis kebalik
     (`ensureConfigured()` di paling awal) saat draft pertama dan ketahuan
@@ -3601,8 +3622,8 @@ ditemukan sebagai efek samping investigasi bug throttle Fase 3.
 
 ## Not built yet
 
-- Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
+- Frontend checkout UI (see "Payment (Xendit)" above — backend is done,
   frontend trigger point is an open product question).
-- Production DOKU credentials (sandbox-only scaffolding so far).
+- Production Xendit credentials (sandbox-only scaffolding so far).
 - Production Fonnte credentials (sandbox/scaffolding-only so far, sama
-  seperti DOKU — lihat bagian "Notifikasi WhatsApp" di atas).
+  seperti Xendit — lihat bagian "Notifikasi WhatsApp" di atas).

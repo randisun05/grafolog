@@ -81,8 +81,8 @@ Route::middleware('throttle:20,1')->group(function () {
     Route::post('/grafolog-applications', [GrafologApplicationController::class, 'store']);
 });
 
-// DOKU memanggil ini server-to-server, tidak punya token Sanctum kita -
-// keamanan bergantung penuh pada DokuService::verifyNotificationSignature().
+// Xendit memanggil ini server-to-server, tidak punya token Sanctum kita -
+// keamanan bergantung penuh pada XenditService::verifyWebhookToken().
 Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentController::class, 'notification']);
 
 // Artikel/Berita publik (fitur konten publik, 2026-09-09) - lihat

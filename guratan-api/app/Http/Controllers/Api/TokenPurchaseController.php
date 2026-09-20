@@ -7,21 +7,21 @@ use App\Http\Requests\CreateTokenPurchaseRequest;
 use App\Models\DiscountCode;
 use App\Models\TokenPrice;
 use App\Models\TokenPurchase;
-use App\Services\Payment\DokuService;
+use App\Services\Payment\XenditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Mulai pembayaran DOKU untuk pembelian token grafolog. Struktur method
+ * Mulai pembayaran Xendit untuk pembelian token grafolog. Struktur method
  * ini sengaja dibuat semirip mungkin dengan PaymentController::store
  * (base_amount/discount_code/try-catch 503) - reuse pola yang sudah
  * terverifikasi, bukan menciptakan cara baru untuk hal yang sama.
  */
 class TokenPurchaseController extends Controller
 {
-    public function __construct(private DokuService $doku) {}
+    public function __construct(private XenditService $xendit) {}
 
     public function store(CreateTokenPurchaseRequest $request): JsonResponse
     {
@@ -54,7 +54,7 @@ class TokenPurchaseController extends Controller
         ]);
 
         try {
-            $checkout = $this->doku->createCheckout(
+            $invoice = $this->xendit->createInvoice(
                 $purchase->invoice_number,
                 $purchase->amount,
                 $purchase->currency,
@@ -62,7 +62,7 @@ class TokenPurchaseController extends Controller
                 $user->email,
             );
         } catch (RuntimeException $e) {
-            Log::error('DOKU checkout token gagal dibuat', ['token_purchase_id' => $purchase->id, 'error' => $e->getMessage()]);
+            Log::error('Xendit invoice token gagal dibuat', ['token_purchase_id' => $purchase->id, 'error' => $e->getMessage()]);
 
             return response()->json([
                 'message' => 'Pembayaran sedang tidak tersedia, coba lagi nanti.',
@@ -70,12 +70,12 @@ class TokenPurchaseController extends Controller
         }
 
         $purchase->update([
-            'doku_token_id' => $checkout['token_id'],
-            'doku_payment_url' => $checkout['url'],
+            'xendit_invoice_id' => $invoice['id'],
+            'xendit_invoice_url' => $invoice['url'],
         ]);
 
         return response()->json([
-            'payment_url' => $checkout['url'],
+            'payment_url' => $invoice['url'],
             'invoice_number' => $purchase->invoice_number,
         ], 201);
     }

@@ -26,7 +26,7 @@ return [
                  * SENGAJA DIPERSEMPIT dari default paket (base_path(), yaitu
                  * SELURUH direktori aplikasi) jadi cuma storage/app - kode
                  * sumber sudah aman di git (tidak perlu dibackup ulang), dan
-                 * base_path() ikut menyeret .env (kredensial DB/DOKU/SMTP/
+                 * base_path() ikut menyeret .env (kredensial DB/Xendit/SMTP/
                  * Anthropic) ke dalam arsip backup, yang berisiko kalau
                  * BACKUP_DESTINATION_DISK diarahkan ke storage cloud dengan
                  * kontrol akses lebih longgar dari repo git. storage/app

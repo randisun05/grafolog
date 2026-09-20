@@ -69,7 +69,7 @@ const contactEmail = computed(() => content.value.legal_contact_email || content
     <section>
       <h2>5. Pembayaran &amp; Pengembalian Dana</h2>
       <p>
-        Pembayaran untuk tier Comprehensive/Master diproses melalui mitra payment gateway pihak ketiga, DOKU.
+        Pembayaran untuk tier Comprehensive/Master diproses melalui mitra payment gateway pihak ketiga, Xendit.
         Harga yang berlaku adalah harga yang ditampilkan di aplikasi saat transaksi dilakukan. Permintaan
         pengembalian dana dievaluasi kasus per kasus — hubungi
         <RouterLink to="/bantuan">dukungan pelanggan</RouterLink> kami.

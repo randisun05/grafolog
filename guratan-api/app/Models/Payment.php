@@ -9,8 +9,8 @@ class Payment extends Model
 {
     protected $fillable = [
         'sample_id', 'invoice_number', 'amount', 'base_amount', 'discount_code_id',
-        'currency', 'status', 'doku_token_id', 'doku_payment_url',
-        'doku_payment_channel', 'notification_payload', 'paid_at',
+        'currency', 'status', 'xendit_invoice_id', 'xendit_invoice_url',
+        'notification_payload', 'paid_at',
     ];
 
     protected function casts(): array
