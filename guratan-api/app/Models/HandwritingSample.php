@@ -43,6 +43,16 @@ class HandwritingSample extends Model
         return $this->hasOne(Assignment::class, 'sample_id');
     }
 
+    public function consultation(): HasOne
+    {
+        return $this->hasOne(SampleConsultation::class, 'sample_id');
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(SampleImage::class, 'sample_id');
+    }
+
     public function measurementReadings(): HasMany
     {
         return $this->hasMany(MeasurementReading::class, 'sample_id');
@@ -73,7 +83,21 @@ class HandwritingSample extends Model
     {
         return $this->user_id === $user->id
             || $this->created_by === $user->id
-            || $this->assignment?->grafolog_id === $user->id;
+            || $this->assignment?->grafolog_id === $user->id
+            || $user->isAdministrator()
+            || $user->isSupervisor();
+    }
+
+    /**
+     * Pemilik (klien), pembuat (grafolog/HR), atau grafolog yang ditugaskan
+     * boleh menambah foto selama laporan belum selesai.
+     */
+    public function acceptsImagesFrom(User $user): bool
+    {
+        return $this->status !== 'completed'
+            && ($this->user_id === $user->id
+                || $this->created_by === $user->id
+                || $this->assignment?->grafolog_id === $user->id);
     }
 
     /**

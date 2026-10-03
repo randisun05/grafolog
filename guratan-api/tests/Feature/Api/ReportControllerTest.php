@@ -29,6 +29,7 @@ class ReportControllerTest extends TestCase
             'sample_id' => $sample->id,
             'tier' => 'comprehensive',
             'status' => 'completed',
+            'review_status' => PersonalityReport::REVIEW_APPROVED,
             'generated_at' => now(),
             'data' => [
                 'sindrom' => [[
@@ -133,5 +134,16 @@ class ReportControllerTest extends TestCase
         $response = $this->actingAs($stranger, 'sanctum')->get("/api/reports/{$report->id}/pdf");
 
         $response->assertForbidden();
+    }
+
+    public function test_owner_cannot_see_report_before_supervisor_approval(): void
+    {
+        $owner = User::factory()->create();
+        $report = $this->completedReportFor($owner);
+        $report->update(['review_status' => PersonalityReport::REVIEW_PENDING]);
+
+        $this->actingAs($owner, 'sanctum')->getJson("/api/reports/{$report->id}")->assertForbidden();
+        $this->actingAs($owner, 'sanctum')->get("/api/reports/{$report->id}/pdf")->assertForbidden();
+        $this->actingAs($owner, 'sanctum')->getJson('/api/reports')->assertJsonCount(0, 'data');
     }
 }

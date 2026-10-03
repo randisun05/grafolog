@@ -17,6 +17,7 @@ class AuthControllerTest extends TestCase
             'email' => 'budi@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'consent' => true,
         ]);
 
         $response->assertCreated()
@@ -27,17 +28,43 @@ class AuthControllerTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'budi@example.com', 'role' => 'user']);
     }
 
-    public function test_register_can_create_grafolog_role(): void
+    public function test_register_rejects_grafolog_role(): void
     {
+        // 2026-10-03: grafolog hanya dibuat admin lewat POST /api/admin/users,
+        // registrasi publik grafolog memungkinkan siapa pun menempelkan
+        // laporan palsu ke akun klien.
         $response = $this->postJson('/api/auth/register', [
-            'name' => 'Grafolog Satu',
+            'name' => 'Grafolog Palsu',
             'email' => 'grafolog@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'consent' => true,
             'role' => 'grafolog',
         ]);
 
-        $response->assertCreated()->assertJsonPath('user.role', 'grafolog');
+        $response->assertUnprocessable()->assertJsonValidationErrors('role');
+    }
+
+    public function test_register_requires_consent_and_records_it(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'name' => 'Tanpa Consent',
+            'email' => 'noconsent@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertUnprocessable()->assertJsonValidationErrors('consent');
+
+        $this->postJson('/api/auth/register', [
+            'name' => 'Dengan Consent',
+            'email' => 'consent@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'consent' => true,
+        ])->assertCreated();
+
+        $user = User::where('email', 'consent@example.com')->first();
+        $this->assertNotNull($user->consented_at);
+        $this->assertSame('self', $user->consent_source);
     }
 
     public function test_register_rejects_duplicate_email(): void
@@ -49,6 +76,7 @@ class AuthControllerTest extends TestCase
             'email' => 'dup@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'consent' => true,
         ]);
 
         $response->assertUnprocessable()->assertJsonValidationErrors('email');
@@ -73,6 +101,7 @@ class AuthControllerTest extends TestCase
             'email' => 'sneaky@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'consent' => true,
             'role' => 'admin',
         ]);
 
@@ -81,7 +110,7 @@ class AuthControllerTest extends TestCase
 
     public function test_register_rejects_administrator_and_supervisor_roles(): void
     {
-        // MGA Fase 05: hanya user/grafolog boleh daftar sendiri. administrator/
+        // Hanya role user boleh daftar sendiri. administrator/
         // supervisor cuma bisa dibuat lewat POST /api/admin/users oleh admin.
         foreach (['administrator', 'supervisor'] as $role) {
             $response = $this->postJson('/api/auth/register', [
@@ -89,6 +118,7 @@ class AuthControllerTest extends TestCase
                 'email' => "sneaky-$role@example.com",
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
+                'consent' => true,
                 'role' => $role,
             ]);
 

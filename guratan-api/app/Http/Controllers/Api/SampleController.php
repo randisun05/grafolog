@@ -21,6 +21,7 @@ class SampleController extends Controller
                     ->orWhere('created_by', $user->id)
                     ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
             })
+            ->withCount('images')
             ->with([
                 'reports:id,sample_id,tier,status,generated_at',
                 'user:id,name,email',
@@ -56,7 +57,7 @@ class SampleController extends Controller
     {
         $this->authorizeAccess($request, $sample);
 
-        return response()->json($sample->load('reports', 'user:id,name,email', 'assignment'));
+        return response()->json($sample->load('reports', 'user:id,name,email', 'assignment', 'images', 'consultation'));
     }
 
     private function authorizeAccess(Request $request, HandwritingSample $sample): void

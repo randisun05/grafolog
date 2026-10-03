@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const samples = ref([])
+const revisions = ref([])
 const loading = ref(true)
 const error = ref('')
 
@@ -12,8 +13,12 @@ const pending = computed(() => samples.value.filter((s) => s.status !== 'complet
 
 onMounted(async () => {
   try {
-    const { data } = await api.get('/samples')
+    const [{ data }, { data: revisionData }] = await Promise.all([
+      api.get('/samples'),
+      api.get('/reports', { params: { review_status: 'perlu_revisi' } }),
+    ])
     samples.value = data.data
+    revisions.value = revisionData.data
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Gagal memuat daftar sample.'
   } finally {
@@ -26,9 +31,24 @@ onMounted(async () => {
   <div class="assigned">
     <h1>Ditugaskan ke Saya</h1>
     <p class="assigned__note">
-      Sample yang perlu Anda isi skornya - baik yang Anda buat sendiri lewat Portal Grafolog,
-      maupun yang ditugaskan HR/Administrator.
+      Sample yang perlu Anda isi skornya - baik yang Anda buat sendiri lewat Portal Grafolog, maupun
+      yang ditugaskan HR/Administrator.
     </p>
+
+    <section v-if="revisions.length" class="assigned__revisions">
+      <h2>Perlu Revisi dari Supervisor</h2>
+      <ul class="assigned__list">
+        <li v-for="r in revisions" :key="r.id" class="assigned__item">
+          <div>
+            <span class="assigned__client">Laporan #{{ r.id }} · {{ r.sample?.user?.name }}</span>
+            <span class="assigned__meta">{{ r.review_note }}</span>
+          </div>
+          <RouterLink :to="{ name: 'report', params: { id: r.id } }" class="btn btn--primary"
+            >Perbaiki</RouterLink
+          >
+        </li>
+      </ul>
+    </section>
 
     <LoadingSpinner v-if="loading" label="Memuat..." />
     <p v-else-if="error" class="error">{{ error }}</p>
@@ -60,6 +80,13 @@ onMounted(async () => {
   color: var(--color-text-soft);
   font-size: 13.5px;
   margin-bottom: 20px;
+}
+.assigned__revisions {
+  margin-bottom: 24px;
+}
+.assigned__revisions h2 {
+  font-size: 16px;
+  color: var(--color-error);
 }
 .assigned__empty {
   color: var(--color-text-soft);

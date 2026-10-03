@@ -891,3 +891,29 @@ menampilkan 3 referensi keluar dengan benar. Detail teknis lengkap di
 2026-08-19): "if A checked -> B TIDAK checked" dibahas 2026-08-08, user
 eksplisit konfirmasi tidak diperlukan ("tidak perlu ada reverse seperti
 itu"). `indikator_checked` tetap inclusion-only sesuai desain.
+
+## Inisiatif — Kesiapan Publik (2026-10-03)
+
+Simulasi end-to-end semua role (tamu, klien, grafolog, HR, supervisor, admin) + uji
+penyalahgunaan menemukan blocker go-live. Keputusan user (AskUserQuestion): pesanan B2C
+ditugaskan admin; konsultasi Master = jadwal + link dari grafolog; Supervisor = QA review
+sebelum laporan dirilis; terjemahan narasi ditunda.
+
+- [x] Registrasi publik grafolog ditutup (celah: grafolog palsu menempelkan laporan ke akun klien).
+- [x] Upload foto tulisan tangan (privat + audit) di pesanan klien, Portal Grafolog, HR.
+- [x] Halaman admin "Pesanan Masuk" + assign (dulu pesanan lunas menggantung tanpa grafolog).
+- [x] QA Supervisor: antrean review, setujui/minta revisi, laporan tersembunyi dari klien/HR
+  sampai disetujui, email dikirim saat disetujui.
+- [x] Konsultasi tier Master (jadwal + link + email).
+- [x] Lupa/reset password (kandidat HR & walk-in kini bisa mengakses akun).
+- [x] Persetujuan data UU PDP (register, walk-in, impor HR), halaman /privasi & /syarat (draf),
+  disclaimer di laporan web & PDF.
+- [x] Bug DOKU: kredit token ganda via notifikasi FAILED→SUCCESS, lunas bisa dibatalkan,
+  500+stack trace saat DOKU error, Client-Id webhook tidak dicek.
+- [x] Dashboard per role (admin/HR/supervisor dulu menampilkan KPI klien kosong).
+- [x] Token login kedaluwarsa 30 hari; `npm ci` clean-install diperbaiki.
+- [ ] **Masih terbuka (butuh user):** kredensial DOKU (Fase C); review hukum Privacy
+  Policy/ToS + isi semua [KURUNG SIKU]; terjemahan narasi KB ke Bahasa Indonesia + kata ganti
+  netral (narasi masih "He/his"); deployment production (`APP_DEBUG=false`, SMTP nyata,
+  scheduler cron untuk `sanctum:prune-expired`, queue worker); kebijakan retensi data &
+  refund; foto rapid-tier lama masih di disk publik (historis).

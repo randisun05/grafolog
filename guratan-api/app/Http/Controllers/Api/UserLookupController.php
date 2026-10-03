@@ -58,6 +58,9 @@ class UserLookupController extends Controller
             'email' => $request->validated('email'),
             'password' => $password,
             'role' => 'user',
+            'consented_at' => now(),
+            'consent_source' => 'grafolog',
+            'consent_version' => User::CONSENT_VERSION,
         ]);
 
         AuditLog::record('daftarkan_klien', User::class, $client->id, $request->user()->id, $request->ip());

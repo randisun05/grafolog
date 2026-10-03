@@ -1459,6 +1459,55 @@ irregularity di atas):**
   341 backend tests total (up from 333). `indikator_rules` sekarang 101
   baris total (28 + 66 + 7).
 
+## Kesiapan publik (launch-readiness) — 2026-10-03
+
+Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubahan:
+
+- **Registrasi publik hanya role `user`** (`RegisterRequest` `role: in:user`). Grafolog
+  dibuat admin lewat `POST /api/admin/users`. Alasan: grafolog palsu bisa `users/lookup`
+  lalu menempelkan laporan ke akun klien mana pun. Test `test_register_rejects_grafolog_role`.
+- **Persetujuan data (UU PDP)**: `users.consented_at/consent_source/consent_version`
+  (`User::CONSENT_VERSION`). Wajib: `consent` (register), `consent_confirmed` (`POST /clients`,
+  `POST /hr/candidates/import`). Akun lama tidak di-backfill (null = belum tercatat).
+- **Foto tulisan tangan**: tabel `sample_images`, disk privat `local`
+  (`storage/app/private/samples/{id}`), `SampleImageController`:
+  `GET/POST /samples/{s}/images` (maks 5/unggah, 10/sample, 10MB, jpg/png/webp/heic),
+  `GET /samples/{s}/images/{img}` (stream + audit `lihat_foto_tulisan`), `DELETE` (pengunggah,
+  sebelum completed). Unggah: pemilik/pembuat/grafolog ditugaskan (`acceptsImagesFrom`).
+  `StoreSampleRequest.image` tetap `prohibited` — foto selalu lewat endpoint ini.
+- **`isViewableBy` kini juga true untuk administrator & supervisor** (oversight/QA).
+- **Pesanan Masuk**: `GET /admin/orders?status=unassigned|unpaid|in_progress|completed|all`
+  (`Admin\OrderController`, sample `Project.source=client`). Assign tetap lewat
+  `POST /samples/{id}/assignment`.
+- **QA Supervisor**: `personality_reports.review_status` (`menunggu_review` default /
+  `perlu_revisi` / `disetujui`), `reviewed_by/at`, `review_note`. Laporan lama di-backfill
+  `disetujui`. `PersonalityReport::isVisibleTo()` — klien/HR hanya lihat yang disetujui;
+  grafolog penanganan, supervisor, admin lihat semua tahap (dipakai show/pdf/revisions;
+  index memfilter non-grafolog ke disetujui, `?review_status=` opsional).
+  `GET /reviews`, `POST /reports/{r}/review {decision: approve|request_revision, note}`
+  (role supervisor,administrator). `correct()` & `updateNarasi()` memanggil
+  `sendBackToReview()` — termasuk laporan yang sudah disetujui (sengaja: klien tidak boleh
+  melihat isi yang belum ditinjau). **Email "laporan siap" kini dikirim saat disetujui**
+  (observer `review_status`), bukan saat `status=completed`.
+- **Konsultasi Master**: `sample_consultations` (1:1 sample), `PUT /samples/{s}/consultation`
+  (grafolog penanganan, tier master; `scheduled_at` future, `meeting_url` https). Email
+  `ConsultationScheduledMail` (queued) saat dibuat/jadwal berubah & status dijadwalkan.
+  Ditampilkan via `sample.consultation` di show sample & report.
+- **Lupa password**: `POST /auth/forgot-password` (respons generik), `/auth/reset-password`
+  (revoke semua token). Link ke `config('app.frontend_url')/reset-password` (key baru
+  `app.frontend_url` = `FRONTEND_URL`; sebelumnya email laporan memakai `app.url` karena key
+  ini tidak ada). Rate limiter bernama `password-reset` (6/menit/IP + 5/jam/email) —
+  JANGAN pakai `throttle:N,1` biasa: kuncinya sama dengan throttle login per-IP.
+- **DOKU**: status lunas final (notifikasi susulan FAILED/SUCCESS dobel diabaikan — dulu
+  SUCCESS→FAILED→SUCCESS menggandakan token); `Client-Id` webhook wajib = config;
+  error HTTP/koneksi DOKU → `RuntimeException` → 503 (dulu 500 + stack trace).
+- **Dashboard per role**: administrator/supervisor/hr punya KPI sendiri (dulu jatuh ke KPI
+  klien). Grafolog ikut menghitung sample yang ditugaskan; KPI `needs_revision`.
+  KPI/aktivitas klien & HR hanya menghitung laporan disetujui.
+- **Sanctum expiration 30 hari** (`SANCTUM_EXPIRATION`, menit) + `sanctum:prune-expired` harian.
+- Disclaimer "insight reflektif, bukan diagnosis" di PDF (`reports/pdf.blade.php`).
+- 401 test (dari 361).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.
@@ -1482,7 +1531,7 @@ irregularity di atas):**
   retirement are still served this way — same options as before (keep
   public since low real risk, or move to a private disk + authenticated
   streaming route like `pdf`). Still needs a call, not a silent fix.
-- **Sanctum tokens never expire** (`config/sanctum.php` `'expiration' =>
+- **[FIXED 2026-10-03: 30 hari, lihat "Kesiapan publik"]** **Sanctum tokens never expire** (`config/sanctum.php` `'expiration' =>
   null`) and carry no ability scoping — a leaked token is valid forever
   until manually revoked via logout. Setting an expiration is a UX tradeoff
   (users get logged out periodically), so left for the user to decide.

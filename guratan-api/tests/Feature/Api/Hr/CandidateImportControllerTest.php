@@ -34,7 +34,7 @@ class CandidateImportControllerTest extends TestCase
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $this->actingAs($grafolog, 'sanctum')
-            ->post('/api/hr/candidates/import', ['file' => $this->csv("name,email\nA,a@example.com\n")])
+            ->post('/api/hr/candidates/import', ['consent_confirmed' => true, 'file' => $this->csv("name,email\nA,a@example.com\n")])
             ->assertForbidden();
     }
 
@@ -43,7 +43,7 @@ class CandidateImportControllerTest extends TestCase
         $hr = $this->hrUser();
         $csv = "name,email\nBudi Kandidat,budi.kandidat@example.com\nSiti Kandidat,siti.kandidat@example.com\n";
 
-        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
             'file' => $this->csv($csv),
             'project_name' => 'Rekrutmen Finance Q3',
         ]);
@@ -64,7 +64,7 @@ class CandidateImportControllerTest extends TestCase
     {
         $hr = $this->hrUser();
 
-        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
             'file' => $this->csv("col1,col2\nfoo,bar\n"),
         ]);
 
@@ -77,7 +77,7 @@ class CandidateImportControllerTest extends TestCase
         $hr = $this->hrUser();
         $csv = "name,email\nBudi,budi@example.com\nRusak,not-an-email\n";
 
-        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
             'file' => $this->csv($csv),
         ]);
 
@@ -92,7 +92,7 @@ class CandidateImportControllerTest extends TestCase
         $grafolog = User::factory()->create(['role' => 'grafolog', 'email' => 'staff@example.com']);
         $csv = "name,email\nStaf,staff@example.com\n";
 
-        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
             'file' => $this->csv($csv),
         ]);
 
@@ -107,7 +107,7 @@ class CandidateImportControllerTest extends TestCase
         User::factory()->create(['role' => 'user', 'email' => 'taken@example.com', 'company_id' => $otherCompany->id]);
         $csv = "name,email\nDiambil,taken@example.com\n";
 
-        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
             'file' => $this->csv($csv),
         ]);
 
@@ -120,12 +120,21 @@ class CandidateImportControllerTest extends TestCase
         $client = User::factory()->create(['role' => 'user', 'email' => 'independen@example.com', 'company_id' => null]);
         $csv = "name,email\nIndependen,independen@example.com\n";
 
-        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+        $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
             'file' => $this->csv($csv),
         ]);
 
         $response->assertCreated();
         $this->assertDatabaseHas('users', ['id' => $client->id, 'company_id' => $hr->company_id]);
         $this->assertDatabaseCount('users', 2); // hr + client, tidak bikin duplikat
+    }
+
+    public function test_import_requires_consent_confirmation(): void
+    {
+        $hr = $this->hrUser();
+
+        $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', [
+            'file' => $this->csv("name,email\nA,a@example.com\n"),
+        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('consent_confirmed');
     }
 }

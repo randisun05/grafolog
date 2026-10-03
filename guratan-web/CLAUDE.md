@@ -557,6 +557,29 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   — that would need a search endpoint that doesn't exist; deliberately
   scoped to page navigation only, per the original Fase 07 ask.
 
+## Kesiapan publik — 2026-10-03
+
+- Register: opsi role dihapus (selalu klien) + checkbox persetujuan → `/privasi`, `/syarat`.
+- `LegalView.vue` merender `../legal/*.md` (`?raw` + `marked`, komentar HTML dibuang,
+  banner "Draf" selama masih ada `[KURUNG SIKU]`). `vite.config.js` `server.fs.allow: ['..']`
+  supaya dev server boleh membaca folder `legal/` di root monorepo. Footer beranda menautkan keduanya.
+- `ForgotPasswordView` (`/lupa-password`), `ResetPasswordView` (`/reset-password?token&email`),
+  style bersama `views/auth-form.css`. `lib/api.js`: 401 di halaman non-publik → redirect `/login`
+  (token kini kedaluwarsa 30 hari).
+- `components/shared/SampleImages.vue`: galeri foto tulisan (fetch blob ber-token →
+  object URL, lightbox, unggah/hapus). Dipakai Portal Grafolog (kartu "Foto Tulisan Tangan"),
+  `AdminOrdersView`, `HrCandidatesView` (kolom Foto).
+- `OrderView`: wajib 1–5 foto sebelum bayar; sample & foto dibuat sekali per sesi halaman
+  (retry bayar tidak menduplikasi pesanan).
+- `AdminOrdersView` (`/admin/orders`, "Pesanan Masuk"): filter + tugaskan grafolog (hanya lunas).
+- QA: `SupervisorReviewView` (`/supervisor/reviews`, role supervisor/administrator — router
+  `meta.role` kini boleh array), `ReportReviewPanel` (status QA, catatan, Setujui/Minta Revisi),
+  `AssignedToMeView` menampilkan "Perlu Revisi dari Supervisor". `auth.isSupervisor`.
+- `ConsultationPanel` di `ReportView` untuk tier master (grafolog: jadwal + link https).
+- `ReportView`: disclaimer insight-reflektif di atas laporan.
+- `package.json`: `oxlint` dipin `~1.73.0` agar cocok peer `eslint-plugin-oxlint@~1.73.0`
+  (dulu `npm ci` gagal ERESOLVE di clone bersih).
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

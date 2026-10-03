@@ -14,6 +14,7 @@
         .aspek h3 { font-size: 13px; margin-bottom: 2px; }
         .aspek .skor { color: #444; font-size: 11px; margin-bottom: 4px; }
         .aspek p { text-align: justify; line-height: 1.4; margin: 0; }
+        .disclaimer { border: 1px solid #c9a227; background: #fbf6e6; padding: 8px 10px; font-size: 10.5px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -21,6 +22,12 @@
     <p class="subtitle">
         Tier: {{ ucfirst($report->tier) }} &middot;
         Dibuat: {{ optional($report->generated_at)->translatedFormat('d F Y H:i') }}
+    </p>
+
+    <p class="disclaimer">
+        Laporan ini adalah alat insight reflektif berbasis grafologi, bukan diagnosis psikologis atau
+        klinis. Grafologi tidak memiliki dasar ilmiah sekuat psikometri standar - jangan jadikan laporan
+        ini satu-satunya dasar keputusan penting (rekrutmen, medis, hukum, finansial).
     </p>
 
     @foreach ($report->data['sindrom'] ?? [] as $sindrom)

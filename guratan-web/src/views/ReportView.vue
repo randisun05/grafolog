@@ -4,6 +4,8 @@ import api from '@/lib/api'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportCorrectionPanel from '@/components/report/ReportCorrectionPanel.vue'
 import ReportRevisionHistory from '@/components/report/ReportRevisionHistory.vue'
+import ReportReviewPanel from '@/components/report/ReportReviewPanel.vue'
+import ConsultationPanel from '@/components/report/ConsultationPanel.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -25,6 +27,16 @@ const downloading = ref(false)
 // cuma sinyal UI supaya tombolnya tidak muncul ke grafolog lain yang pasti
 // akan ditolak 403 kalau mencoba.
 const canEdit = computed(() => auth.isGrafolog && report.value)
+const canReview = computed(() => auth.isSupervisor || auth.isAdministrator)
+const isStaff = computed(() => canEdit.value || canReview.value)
+
+function onReviewed(updated) {
+  report.value = { ...report.value, ...updated }
+}
+
+function onConsultationSaved(consultation) {
+  report.value = { ...report.value, sample: { ...report.value.sample, consultation } }
+}
 
 async function load() {
   try {
@@ -61,7 +73,11 @@ function onCorrected(updatedReport) {
 }
 
 function onNarasiUpdated(updatedReport) {
-  report.value = { ...report.value, data: updatedReport.data }
+  report.value = {
+    ...report.value,
+    data: updatedReport.data,
+    review_status: updatedReport.review_status,
+  }
 }
 </script>
 
@@ -76,6 +92,28 @@ function onNarasiUpdated(updatedReport) {
           {{ downloading ? 'Menyiapkan PDF...' : 'Unduh PDF' }}
         </button>
       </div>
+
+      <p class="report-view__disclaimer">
+        Laporan ini adalah <strong>alat insight reflektif</strong> berbasis grafologi, bukan
+        diagnosis psikologis atau klinis. Grafologi tidak memiliki dasar ilmiah sekuat psikometri
+        standar — jangan jadikan laporan ini satu-satunya dasar keputusan penting (rekrutmen, medis,
+        hukum, finansial). Lihat <RouterLink to="/syarat">Syarat Layanan</RouterLink>.
+      </p>
+
+      <ReportReviewPanel
+        v-if="isStaff"
+        :report="report"
+        :can-review="canReview"
+        @reviewed="onReviewed"
+      />
+
+      <ConsultationPanel
+        v-if="report.tier === 'master'"
+        :sample-id="report.sample_id"
+        :consultation="report.sample?.consultation ?? null"
+        :editable="canEdit"
+        @saved="onConsultationSaved"
+      />
 
       <ReportCorrectionPanel
         v-if="canEdit && report.aspek_scores"
@@ -109,6 +147,14 @@ function onNarasiUpdated(updatedReport) {
   align-items: center;
   gap: 8px 16px;
   margin-bottom: 20px;
+}
+.report-view__disclaimer {
+  background: var(--color-gold-soft);
+  border-left: 3px solid var(--color-gold);
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  margin: 0 0 20px;
+  border-radius: 4px;
 }
 .report-view__header h1 {
   font-size: 22px;

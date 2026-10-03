@@ -76,6 +76,7 @@ class ScoringController extends Controller
                 'sample_id' => $sample->id,
                 'tier' => $sample->tier,
                 'status' => 'generating',
+                'review_status' => PersonalityReport::REVIEW_PENDING,
             ]);
 
             $skorPerAspek = [];
@@ -154,6 +155,7 @@ class ScoringController extends Controller
 
             $data = $this->attachIndikatorNarasi($this->scoringEngine->generate($skorPerAspek), $sample);
             $report->update(['data' => $data, 'generated_at' => now()]);
+            $report->sendBackToReview();
 
             AuditLog::record('koreksi_skor_laporan', PersonalityReport::class, $report->id, $user->id, $request->ip());
 

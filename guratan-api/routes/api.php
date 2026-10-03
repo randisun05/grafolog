@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorControll
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
+use App\Http\Controllers\Api\Admin\OrderController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
 use App\Http\Controllers\Api\Admin\ScoringRuleBandController;
 use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
@@ -20,15 +21,19 @@ use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChecklistController;
+use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\MeasurementVariableController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ReportReviewController;
 use App\Http\Controllers\Api\SampleController;
+use App\Http\Controllers\Api\SampleImageController;
 use App\Http\Controllers\Api\ScoringController;
 use App\Http\Controllers\Api\SindromController;
 use App\Http\Controllers\Api\TokenController;
@@ -39,6 +44,11 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:20,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+});
+
+Route::middleware('throttle:password-reset')->group(function () {
+    Route::post('/auth/forgot-password', [PasswordResetController::class, 'forgot']);
+    Route::post('/auth/reset-password', [PasswordResetController::class, 'reset']);
 });
 
 // DOKU memanggil ini server-to-server, tidak punya token Sanctum kita -
@@ -67,10 +77,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/samples', [SampleController::class, 'index']);
     Route::post('/samples', [SampleController::class, 'store']);
     Route::get('/samples/{sample}', [SampleController::class, 'show']);
+    Route::get('/samples/{sample}/images', [SampleImageController::class, 'index']);
+    Route::middleware('throttle:20,1')->post('/samples/{sample}/images', [SampleImageController::class, 'store']);
+    Route::get('/samples/{sample}/images/{image}', [SampleImageController::class, 'show']);
+    Route::delete('/samples/{sample}/images/{image}', [SampleImageController::class, 'destroy']);
     Route::post('/samples/{sample}/scores/preview', [ScoringController::class, 'preview']);
     Route::post('/samples/{sample}/scores', [ScoringController::class, 'submit']);
     Route::post('/samples/{sample}/scores/correct', [ScoringController::class, 'correct']);
     Route::post('/samples/{sample}/payment', [PaymentController::class, 'store']);
+    Route::put('/samples/{sample}/consultation', [ConsultationController::class, 'upsert']);
 
     // KM-G: measurement worksheet + checklist Indikator - lihat CLAUDE.md.
     // Tidak mengubah ScoringController::submit di atas sama sekali - hasil
@@ -86,6 +101,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
+    Route::middleware('role:supervisor,administrator')->group(function () {
+        Route::get('/reviews', [ReportReviewController::class, 'index']);
+        Route::post('/reports/{report}/review', [ReportReviewController::class, 'store']);
+    });
     Route::patch('/reports/{report}/aspek/{kode}/narasi', [ReportController::class, 'updateNarasi']);
     Route::get('/reports/{report}/revisions', [ReportController::class, 'revisions']);
     Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);
@@ -96,6 +115,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::middleware('role:hr,administrator')->get('/grafologs', [UserLookupController::class, 'grafologs']);
 
     Route::middleware('role:administrator')->prefix('admin')->group(function () {
+        Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::post('/users', [AdminUserController::class, 'store']);
         Route::get('/companies', [CompanyController::class, 'index']);

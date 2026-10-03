@@ -44,7 +44,7 @@ class UserLookupControllerTest extends TestCase
 
     public function test_guest_cannot_create_client(): void
     {
-        $this->postJson('/api/clients', ['name' => 'Klien Baru', 'email' => 'klien@example.com'])
+        $this->postJson('/api/clients', ['consent_confirmed' => true, 'name' => 'Klien Baru', 'email' => 'klien@example.com'])
             ->assertUnauthorized();
     }
 
@@ -53,7 +53,7 @@ class UserLookupControllerTest extends TestCase
         $hr = User::factory()->create(['role' => 'hr']);
 
         $this->actingAs($hr, 'sanctum')
-            ->postJson('/api/clients', ['name' => 'Klien Baru', 'email' => 'klien@example.com'])
+            ->postJson('/api/clients', ['consent_confirmed' => true, 'name' => 'Klien Baru', 'email' => 'klien@example.com'])
             ->assertForbidden();
     }
 
@@ -62,6 +62,7 @@ class UserLookupControllerTest extends TestCase
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
+            'consent_confirmed' => true,
             'name' => 'Klien Walk-in',
             'email' => 'walkin@example.com',
             'password' => 'Password123',
@@ -80,6 +81,7 @@ class UserLookupControllerTest extends TestCase
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
+            'consent_confirmed' => true,
             'name' => 'Klien Tanpa Sandi',
             'email' => 'nopassword@example.com',
         ]);
@@ -102,7 +104,16 @@ class UserLookupControllerTest extends TestCase
         User::factory()->create(['email' => 'sudahada@example.com']);
 
         $this->actingAs($grafolog, 'sanctum')
-            ->postJson('/api/clients', ['name' => 'Duplikat', 'email' => 'sudahada@example.com'])
+            ->postJson('/api/clients', ['consent_confirmed' => true, 'name' => 'Duplikat', 'email' => 'sudahada@example.com'])
             ->assertUnprocessable();
+    }
+
+    public function test_create_client_requires_consent_confirmation(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson('/api/clients', ['name' => 'Tanpa Consent', 'email' => 'noconsent@example.com'])
+            ->assertUnprocessable()->assertJsonValidationErrors('consent_confirmed');
     }
 }

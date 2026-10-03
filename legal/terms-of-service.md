@@ -1,6 +1,7 @@
 <!--
-STATUS: DRAFT — belum ditinjau tim legal/bisnis, JANGAN publikasikan atau
-tautkan dari aplikasi sebelum disetujui. Ditulis 2026-07-27. Semua
+STATUS: DRAFT — belum ditinjau tim legal/bisnis. Sejak 2026-10-03
+ditampilkan di guratan-web (/syarat) dengan banner "Draf" selama masih ada
+[kurung siku]. Ditulis 2026-07-27, diperbarui 2026-10-03. Semua
 [DALAM KURUNG SIKU] wajib diisi/dikonfirmasi. Pasal 3 (batasan keakuratan)
 adalah yang PALING PENTING di dokumen ini - ini yang melindungi Guratan
 secara hukum dari klaim "produk ini salah mendiagnosis saya", sesuai prinsip
@@ -15,13 +16,12 @@ pasal ini demi bahasa pemasaran yang lebih menarik.
 ## 1. Tentang Layanan
 
 Guratan adalah platform analisis grafologi (ilmu membaca kepribadian dari
-tulisan tangan) berbasis web, tersedia dalam tiga tier:
+tulisan tangan) berbasis web, tersedia dalam dua tier:
 
 | Tier | Cara Kerja |
 |---|---|
-| Rapid (gratis) | Skor otomatis dari foto tulisan tangan. |
-| Comprehensive (berbayar) | Grafolog bersertifikat mengukur tulisan tangan fisik Anda secara manual dan mengisi skor 40 aspek. |
-| Master (berbayar, premium) | Sama seperti Comprehensive, ditambah sesi konsultasi langsung dengan grafolog. |
+| Comprehensive (berbayar) | Grafolog bersertifikat mengukur tulisan tangan Anda secara manual dan mengisi skor 40 aspek. Laporan ditinjau supervisor sebelum dirilis. |
+| Master (berbayar, premium) | Sama seperti Comprehensive, ditambah satu sesi konsultasi daring dengan grafolog (jadwal dan tautan ditetapkan grafolog). |
 
 ## 2. Bukan Alat Diagnosis Klinis
 
@@ -35,19 +35,7 @@ terima:
 - Tidak menggantikan konsultasi dengan psikolog atau profesional kesehatan
   mental berlisensi.
 - Disusun dari basis pengetahuan grafologi (referensi Sindrom/Aspek/
-  Indikator) yang ditafsirkan oleh grafolog bersertifikat (tier
-  Comprehensive/Master) atau sistem otomatis dengan skor sementara/placeholder
-  (tier Rapid — lihat pasal 2a).
-
-### 2a. Tier Rapid Menggunakan Skor Sementara
-
-Tier Rapid **belum** menggunakan computer vision sungguhan untuk menganalisis
-foto tulisan tangan Anda — analisis gambar otomatis masih dalam
-pengembangan. Skor yang ditampilkan pada tier Rapid saat ini bersifat
-sementara/placeholder untuk keperluan demonstrasi alur produk, bukan hasil
-analisis tulisan tangan yang valid. [WAJIB: pastikan pasal ini dihapus/
-diperbarui begitu computer vision sungguhan diimplementasikan - lihat status
-di guratan-api/CLAUDE.md sebelum publikasi ulang dokumen ini.]
+  Indikator) yang ditafsirkan oleh grafolog bersertifikat.
 
 ## 3. Batasan Tanggung Jawab
 
@@ -60,18 +48,15 @@ berlisensi atau layanan darurat setempat.
 ## 4. Akun Pengguna
 
 - Anda bertanggung jawab menjaga kerahasiaan kata sandi akun Anda.
-- Peran "grafolog" hanya diberikan kepada individu yang telah diverifikasi
-  memiliki sertifikasi grafologi yang sah. [BELUM ADA PROSES VERIFIKASI
-  TEKNIS - saat ini role diset manual/self-declared saat registrasi, lihat
-  guratan-api/CLAUDE.md. Perlu proses verifikasi sebelum go-live jika role
-  grafolog membawa konsekuensi hukum/kepercayaan publik.]
+- Akun grafolog hanya dibuat oleh administrator Guratan setelah
+  sertifikasi grafologinya diverifikasi - tidak bisa didaftarkan sendiri.
+  [Tuliskan kriteria verifikasi sertifikasi yang dipakai.]
 
 ## 5. Pembayaran & Pengembalian Dana (Tier Comprehensive/Master)
 
 - Pembayaran diproses melalui mitra payment gateway pihak ketiga, DOKU.
-- Harga berlaku saat transaksi dilakukan: [ISI HARGA RESMI comprehensive
-  dan master - lihat config/pricing.php di guratan-api, angka di sana masih
-  PLACEHOLDER untuk tier Master, belum dikonfirmasi bisnis].
+- Harga berlaku sesuai yang tertera di halaman pemesanan saat transaksi
+  dilakukan.
 - Kebijakan pengembalian dana: [BELUM DITULIS - wajib diputuskan sebelum
   go-live: apakah ada refund kalau grafolog belum mulai mengerjakan skor?
   Bagaimana kalau pembayaran DOKU sukses tapi terjadi kegagalan teknis di

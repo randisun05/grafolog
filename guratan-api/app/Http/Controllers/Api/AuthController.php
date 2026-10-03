@@ -19,7 +19,10 @@ class AuthController extends Controller
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
-            'role' => $request->validated('role', 'user'),
+            'role' => 'user',
+            'consented_at' => now(),
+            'consent_source' => 'self',
+            'consent_version' => User::CONSENT_VERSION,
         ]);
 
         $token = $user->createToken('guratan-web')->plainTextToken;

@@ -2,6 +2,7 @@
 
 namespace App\Services\Payment;
 
+use Illuminate\Http\Client\HttpClientException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -18,7 +19,9 @@ class DokuService
     private const CHECKOUT_PATH = '/checkout/v1/payment';
 
     private ?string $clientId;
+
     private ?string $secretKey;
+
     private ?string $baseUrl;
 
     public function __construct(?string $clientId = null, ?string $secretKey = null, ?string $baseUrl = null)
@@ -38,7 +41,7 @@ class DokuService
      * tahu bentuk model pemanggilnya.
      *
      * @throws RuntimeException kalau DOKU menolak request (kredensial belum
-     *         diisi, invoice_number dobel, dsb) - pesan asli DOKU diteruskan.
+     *                          diisi, invoice_number dobel, dsb) - pesan asli DOKU diteruskan.
      */
     public function createCheckout(
         string $invoiceNumber,
@@ -91,14 +94,21 @@ class DokuService
         $digest = $this->digest($rawBody);
         $signature = $this->generateSignature($requestId, $timestamp, $path, $digest);
 
-        return Http::withHeaders([
-            'Client-Id' => $this->clientId,
-            'Request-Id' => $requestId,
-            'Request-Timestamp' => $timestamp,
-            'Signature' => 'HMACSHA256='.$signature,
-            'Content-Type' => 'application/json',
-        ])->withBody($rawBody, 'application/json')
-            ->post($this->baseUrl.$path);
+        // Error HTTP/koneksi ke DOKU dinormalisasi jadi RuntimeException supaya
+        // controller membalas 503 rapi, bukan 500 dengan stack trace.
+        try {
+            return Http::withHeaders([
+                'Client-Id' => $this->clientId,
+                'Request-Id' => $requestId,
+                'Request-Timestamp' => $timestamp,
+                'Signature' => 'HMACSHA256='.$signature,
+                'Content-Type' => 'application/json',
+            ])->withBody($rawBody, 'application/json')
+                ->timeout(20)
+                ->post($this->baseUrl.$path);
+        } catch (HttpClientException $e) {
+            throw new RuntimeException('Gagal menghubungi DOKU: '.$e->getMessage(), previous: $e);
+        }
     }
 
     /**
@@ -116,6 +126,10 @@ class DokuService
         $incomingSignature = $request->header('Signature');
 
         if (! $clientId || ! $requestId || ! $timestamp || ! $incomingSignature) {
+            return false;
+        }
+
+        if (! hash_equals((string) $this->clientId, $clientId)) {
             return false;
         }
 

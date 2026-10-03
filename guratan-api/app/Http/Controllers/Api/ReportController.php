@@ -32,7 +32,9 @@ class ReportController extends Controller
                     ->orWhere('created_by', $user->id)
                     ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
             })
-            ->with('sample:id,user_id,created_by,tier')
+            ->when(! $user->isGrafolog(), fn ($q) => $q->where('review_status', PersonalityReport::REVIEW_APPROVED))
+            ->when($request->query('review_status'), fn ($q, $status) => $q->where('review_status', $status))
+            ->with('sample:id,user_id,created_by,tier', 'sample.user:id,name,email')
             ->latest()
             ->paginate(20);
 
@@ -43,7 +45,7 @@ class ReportController extends Controller
     {
         $this->authorizeAccess($request, $report);
 
-        return response()->json($report->load('sample', 'aspekScores.aspek'));
+        return response()->json($report->load('sample.consultation', 'aspekScores.aspek', 'reviewer:id,name'));
     }
 
     public function pdf(Request $request, PersonalityReport $report): StreamedResponse
@@ -82,6 +84,7 @@ class ReportController extends Controller
             abort_unless($found, 404, "Aspek dengan kode '{$kode}' tidak ditemukan di laporan ini.");
 
             $report->update(['data' => $data]);
+            $report->sendBackToReview();
 
             AuditLog::record('edit_narasi_laporan', PersonalityReport::class, $report->id, $user->id, $request->ip());
 
@@ -129,6 +132,6 @@ class ReportController extends Controller
 
     private function authorizeAccess(Request $request, PersonalityReport $report): void
     {
-        abort_unless($report->sample->isViewableBy($request->user()), 403);
+        abort_unless($report->isVisibleTo($request->user()), 403);
     }
 }

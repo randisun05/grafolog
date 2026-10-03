@@ -11,7 +11,7 @@ const form = ref({
   email: '',
   password: '',
   password_confirmation: '',
-  role: 'user',
+  consent: false,
 })
 const errors = ref({})
 const loading = ref(false)
@@ -57,13 +57,15 @@ async function submit() {
         <input v-model="form.password_confirmation" type="password" required />
       </label>
 
-      <label>
-        Daftar sebagai
-        <select v-model="form.role">
-          <option value="user">Individu (klien)</option>
-          <option value="grafolog">Grafolog</option>
-        </select>
+      <label class="consent">
+        <input v-model="form.consent" type="checkbox" required />
+        <span>
+          Saya menyetujui pemrosesan data tulisan tangan dan hasil analisis kepribadian saya sesuai
+          <RouterLink to="/privasi" target="_blank">Kebijakan Privasi</RouterLink> dan
+          <RouterLink to="/syarat" target="_blank">Syarat Layanan</RouterLink>.
+        </span>
       </label>
+      <p v-if="errors.consent" class="error">{{ errors.consent[0] }}</p>
 
       <button type="submit" class="btn btn--primary" :disabled="loading">
         {{ loading ? 'Memproses...' : 'Daftar' }}
@@ -73,6 +75,17 @@ async function submit() {
 </template>
 
 <style scoped>
+.consent {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+.consent input {
+  width: auto;
+  margin-top: 0.2rem;
+}
 .auth-form {
   max-width: 360px;
   width: 100%;

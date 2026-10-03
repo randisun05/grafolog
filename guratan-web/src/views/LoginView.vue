@@ -39,6 +39,7 @@ async function submit() {
         Kata Sandi
         <input v-model="form.password" type="password" required />
       </label>
+      <RouterLink to="/lupa-password" class="auth-form__forgot">Lupa kata sandi?</RouterLink>
 
       <button type="submit" class="btn btn--primary" :disabled="loading">
         {{ loading ? 'Memproses...' : 'Masuk' }}
@@ -70,6 +71,12 @@ label {
 .error {
   font-size: 12px;
   margin: -8px 0 10px;
+}
+.auth-form__forgot {
+  display: block;
+  margin: -6px 0 14px;
+  font-size: 13px;
+  text-align: right;
 }
 .btn--primary {
   width: 100%;

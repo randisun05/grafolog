@@ -9,6 +9,7 @@ use App\Models\PricingPlan;
 use App\Models\TokenPurchase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -17,6 +18,7 @@ class PaymentControllerTest extends TestCase
     use RefreshDatabase;
 
     private const CLIENT_ID = 'MCH-TEST-0001';
+
     private const SECRET_KEY = 'test-secret-key';
 
     protected function setUp(): void
@@ -338,5 +340,89 @@ class PaymentControllerTest extends TestCase
 
         $this->assertSame(5, $grafolog->fresh()->token_balance);
         $this->assertDatabaseCount('token_ledger_entries', 1);
+    }
+
+    private function sendNotification(string $invoice, string $status, string $clientId = self::CLIENT_ID)
+    {
+        $body = ['order' => ['invoice_number' => $invoice], 'transaction' => ['status' => $status]];
+        $requestId = 'req-'.$invoice.'-'.$status.'-'.uniqid();
+        $timestamp = gmdate('Y-m-d\TH:i:s\Z');
+
+        return $this->withHeaders([
+            'Client-Id' => $clientId,
+            'Request-Id' => $requestId,
+            'Request-Timestamp' => $timestamp,
+            'Signature' => $this->dokuSignature($requestId, $timestamp, '/api/payments/notification', json_encode($body), $clientId),
+        ])->postJson('/api/payments/notification', $body);
+    }
+
+    public function test_late_failed_notification_does_not_revert_paid_token_purchase_or_double_credit(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'token_balance' => 0]);
+        $purchase = TokenPurchase::create([
+            'user_id' => $grafolog->id, 'quantity' => 3, 'unit_price' => 5000, 'base_amount' => 15000,
+            'amount' => 15000, 'status' => 'pending', 'invoice_number' => 'TOKEN-FLIP-1',
+        ]);
+
+        $this->sendNotification('TOKEN-FLIP-1', 'SUCCESS')->assertOk();
+        $this->sendNotification('TOKEN-FLIP-1', 'FAILED')->assertOk();
+        $this->sendNotification('TOKEN-FLIP-1', 'SUCCESS')->assertOk();
+
+        $this->assertSame(3, $grafolog->fresh()->token_balance);
+        $this->assertSame('paid', $purchase->fresh()->status);
+        $this->assertDatabaseCount('token_ledger_entries', 1);
+    }
+
+    public function test_late_failed_notification_does_not_revert_paid_sample_payment(): void
+    {
+        $user = User::factory()->create();
+        $sample = HandwritingSample::create([
+            'user_id' => $user->id, 'created_by' => $user->id,
+            'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+        $payment = Payment::create([
+            'sample_id' => $sample->id, 'invoice_number' => 'INV-FLIP-1', 'base_amount' => 49000,
+            'amount' => 49000, 'currency' => 'IDR', 'status' => 'pending',
+        ]);
+
+        $this->sendNotification('INV-FLIP-1', 'SUCCESS')->assertOk();
+        $this->sendNotification('INV-FLIP-1', 'FAILED')->assertOk();
+
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertNotNull($payment->fresh()->paid_at);
+    }
+
+    public function test_notification_with_foreign_client_id_is_rejected(): void
+    {
+        $this->sendNotification('INV-ANY', 'SUCCESS', 'MCH-SOMEONE-ELSE')->assertStatus(400);
+    }
+
+    public function test_doku_http_error_returns_clean_503_not_raw_500(): void
+    {
+        Http::fake(['*' => Http::response(['error_messages' => ['Unauthorized']], 401)]);
+
+        $user = User::factory()->create();
+        $sample = HandwritingSample::create([
+            'user_id' => $user->id, 'created_by' => $user->id,
+            'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')->postJson("/api/samples/{$sample->id}/payment");
+
+        $response->assertStatus(503)->assertJsonMissingPath('exception');
+    }
+
+    public function test_doku_connection_failure_returns_clean_503(): void
+    {
+        Http::fake(fn () => throw new ConnectionException('timeout'));
+
+        $user = User::factory()->create();
+        $sample = HandwritingSample::create([
+            'user_id' => $user->id, 'created_by' => $user->id,
+            'tier' => 'comprehensive', 'status' => 'pending',
+        ]);
+
+        $this->actingAs($user, 'sanctum')->postJson("/api/samples/{$sample->id}/payment")
+            ->assertStatus(503)->assertJsonMissingPath('exception');
     }
 }

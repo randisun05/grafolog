@@ -138,6 +138,14 @@ class PaymentController extends Controller
     {
         $wasAlreadyPaid = $payment->isPaid();
 
+        // Status lunas bersifat final: notifikasi susulan (FAILED/EXPIRED atau
+        // SUCCESS dobel) tidak boleh menurunkan status atau mengkredit ulang.
+        if ($wasAlreadyPaid) {
+            Log::info('DOKU notification diabaikan, invoice sudah lunas', ['invoice_number' => $payment->invoice_number, 'status' => $status]);
+
+            return;
+        }
+
         $payment->update([
             'notification_payload' => $request->all(),
             'status' => $status === 'SUCCESS' ? 'paid' : 'failed',
@@ -155,6 +163,14 @@ class PaymentController extends Controller
     private function handleTokenPurchaseNotification(TokenPurchase $purchase, string $status, Request $request): void
     {
         $wasAlreadyPaid = $purchase->isPaid();
+
+        // Status lunas bersifat final: notifikasi susulan (FAILED/EXPIRED atau
+        // SUCCESS dobel) tidak boleh menurunkan status atau mengkredit ulang.
+        if ($wasAlreadyPaid) {
+            Log::info('DOKU notification diabaikan, invoice sudah lunas', ['invoice_number' => $purchase->invoice_number, 'status' => $status]);
+
+            return;
+        }
 
         $purchase->update([
             'notification_payload' => $request->all(),

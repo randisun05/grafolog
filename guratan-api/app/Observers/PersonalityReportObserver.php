@@ -25,6 +25,11 @@ class PersonalityReportObserver
     {
         if ($personalityReport->wasChanged('status') && $personalityReport->status === 'completed') {
             $this->log('laporan_selesai', $personalityReport);
+        }
+
+        // Email ke klien baru dikirim saat supervisor menyetujui laporan -
+        // sebelum itu klien memang belum bisa membukanya.
+        if ($personalityReport->wasChanged('review_status') && $personalityReport->isApproved()) {
             SendReportCompletedNotification::dispatch($personalityReport);
         }
     }
