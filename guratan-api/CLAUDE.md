@@ -1508,6 +1508,25 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Disclaimer "insight reflektif, bukan diagnosis" di PDF (`reports/pdf.blade.php`).
 - 401 test (dari 361).
 
+## Gemini multi-key (LLM_PROVIDER=gemini) — 2026-10-14
+
+- `GeminiLlmProvider` (generateContent, header `x-goog-api-key`) + `GeminiKeyPool`:
+  sampai 10 key `GEMINI_API_KEY_1..10` (`config('services.gemini.keys')`, slot kosong
+  diabaikan). Urutan coba: mulai dari slot yang terakhir sukses (`gemini_key_active_slot`
+  di cache), lalu berputar.
+- 429/RESOURCE_EXHAUSTED → slot istirahat `max(retryDelay, GEMINI_COOLDOWN_SECONDS=60)`;
+  quotaId `...PerDay...` → `GEMINI_DAILY_COOLDOWN_SECONDS` (3600, dicek ulang tiap jam).
+  401/403/`API_KEY_*` → istirahat `GEMINI_INVALID_COOLDOWN_SECONDS` (86400) + log error.
+  5xx/koneksi → coba key berikutnya tanpa cooldown. Cooldown disimpan di cache store
+  (`CACHE_STORE=database`) — berbagi antar proses web/queue/artisan.
+- Semua gagal → `LlmUnavailableException`. `NarasiCacheService` menangkapnya: kembalikan
+  teks asli **tanpa** menulis `narasi_cache` (dulu fallback teks Inggris tersimpan permanen
+  berlabel 'id'). `narasi:pregenerate` melaporkan jumlah kombinasi yang belum ter-cache.
+- Key tidak pernah di-log, hanya nomor slot. Status: `php artisan llm:gemini-status`.
+- Prompt meminta kata ganti netral (bukan he/his). Model default `gemini-2.5-flash`
+  (`GEMINI_MODEL`) — cek nama model terbaru di dokumentasi Google sebelum produksi.
+- `ApiLlmProvider`/`SelfHostedLlmProvider` lama TIDAK diubah (masih fallback diam-diam).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

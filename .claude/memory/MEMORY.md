@@ -14,3 +14,4 @@
 - [KB content gaps](project_kb_content_gaps.md) — 2026-08-17: 30 empty Indikator.keterangan rows (Aspek 35 "Fears" degree-variants) deferred pending user-supplied text, don't fill without asking
 - [Cross-reference unification](project_cross_reference_unification.md) — 2026-08-19: KM-F cascade merged into indikator_rules as 3rd rule_type, old table dropped, multi-hop chains, admin tab removed
 - [Launch readiness](project_launch_readiness.md) — 2026-10-03: role simulation, fixed grafolog self-register hole, photo upload, admin orders, supervisor QA gate, Master consultation, reset password, PDP consent, DOKU bugs; remaining blockers are DOKU creds/legal/translation/deploy
+- [Gemini multi-key](project_gemini_multikey.md) — 2026-10-14: LLM_PROVIDER=gemini, up to 10 keys GEMINI_API_KEY_1..10 with cooldown failover; all-fail never pollutes narasi_cache

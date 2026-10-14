@@ -3,12 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Models\Aspek;
+use App\Models\NarasiCache;
 use App\Services\Llm\NarasiCacheService;
 use Illuminate\Console\Command;
 
 class PregenerateNarasiCache extends Command
 {
     protected $signature = 'narasi:pregenerate {--bahasa=id}';
+
     protected $description = 'Panggil LLM sekali untuk semua 40 aspek x 4 level (160 kombinasi), simpan ke narasi_cache permanen';
 
     public function handle(NarasiCacheService $service): int
@@ -30,6 +32,11 @@ class PregenerateNarasiCache extends Command
 
         $this->newLine(2);
         $this->info("Selesai. Total kombinasi: {$total} (yang sudah ada di cache otomatis dilewati, tidak panggil LLM ulang).");
+
+        $cached = NarasiCache::where('bahasa', $bahasa)->count();
+        if ($cached < $total) {
+            $this->warn('Belum ter-cache: '.($total - $cached).' kombinasi (LLM limit/gagal atau narasi sumber kosong). Jalankan ulang perintah ini nanti.');
+        }
 
         return self::SUCCESS;
     }
