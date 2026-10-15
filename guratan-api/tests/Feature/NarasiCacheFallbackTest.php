@@ -35,4 +35,25 @@ class NarasiCacheFallbackTest extends TestCase
         $this->assertSame('The writer is relaxed.', $result);
         $this->assertSame(0, NarasiCache::count());
     }
+
+    public function test_very_high_falls_back_to_high_narasi_when_source_is_empty(): void
+    {
+        $this->seedMinimalAspek(1);
+        $aspek = Aspek::first();
+        $aspek->update(['narasi_very_high' => null, 'narasi_high' => 'High text.', 'keterangan_umum' => 'Generic.']);
+
+        $this->assertSame('High text.', NarasiCacheService::teksSumber($aspek->fresh(), 'very_high'));
+
+        $aspek->update(['narasi_very_high' => 'Very high text.']);
+        $this->assertSame('Very high text.', NarasiCacheService::teksSumber($aspek->fresh(), 'very_high'));
+    }
+
+    public function test_empty_string_level_falls_back_to_keterangan_umum(): void
+    {
+        $this->seedMinimalAspek(1);
+        $aspek = Aspek::first();
+        $aspek->update(['narasi_low' => '', 'keterangan_umum' => 'Generic.']);
+
+        $this->assertSame('Generic.', NarasiCacheService::teksSumber($aspek->fresh(), 'low'));
+    }
 }

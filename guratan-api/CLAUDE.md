@@ -1527,6 +1527,30 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   (`GEMINI_MODEL`) — cek nama model terbaru di dokumentasi Google sebelum produksi.
 - `ApiLlmProvider`/`SelfHostedLlmProvider` lama TIDAK diubah (masih fallback diam-diam).
 
+## Data demo & MySQL lokal — 2026-10-15
+
+- `php artisan db:seed --class=DemoDataSeeder` (setelah `migrate:fresh --seed`) — BUKAN
+  bagian `DatabaseSeeder`. Ditolak di production, jalan sekali (cek `admin.demo@guratan.test`).
+  13 akun berpassword `DemoGuratan123` (`DemoDataSeeder::PASSWORD`): admin.demo, supervisor,
+  ani.grafolog, bima.grafolog (@guratan.test), hr@majujaya.test, klien budi/citra/dewi/eko/
+  fajar/gita (@guratan.test), kandidat hendra/intan (@majujaya.test). 8 sample mencakup tiap
+  tahap: disetujui (Budi, Citra+konsultasi Master, Hendra/HR), menunggu review (Fajar),
+  perlu revisi (Gita), lunas belum ditugaskan (Dewi), belum bayar (Eko), kandidat belum
+  ditugaskan (Intan). Skor dari 4 persona (`PERSONAS`), foto tulisan dummy dibuat GD.
+- Diuji di MariaDB 10.11 (MySQL-compatible) dengan `DB_CONNECTION=mysql`: seluruh migrasi
+  + seeder lolos. Test suite tetap sqlite in-memory.
+- **Celah konten KB (sumber Excel, bukan bug kode)**: `narasi_very_high` hanya terisi 2/40
+  aspek. `NarasiCacheService::teksSumber()` memakai fallback very_high → high (band "Nilai
+  Tinggi" yang sama) → keterangan_umum. Masih kosong tanpa fallback yang pantas: aspek 09
+  Comprehension (medium, low, keterangan_umum), 08 Motivation (low; keterangan_umum juga
+  kosong), 35 Fears (semua level; jatuh ke keterangan_umum) → laporan bisa memuat
+  "(narasi tidak tersedia di sumber data)". Butuh teks dari user, jangan dikarang.
+- **PDF cache kini ber-sidik-jari** (`reports/laporan-{id}-{md5(data+konsultasi+review)}.pdf`):
+  dulu `pdf_path` dipakai selamanya, jadi PDF tidak ikut berubah setelah koreksi skor/edit
+  narasi. Template PDF: identitas (nama, grafolog, tanggal ID), tabel ringkasan sindrom,
+  konsultasi Master, header/footer + nomor halaman; `page-break-inside: avoid` di blok
+  sindrom dihapus (membuat halaman 1 kosong).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

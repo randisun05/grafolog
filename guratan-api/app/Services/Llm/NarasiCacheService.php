@@ -14,6 +14,27 @@ class NarasiCacheService
      * Ambil narasi final untuk 1 aspek + 1 level. Cek cache dulu;
      * kalau belum ada, panggil LLM sekali lalu simpan permanen.
      */
+    /**
+     * Sumber Excel hanya mengisi narasi very_high untuk 2 dari 40 aspek
+     * (dicek 2026-10-15) - skor 9-10 jatuh ke narasi high, yang ada di band
+     * "Nilai Tinggi" yang sama, bukan ke keterangan_umum yang tidak spesifik
+     * level. Ini fallback tampilan, bukan isi KB baru: begitu narasi
+     * very_high diisi lewat admin KB, teks itu yang dipakai.
+     */
+    public static function teksSumber(Aspek $aspek, string $level): string
+    {
+        $narasi = $aspek->narasi;
+        $candidates = $level === 'very_high' ? [$narasi['very_high'] ?? null, $narasi['high'] ?? null] : [$narasi[$level] ?? null];
+
+        foreach ([...$candidates, $aspek->keterangan_umum] as $teks) {
+            if (is_string($teks) && trim($teks) !== '') {
+                return $teks;
+            }
+        }
+
+        return '';
+    }
+
     public function ambil(Aspek $aspek, string $level, string $bahasa = 'id'): string
     {
         $cached = NarasiCache::where('aspek_id', $aspek->id)
@@ -25,7 +46,7 @@ class NarasiCacheService
             return $cached->teks_hasil;
         }
 
-        $teksAsli = $aspek->narasi[$level] ?? $aspek->keterangan_umum ?? '';
+        $teksAsli = self::teksSumber($aspek, $level);
         if (! $teksAsli) {
             return '(narasi tidak tersedia di sumber data)';
         }
