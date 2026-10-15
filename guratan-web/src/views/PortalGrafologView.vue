@@ -8,6 +8,7 @@ import AutoCalculationPanel from '@/components/scoring/AutoCalculationPanel.vue'
 import MeasurementWorksheet from '@/components/scoring/MeasurementWorksheet.vue'
 import IndikatorChecklist from '@/components/scoring/IndikatorChecklist.vue'
 import SampleImages from '@/components/shared/SampleImages.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -232,7 +233,7 @@ function viewReport() {
     <h1>Portal Grafolog</h1>
     <ProgressTracker :steps="steps" :current="currentStep" />
 
-    <p v-if="resuming" class="portal-grafolog__note">Memuat sample yang ditugaskan...</p>
+    <SkeletonLoader v-if="resuming" variant="form" :rows="3" label="Memuat sample yang ditugaskan..." />
     <p v-else-if="resumeError" class="error">{{ resumeError }}</p>
 
     <section v-else-if="!sample" class="portal-grafolog__step">

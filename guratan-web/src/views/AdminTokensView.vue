@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -110,7 +110,7 @@ onMounted(loadAll)
       laporan tier itu tidak memotong token sama sekali.
     </p>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="cards" :rows="2" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
       <section class="admin-tokens__card">

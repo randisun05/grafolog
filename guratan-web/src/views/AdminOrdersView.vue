@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import SampleImages from '@/components/shared/SampleImages.vue'
 import { useToast } from '@/composables/useToast'
 
@@ -89,7 +89,7 @@ onMounted(() => Promise.all([loadOrders(), loadGrafologs()]))
       </button>
     </div>
 
-    <LoadingSpinner v-if="loading" label="Memuat pesanan..." />
+    <SkeletonLoader v-if="loading" variant="list" :rows="5" label="Memuat pesanan..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <p v-else-if="!orders.length" class="admin-orders__empty">Tidak ada pesanan pada filter ini.</p>
     <ul v-else class="admin-orders__list">

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import SampleImages from '@/components/shared/SampleImages.vue'
 import { useToast } from '@/composables/useToast'
 
@@ -154,7 +154,7 @@ onMounted(() => {
     </form>
 
     <h2 class="hr-candidates__list-title">Semua Kandidat</h2>
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="table" :columns="5" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <p v-else-if="samples.length === 0" class="hr-candidates__empty">Belum ada kandidat diimpor.</p>
     <table v-else class="hr-candidates__table">

@@ -371,7 +371,7 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
     upload flow).
   - `components/upload/UploadDropzone.vue` — **deleted 2026-08-01** along
     with `UploadView`, its only consumer.
-  - `components/shared/LoadingSpinner.vue` — wired into `RiwayatView`,
+  - `components/shared/LoadingSpinner.vue` (**dihapus 2026-10-15**, diganti `SkeletonLoader`) — wired into `RiwayatView`,
     `ReportView`, `DashboardView` (replacing plain "Memuat..." text).
     (Was also wired into `HasilRapidView` until that view was deleted
     2026-08-01 with the rest of the retired Rapid tier.)
@@ -590,6 +590,15 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `aspek.narasi_bahasa === 'en'` di tampilan Indonesia.
 - Admin KB tab Aspek: field EN dan ID berdampingan (`.admin-km__bilingual`) untuk meninjau draf
   terjemahan.
+
+## Skeleton loading — 2026-10-15
+
+- `components/shared/SkeletonLoader.vue` menggantikan `LoadingSpinner` (dihapus) dan teks
+  "Memuat..." di semua view/panel. Prop `variant`: `list` | `table` (+`columns`) | `cards` |
+  `dashboard` | `report` | `form` | `text`, `rows`, `label` (dibaca screen reader, `role=status`).
+  Hanya token warna → ikut dark mode; shimmer mati di `prefers-reduced-motion`.
+- Pilih variant yang paling mirip layout aslinya. Tombol "Menyimpan..." dsb. tetap teks.
+- Dicek Playwright dengan API ditahan (terang, gelap, 390px).
 
 ## Stack
 

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -144,7 +144,7 @@ onMounted(loadPricing)
       Pilih tier, bayar online, grafolog kami akan segera menangani laporan Anda.
     </p>
 
-    <LoadingSpinner v-if="loading" label="Memuat harga..." />
+    <SkeletonLoader v-if="loading" variant="cards" :rows="2" label="Memuat harga..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
       <div class="order__tiers">

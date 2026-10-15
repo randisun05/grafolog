@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -128,7 +128,7 @@ onMounted(loadAnnouncements)
     </form>
 
     <h2 class="admin-announcements__list-title">Semua Pengumuman</h2>
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="list" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <p v-else-if="announcements.length === 0" class="admin-announcements__empty">Belum ada pengumuman.</p>
     <ul v-else class="admin-announcements__list">

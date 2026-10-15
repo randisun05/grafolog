@@ -6,7 +6,7 @@ import ReportCorrectionPanel from '@/components/report/ReportCorrectionPanel.vue
 import ReportRevisionHistory from '@/components/report/ReportRevisionHistory.vue'
 import ReportReviewPanel from '@/components/report/ReportReviewPanel.vue'
 import ConsultationPanel from '@/components/report/ConsultationPanel.vue'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -101,7 +101,7 @@ function onNarasiUpdated(updatedReport) {
 
 <template>
   <div class="report-view">
-    <LoadingSpinner v-if="loading" label="Memuat laporan..." />
+    <SkeletonLoader v-if="loading" variant="report" :rows="3" label="Memuat laporan..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
       <div class="report-view__header">

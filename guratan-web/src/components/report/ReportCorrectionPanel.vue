@@ -5,6 +5,7 @@ import SindromAccordion from '@/components/scoring/SindromAccordion.vue'
 import MeasurementWorksheet from '@/components/scoring/MeasurementWorksheet.vue'
 import IndikatorChecklist from '@/components/scoring/IndikatorChecklist.vue'
 import { useToast } from '@/composables/useToast'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const props = defineProps({
   sampleId: { type: [Number, String], required: true },
@@ -88,7 +89,7 @@ async function submitCorrection() {
         ⚠ Ini mengubah laporan yang sudah selesai. Versi sebelumnya tetap tersimpan di Riwayat
         Perubahan di bawah, tapi laporan aktif yang dilihat klien akan langsung berubah begitu disimpan.
       </p>
-      <p v-if="loading">Memuat form skor...</p>
+      <SkeletonLoader v-if="loading" variant="form" :rows="5" label="Memuat form skor..." />
       <template v-else>
         <div class="report-correction__mode">
           <label>

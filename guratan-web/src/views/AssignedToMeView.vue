@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const samples = ref([])
 const revisions = ref([])
@@ -50,7 +50,7 @@ onMounted(async () => {
       </ul>
     </section>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="list" label="Memuat..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <p v-else-if="pending.length === 0" class="assigned__empty">
       Tidak ada sample yang menunggu diisi skornya.

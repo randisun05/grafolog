@@ -2,7 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const tabs = [
   { value: 'menunggu_review', label: 'Menunggu Review' },
@@ -65,7 +65,7 @@ onMounted(load)
       </button>
     </div>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="list" label="Memuat..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <p v-else-if="!reports.length" class="reviews__empty">Tidak ada laporan di tahap ini.</p>
     <ul v-else class="reviews__list">

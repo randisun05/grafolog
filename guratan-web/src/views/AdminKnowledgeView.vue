@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ConceptMapExplorer from '@/components/admin/ConceptMapExplorer.vue'
 import { useToast } from '@/composables/useToast'
 
@@ -559,7 +559,7 @@ onMounted(async () => {
       </button>
     </div>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="table" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
 
     <template v-else>
@@ -811,7 +811,7 @@ onMounted(async () => {
           <span class="admin-km__result-count">{{ indikatorMeta.total }} indikator</span>
         </div>
 
-        <LoadingSpinner v-if="indikatorLoading" label="Memuat..." />
+        <SkeletonLoader v-if="indikatorLoading" variant="table" :rows="8" label="Memuat..." />
         <template v-else>
           <div v-for="i in indikatorList" :key="i.id" class="admin-km__variable">
             <div class="admin-km__variable-head" @click="expandedIndikatorId === i.id ? cancelEditIndikator() : startEditIndikator(i)">

@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const dashboard = ref(null)
 const loading = ref(true)
@@ -75,7 +75,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <LoadingSpinner v-if="loading" label="Memuat dashboard..." />
+    <SkeletonLoader v-if="loading" variant="dashboard" label="Memuat dashboard..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
       <div class="dashboard__kpi">

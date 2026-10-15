@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -101,7 +101,7 @@ onMounted(loadWallet)
       diatur admin). Beli token di sini untuk menambah saldo.
     </p>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="form" :rows="2" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
       <div class="token-wallet__balance">

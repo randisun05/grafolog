@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const props = defineProps({
   sampleId: { type: [Number, String], required: true },
@@ -88,7 +89,7 @@ function applyTally() {
       (mayoritas) dicentang manual berdasar pengamatan langsung.
     </p>
 
-    <p v-if="loading" class="indikator-checklist__note">Memuat checklist...</p>
+    <SkeletonLoader v-if="loading" variant="list" :rows="6" label="Memuat checklist..." />
     <template v-else>
       <div v-for="sindrom in sindromList" :key="sindrom.id" class="indikator-checklist__sindrom">
         <div class="indikator-checklist__sindrom-head">

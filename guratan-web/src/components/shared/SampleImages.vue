@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const props = defineProps({
   sampleId: { type: [Number, String], required: true },
@@ -83,7 +84,7 @@ onBeforeUnmount(revokePreviews)
 
 <template>
   <div class="sample-images">
-    <p v-if="loading" class="sample-images__note">Memuat foto...</p>
+    <SkeletonLoader v-if="loading" variant="text" :rows="2" label="Memuat foto..." />
     <p v-else-if="!images.length" class="sample-images__note">Belum ada foto tulisan tangan.</p>
     <div v-else class="sample-images__grid">
       <figure v-for="img in images" :key="img.id" class="sample-images__item">

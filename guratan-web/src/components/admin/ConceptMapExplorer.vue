@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import api from '@/lib/api'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -146,7 +147,7 @@ function formatRule(rule) {
       arah). Murni baca — untuk mengubah data, gunakan tab lain di halaman ini.
     </p>
 
-    <p v-if="loading">Memuat peta konsep...</p>
+    <SkeletonLoader v-if="loading" variant="text" :rows="5" label="Memuat peta konsep..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <div v-else ref="mapContainerRef" class="concept-map__body">
       <svg class="concept-map__lines">
@@ -188,7 +189,7 @@ function formatRule(rule) {
       <div class="concept-map__col">
         <h4>Indikator</h4>
         <p v-if="!selectedAspekId" class="concept-map__empty">Pilih Aspek dulu.</p>
-        <p v-else-if="aspekLoading" class="concept-map__empty">Memuat...</p>
+        <SkeletonLoader v-else-if="aspekLoading" variant="text" label="Memuat..." />
         <button
           v-for="ind in aspekDetail?.indikator ?? []"
           :key="ind.id"
@@ -209,7 +210,7 @@ function formatRule(rule) {
       <div class="concept-map__col concept-map__col--detail">
         <h4>Relasi</h4>
         <p v-if="!selectedIndikatorId" class="concept-map__empty">Pilih Indikator untuk melihat relasinya.</p>
-        <p v-else-if="indikatorLoading" class="concept-map__empty">Memuat...</p>
+        <SkeletonLoader v-else-if="indikatorLoading" variant="text" label="Memuat..." />
         <template v-else-if="indikatorDetail">
           <p class="concept-map__detail-title">{{ indikatorDetail.indikator.kode }} — {{ indikatorDetail.indikator.nama }}</p>
 
