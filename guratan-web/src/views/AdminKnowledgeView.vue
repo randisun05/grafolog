@@ -89,6 +89,12 @@ const emptyAspekForm = () => ({
   narasi_high: '',
   narasi_medium: '',
   narasi_low: '',
+  nama_id: '',
+  keterangan_umum_id: '',
+  narasi_very_high_id: '',
+  narasi_high_id: '',
+  narasi_medium_id: '',
+  narasi_low_id: '',
 })
 const aspekList = ref([])
 const aspekForm = ref({ kode: '', sindrom_id: '', nama: '' })
@@ -109,6 +115,12 @@ function startEditAspek(a) {
     narasi_high: a.narasi_high ?? '',
     narasi_medium: a.narasi_medium ?? '',
     narasi_low: a.narasi_low ?? '',
+    nama_id: a.nama_id ?? '',
+    keterangan_umum_id: a.keterangan_umum_id ?? '',
+    narasi_very_high_id: a.narasi_very_high_id ?? '',
+    narasi_high_id: a.narasi_high_id ?? '',
+    narasi_medium_id: a.narasi_medium_id ?? '',
+    narasi_low_id: a.narasi_low_id ?? '',
   }
 }
 function cancelEditAspek() {
@@ -682,30 +694,60 @@ onMounted(async () => {
                 </select>
               </label>
             </div>
-            <label class="admin-km__field">
-              Nama
-              <input v-model="aspekEditForm.nama" type="text" maxlength="150" />
-            </label>
-            <label class="admin-km__field">
-              Keterangan Umum
-              <textarea v-model="aspekEditForm.keterangan_umum" rows="2"></textarea>
-            </label>
-            <label class="admin-km__field">
-              Narasi — Very High
-              <textarea v-model="aspekEditForm.narasi_very_high" rows="3"></textarea>
-            </label>
-            <label class="admin-km__field">
-              Narasi — High
-              <textarea v-model="aspekEditForm.narasi_high" rows="3"></textarea>
-            </label>
-            <label class="admin-km__field">
-              Narasi — Medium
-              <textarea v-model="aspekEditForm.narasi_medium" rows="3"></textarea>
-            </label>
-            <label class="admin-km__field">
-              Narasi — Low
-              <textarea v-model="aspekEditForm.narasi_low" rows="3"></textarea>
-            </label>
+            <p class="admin-km__note">
+              Teks Bahasa Indonesia adalah draf terjemahan dari referensi Inggris — tinjau dan perbaiki di sini.
+              Laporan baru memakai teks terbaru; laporan lama tetap memakai versi saat dibuat.
+            </p>
+            <div class="admin-km__bilingual">
+              <label class="admin-km__field">
+                Nama (EN)
+                <input v-model="aspekEditForm.nama" type="text" maxlength="150" />
+              </label>
+              <label class="admin-km__field">
+                Nama (ID)
+                <input v-model="aspekEditForm.nama_id" type="text" maxlength="150" />
+              </label>
+              <label class="admin-km__field">
+                Keterangan Umum (EN)
+                <textarea v-model="aspekEditForm.keterangan_umum" rows="2"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Keterangan Umum (ID)
+                <textarea v-model="aspekEditForm.keterangan_umum_id" rows="2"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — Very High (EN)
+                <textarea v-model="aspekEditForm.narasi_very_high" rows="4"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — Very High (ID)
+                <textarea v-model="aspekEditForm.narasi_very_high_id" rows="4"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — High (EN)
+                <textarea v-model="aspekEditForm.narasi_high" rows="4"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — High (ID)
+                <textarea v-model="aspekEditForm.narasi_high_id" rows="4"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — Medium (EN)
+                <textarea v-model="aspekEditForm.narasi_medium" rows="4"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — Medium (ID)
+                <textarea v-model="aspekEditForm.narasi_medium_id" rows="4"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — Low (EN)
+                <textarea v-model="aspekEditForm.narasi_low" rows="4"></textarea>
+              </label>
+              <label class="admin-km__field">
+                Narasi — Low (ID)
+                <textarea v-model="aspekEditForm.narasi_low_id" rows="4"></textarea>
+              </label>
+            </div>
             <div class="admin-km__actions">
               <button type="button" class="btn btn--primary" :disabled="aspekSaving" @click="saveAspek(a.id)">
                 {{ aspekSaving ? 'Menyimpan...' : 'Simpan' }}
@@ -1129,6 +1171,16 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.admin-km__bilingual {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 14px;
+}
+.admin-km__note {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+  margin: 0 0 10px;
+}
 .admin-km {
   max-width: 960px;
 }

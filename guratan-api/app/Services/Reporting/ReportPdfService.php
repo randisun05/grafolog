@@ -8,35 +8,48 @@ use Illuminate\Support\Facades\Storage;
 
 class ReportPdfService
 {
+    public function __construct(private ReportLocalizer $localizer) {}
+
     /**
-     * Render laporan ke PDF dan simpan ke storage. Nama file memuat sidik jari
-     * isi (data laporan + konsultasi + review), jadi koreksi skor, edit narasi,
-     * atau perubahan jadwal otomatis menghasilkan PDF baru - dulu file lama
-     * terus dipakai selama masih ada di disk.
+     * Render laporan ke PDF dalam satu bahasa (id|en) dan simpan ke storage.
+     * Nama file memuat bahasa + sidik jari isi (data + konsultasi + review),
+     * jadi koreksi skor, edit narasi, perubahan jadwal, atau terjemahan KB
+     * yang diperbarui otomatis menghasilkan PDF baru.
      */
-    public function generate(PersonalityReport $report): string
+    public function generate(PersonalityReport $report, string $bahasa = 'id'): string
     {
         $report->loadMissing('sample.user', 'sample.consultation', 'sample.assignment.grafolog', 'sample.creator');
+        $data = $this->localizer->localize($report->data ?? [], $bahasa);
 
         $fingerprint = substr(md5(json_encode([
-            $report->data,
+            $data,
             $report->sample?->consultation?->only(['scheduled_at', 'meeting_url', 'notes', 'status']),
             $report->reviewed_at,
         ])), 0, 12);
-        $path = "reports/laporan-{$report->id}-{$fingerprint}.pdf";
+        $prefix = "reports/laporan-{$report->id}-{$bahasa}-";
+        $path = $prefix.$fingerprint.'.pdf';
 
-        if ($report->pdf_path === $path && Storage::disk('local')->exists($path)) {
+        $disk = Storage::disk('local');
+        if ($disk->exists($path)) {
             return $path;
         }
 
         $grafolog = $report->sample?->assignment?->grafolog
             ?? ($report->sample?->creator?->isGrafolog() ? $report->sample->creator : null);
 
-        $pdf = Pdf::loadView('reports.pdf', ['report' => $report, 'grafolog' => $grafolog]);
-        Storage::disk('local')->put($path, $pdf->output());
+        $pdf = Pdf::loadView('reports.pdf', [
+            'report' => $report,
+            'data' => $data,
+            'grafolog' => $grafolog,
+            'bahasa' => $bahasa,
+            't' => trans('laporan', [], $bahasa),
+        ]);
+        $disk->put($path, $pdf->output());
 
-        if ($report->pdf_path && $report->pdf_path !== $path) {
-            Storage::disk('local')->delete($report->pdf_path);
+        foreach ($disk->files('reports') as $file) {
+            if (str_starts_with($file, $prefix) && $file !== $path) {
+                $disk->delete($file);
+            }
         }
         $report->update(['pdf_path' => $path]);
 

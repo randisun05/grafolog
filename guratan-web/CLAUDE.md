@@ -580,6 +580,17 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - `package.json`: `oxlint` dipin `~1.73.0` agar cocok peer `eslint-plugin-oxlint@~1.73.0`
   (dulu `npm ci` gagal ERESOLVE di clone bersih).
 
+## Laporan dua bahasa — 2026-10-15
+
+- `ReportView`: pilihan "Bahasa Indonesia | English" (memuat ulang `GET /reports/{id}?lang=`),
+  dua tombol unduh (`/pdf?lang=id|en`), disclaimer mengikuti bahasa. Setelah koreksi skor,
+  laporan dimuat ulang (respons koreksi berisi data mentah, bukan per bahasa).
+- `ReportDocument` prop `bahasa`: dikirim saat edit narasi (hanya bahasa yang sedang dilihat
+  yang berubah), label meta per bahasa, catatan "Terjemahan belum tersedia" bila
+  `aspek.narasi_bahasa === 'en'` di tampilan Indonesia.
+- Admin KB tab Aspek: field EN dan ID berdampingan (`.admin-km__bilingual`) untuk meninjau draf
+  terjemahan.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

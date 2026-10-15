@@ -20,7 +20,12 @@ const props = defineProps({
 const report = ref(null)
 const loading = ref(true)
 const error = ref('')
-const downloading = ref(false)
+const downloading = ref('')
+const bahasa = ref('id')
+const BAHASA = [
+  { value: 'id', label: 'Bahasa Indonesia' },
+  { value: 'en', label: 'English' },
+]
 
 // Grafolog boleh koreksi/edit laporan sample yang dia tangani (pemilik atau
 // ditugaskan) - pengecekan sungguhan tetap di backend (isScorableBy), ini
@@ -40,7 +45,7 @@ function onConsultationSaved(consultation) {
 
 async function load() {
   try {
-    const { data } = await api.get(`/reports/${props.id}`)
+    const { data } = await api.get(`/reports/${props.id}`, { params: { lang: bahasa.value } })
     report.value = data
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Gagal memuat laporan.'
@@ -51,25 +56,38 @@ async function load() {
 
 onMounted(load)
 
-async function downloadPdf() {
-  downloading.value = true
+async function switchBahasa(value) {
+  if (value === bahasa.value) return
+  bahasa.value = value
+  await load()
+}
+
+async function downloadPdf(lang) {
+  downloading.value = lang
   try {
-    const response = await api.get(`/reports/${props.id}/pdf`, { responseType: 'blob' })
+    const response = await api.get(`/reports/${props.id}/pdf`, {
+      params: { lang },
+      responseType: 'blob',
+    })
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
     const link = document.createElement('a')
     link.href = url
-    link.download = `laporan-${props.id}.pdf`
+    link.download =
+      lang === 'en'
+        ? `graphology-report-${props.id}-en.pdf`
+        : `laporan-grafologi-${props.id}-id.pdf`
     link.click()
     URL.revokeObjectURL(url)
   } catch {
     toast.push('Gagal mengunduh PDF.')
   } finally {
-    downloading.value = false
+    downloading.value = ''
   }
 }
 
-function onCorrected(updatedReport) {
-  report.value = { ...report.value, ...updatedReport }
+// Respons koreksi berisi data mentah (bukan per bahasa) - muat ulang dalam bahasa aktif.
+async function onCorrected() {
+  await load()
 }
 
 function onNarasiUpdated(updatedReport) {
@@ -88,12 +106,37 @@ function onNarasiUpdated(updatedReport) {
     <template v-else>
       <div class="report-view__header">
         <h1>Laporan #{{ report.id }} ({{ report.tier }})</h1>
-        <button type="button" class="btn" :disabled="downloading" @click="downloadPdf">
-          {{ downloading ? 'Menyiapkan PDF...' : 'Unduh PDF' }}
+        <div class="report-view__downloads">
+          <button type="button" class="btn" :disabled="!!downloading" @click="downloadPdf('id')">
+            {{ downloading === 'id' ? 'Menyiapkan PDF...' : 'Unduh PDF (Indonesia)' }}
+          </button>
+          <button type="button" class="btn" :disabled="!!downloading" @click="downloadPdf('en')">
+            {{ downloading === 'en' ? 'Preparing PDF...' : 'Download PDF (English)' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="report-view__lang" role="group" aria-label="Bahasa laporan">
+        <button
+          v-for="b in BAHASA"
+          :key="b.value"
+          type="button"
+          class="report-view__lang-btn"
+          :class="{ 'report-view__lang-btn--active': bahasa === b.value }"
+          :aria-pressed="bahasa === b.value"
+          @click="switchBahasa(b.value)"
+        >
+          {{ b.label }}
         </button>
       </div>
 
-      <p class="report-view__disclaimer">
+      <p v-if="bahasa === 'en'" class="report-view__disclaimer">
+        This report is a <strong>reflective insight tool</strong> based on graphology, not a
+        psychological or clinical diagnosis. Graphology lacks the scientific grounding of standard
+        psychometrics — do not use this report as the sole basis for important decisions
+        (recruitment, medical, legal, financial).
+      </p>
+      <p v-else class="report-view__disclaimer">
         Laporan ini adalah <strong>alat insight reflektif</strong> berbasis grafologi, bukan
         diagnosis psikologis atau klinis. Grafologi tidak memiliki dasar ilmiah sekuat psikometri
         standar — jangan jadikan laporan ini satu-satunya dasar keputusan penting (rekrutmen, medis,
@@ -127,6 +170,7 @@ function onNarasiUpdated(updatedReport) {
         :data="report.data"
         :editable="canEdit"
         :report-id="report.id"
+        :bahasa="bahasa"
         @narasi-updated="onNarasiUpdated"
       />
       <p v-else>Laporan masih diproses.</p>
@@ -147,6 +191,31 @@ function onNarasiUpdated(updatedReport) {
   align-items: center;
   gap: 8px 16px;
   margin-bottom: 20px;
+}
+.report-view__downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.report-view__lang {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0 0 14px;
+}
+.report-view__lang-btn {
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text-soft);
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.report-view__lang-btn--active {
+  background: var(--color-ink);
+  color: var(--color-paper);
 }
 .report-view__disclaimer {
   background: var(--color-gold-soft);

@@ -26,6 +26,12 @@ class StoreAspekRequest extends FormRequest
             'narasi_high' => ['nullable', 'string'],
             'narasi_medium' => ['nullable', 'string'],
             'narasi_low' => ['nullable', 'string'],
+            'nama_id' => ['nullable', 'string', 'max:150'],
+            'keterangan_umum_id' => ['nullable', 'string'],
+            'narasi_very_high_id' => ['nullable', 'string'],
+            'narasi_high_id' => ['nullable', 'string'],
+            'narasi_medium_id' => ['nullable', 'string'],
+            'narasi_low_id' => ['nullable', 'string'],
         ];
     }
 }

@@ -10,7 +10,7 @@ class Sindrom extends Model
     protected $table = 'sindrom';
 
     protected $fillable = [
-        'kode_romawi', 'nama', 'polaritas_inferred', 'catatan_polaritas',
+        'kode_romawi', 'nama', 'nama_id', 'polaritas_inferred', 'catatan_polaritas',
     ];
 
     public function aspek(): HasMany

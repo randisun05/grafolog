@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'judul' => 'Graphology Personality Report',
+    'header' => 'Guratan · Graphology Personality Report · Confidential — for :nama only',
+    'footer' => 'Report #:id · Page',
+    'nama' => 'Name',
+    'tier' => 'Tier',
+    'grafolog' => 'Graphologist',
+    'tanggal' => 'Report date',
+    'nomor' => 'Report no.',
+    'ditinjau' => 'Reviewed',
+    'belum_ditinjau' => 'Not reviewed yet',
+    'disclaimer' => 'This report is a reflective insight tool based on graphology, not a psychological or clinical diagnosis. Graphology lacks the scientific grounding of standard psychometrics - do not use this report as the sole basis for important decisions (recruitment, medical, legal, financial).',
+    'konsultasi' => 'Consultation session',
+    'status_konsultasi' => ['dijadwalkan' => 'scheduled', 'selesai' => 'completed', 'dibatalkan' => 'cancelled'],
+    'sindrom' => 'Syndrome',
+    'polaritas' => 'Polarity',
+    'rata_rata' => 'Average score',
+    'kategori' => 'Category',
+    'skor' => 'Score',
+    'belum_diterjemahkan' => '',
+    'catatan_terjemahan' => '',
+    'zona_waktu' => 'WIB (UTC+7)',
+];

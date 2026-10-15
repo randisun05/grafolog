@@ -917,3 +917,16 @@ sebelum laporan dirilis; terjemahan narasi ditunda.
   netral (narasi masih "He/his"); deployment production (`APP_DEBUG=false`, SMTP nyata,
   scheduler cron untuk `sanctum:prune-expired`, queue worker); kebijakan retensi data &
   refund; foto rapid-tier lama masih di disk publik (historis).
+
+## Inisiatif — Laporan Dua Bahasa (2026-10-15)
+
+- [x] Draf terjemahan Bahasa Indonesia untuk 40 aspek (nama, keterangan umum, 4 level narasi)
+  dan 8 sindrom — dibuat AI, kata ganti netral.
+- [x] Laporan disimpan dalam dua bahasa; web bisa berganti ID/EN; PDF dapat diunduh dalam
+  kedua bahasa; edit narasi manual per bahasa.
+- [ ] **Tinjauan grafolog atas draf terjemahan** (admin KB → Aspek) sebelum dipakai klien.
+- [ ] Terjemahan 704 keterangan Indikator (bisa via Gemini `narasi`-style pipeline, perlu
+  dirancang terpisah).
+- [ ] Perbaiki celah/keanehan di sumber Excel: aspek 09 medium/low kosong, 08 Motivation
+  tampak bergeser satu level, 21 low duplikat, 37 high terpotong.
+

@@ -1551,6 +1551,38 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   konsultasi Master, header/footer + nomor halaman; `page-break-inside: avoid` di blok
   sindrom dihapus (membuat halaman 1 kosong).
 
+## Laporan dua bahasa (ID/EN) — 2026-10-15
+
+- **Terjemahan KB**: `database/seeders/data/terjemahan_id.json` (40 aspek: nama, keterangan_umum,
+  4 level narasi; 8 nama sindrom) → kolom `*_id` di `sindrom`/`aspek` lewat `TerjemahanIdSeeder`
+  (dipanggil `DatabaseSeeder` setelah KB). **Status: DRAF terjemahan AI (Claude), wajib ditinjau
+  grafolog** — bisa diedit di admin KB (tab Aspek, field EN/ID berdampingan). Isi kosong
+  mengikuti sumber Inggris; kata ganti netral ("penulis", "ia"). Indikator `keterangan` (704)
+  BELUM diterjemahkan — `indikator_terkait` tetap Inggris di kedua versi.
+- **`NarasiCacheService`** kini eksplisit per bahasa: `teksInggris()` (kolom KB, placeholder bila
+  kosong), `teksIndonesia(): ?string` (kolom `*_id` → `narasi_cache` bahasa id → LLM bila provider
+  bukan Null → null). **Tidak pernah lagi menyimpan teks Inggris berlabel 'id'** (migrasi
+  `2026_10_15_100000` menghapus baris cache seperti itu). `teksSumber($aspek, $level, $bahasa)`
+  memakai fallback very_high → high → keterangan_umum untuk kedua bahasa.
+- **`ScoringEngineService`** menyimpan per aspek `narasi_en`, `narasi_id` (nullable), `nama_id`,
+  dan `narasi` = id ?? en; per sindrom `nama_id`.
+- **`ReportLocalizer::localize($data, 'id'|'en')`**: dipakai `GET /reports/{r}?lang=` (default id,
+  422 untuk bahasa lain) dan PDF. EN: narasi_en, band label (Low/Moderate/High), polaritas
+  GREEN/RED. ID: narasi_id → (laporan lama tanpa narasi_en) terjemahan KB saat ini berdasarkan
+  `narasi_level` → fallback Inggris dengan `narasi_bahasa: 'en'` (UI/PDF memberi catatan
+  "terjemahan belum tersedia"). Response menyertakan `data.bahasa`.
+- **Edit narasi manual per bahasa**: `PATCH .../narasi` menerima `bahasa` (id default|en); hanya
+  menimpa `narasi_{bahasa}` + `narasi_diedit_manual_{bahasa}`. Laporan lama dikonversi saat
+  diedit (`narasi` lama dianggap Inggris). Override lama tanpa penanda bahasa tampil di keduanya.
+- **PDF**: `GET /reports/{r}/pdf?lang=id|en`, file `reports/laporan-{id}-{lang}-{fingerprint}.pdf`
+  (file ID & EN tidak saling menghapus), nama unduhan `laporan-grafologi-{id}-id.pdf` /
+  `graphology-report-{id}-en.pdf`. Label template dari `lang/{id,en}/laporan.php`.
+- `narasi:pregenerate` (tanpa opsi `--bahasa` lagi) melaporkan kombinasi yang belum punya teks ID.
+- Celah sumber tetap: aspek 09 medium/low/umum kosong di kedua bahasa; 08 Motivation tampak
+  bergeser satu level di sumber Excel (teks "high" menggambarkan motivasi sedang, "medium" rendah);
+  21 low berisi paragraf duplikat; 37 high berisi kalimat terpotong — semuanya diterjemahkan
+  apa adanya, perbaiki di sumber Inggris dulu.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

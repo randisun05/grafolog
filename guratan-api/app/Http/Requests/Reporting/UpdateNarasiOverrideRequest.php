@@ -20,6 +20,7 @@ class UpdateNarasiOverrideRequest extends FormRequest
         return [
             'narasi' => ['required', 'string', 'max:5000'],
             'catatan' => ['nullable', 'string', 'max:1000'],
+            'bahasa' => ['sometimes', 'string', 'in:id,en'],
         ];
     }
 }

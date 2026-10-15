@@ -8,8 +8,14 @@ const props = defineProps({
   data: { type: Object, required: true }, // { sindrom: [...] }
   editable: { type: Boolean, default: false }, // grafolog pemilik sample - lihat CLAUDE.md
   reportId: { type: [Number, String], default: null },
+  bahasa: { type: String, default: 'id' }, // bahasa tampilan; edit narasi hanya mengubah bahasa ini
 })
 const emit = defineEmits(['narasi-updated'])
+
+const LABEL = {
+  id: { polaritas: 'Polaritas', rataRata: 'rata-rata skor', diedit: 'diedit manual' },
+  en: { polaritas: 'Polarity', rataRata: 'average score', diedit: 'manually edited' },
+}
 
 const toast = useToast()
 const editingKode = ref(null)
@@ -27,9 +33,13 @@ function cancelEdit() {
 async function saveEdit(kode) {
   saving.value = true
   try {
-    const { data } = await api.patch(`/reports/${props.reportId}/aspek/${encodeURIComponent(kode)}/narasi`, {
-      narasi: draftNarasi.value,
-    })
+    const { data } = await api.patch(
+      `/reports/${props.reportId}/aspek/${encodeURIComponent(kode)}/narasi`,
+      {
+        narasi: draftNarasi.value,
+        bahasa: props.bahasa,
+      },
+    )
     toast.push('Narasi berhasil diperbarui.', 'success')
     editingKode.value = null
     emit('narasi-updated', data)
@@ -47,8 +57,10 @@ async function saveEdit(kode) {
       <header class="report-document__sindrom-header">
         <h2>{{ sindrom.kode_romawi }}. {{ sindrom.nama }}</h2>
         <p class="report-document__meta">
-          Polaritas {{ sindrom.polaritas }} &middot; rata-rata skor
-          {{ sindrom.rata_rata_skor }} ({{ sindrom.band_label_rata_rata }})
+          {{ (LABEL[bahasa] ?? LABEL.id).polaritas }} {{ sindrom.polaritas }} &middot;
+          {{ (LABEL[bahasa] ?? LABEL.id).rataRata }} {{ sindrom.rata_rata_skor }} ({{
+            sindrom.band_label_rata_rata
+          }})
         </p>
       </header>
 
@@ -58,18 +70,36 @@ async function saveEdit(kode) {
         <template v-if="editingKode === aspek.kode">
           <textarea v-model="draftNarasi" class="report-document__narasi-edit"></textarea>
           <div class="report-document__narasi-actions">
-            <button type="button" class="btn btn--primary" :disabled="saving" @click="saveEdit(aspek.kode)">
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="saving"
+              @click="saveEdit(aspek.kode)"
+            >
               {{ saving ? 'Menyimpan...' : 'Simpan' }}
             </button>
             <button type="button" class="btn" :disabled="saving" @click="cancelEdit">Batal</button>
           </div>
         </template>
         <template v-else>
+          <p
+            v-if="bahasa === 'id' && aspek.narasi_bahasa === 'en'"
+            class="report-document__untranslated"
+          >
+            Terjemahan belum tersedia — ditampilkan dalam bahasa Inggris.
+          </p>
           <p class="report-document__narasi">
             {{ aspek.narasi }}
-            <span v-if="aspek.narasi_diedit_manual" class="report-document__edited-badge">✏️ diedit manual</span>
+            <span v-if="aspek.narasi_diedit_manual" class="report-document__edited-badge"
+              >✏️ {{ (LABEL[bahasa] ?? LABEL.id).diedit }}</span
+            >
           </p>
-          <button v-if="editable" type="button" class="report-document__edit-btn" @click="startEdit(aspek)">
+          <button
+            v-if="editable"
+            type="button"
+            class="report-document__edit-btn"
+            @click="startEdit(aspek)"
+          >
             Edit narasi
           </button>
         </template>
@@ -78,7 +108,9 @@ async function saveEdit(kode) {
           <li v-for="ind in aspek.indikator_terkait" :key="ind.kode">
             <span class="report-document__indikator-kode">{{ ind.kode }}</span>
             {{ ind.nama }}
-            <p v-if="ind.keterangan" class="report-document__indikator-keterangan">{{ ind.keterangan }}</p>
+            <p v-if="ind.keterangan" class="report-document__indikator-keterangan">
+              {{ ind.keterangan }}
+            </p>
           </li>
         </ul>
       </div>
@@ -87,6 +119,12 @@ async function saveEdit(kode) {
 </template>
 
 <style scoped>
+.report-document__untranslated {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--color-gold);
+  margin: 0 0 4px;
+}
 .report-document {
   max-width: 100%;
   overflow-wrap: break-word;
