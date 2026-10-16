@@ -930,3 +930,14 @@ sebelum laporan dirilis; terjemahan narasi ditunda.
 - [ ] Perbaiki celah/keanehan di sumber Excel: aspek 09 medium/low kosong, 08 Motivation
   tampak bergeser satu level, 21 low duplikat, 37 high terpotong.
 
+## Inisiatif — Matriks Keterkaitan & Ciri Bersama (2026-10-16)
+
+Riset: artifact "Matriks Keterkaitan Guratan". Dikerjakan semua 4 usulan:
+- [x] Tab Matriks (baca) di Admin KB: variabel×aspek, aspek→aspek, ciri bersama, drilldown ke tab Indikator.
+- [x] Laporan celah: 18 variabel tanpa aturan, 13 aspek tanpa indikator terukur, 396 indikator manual-only.
+- [x] Ciri bersama: indikator bernama sama tersinkron dua arah (config `CHECKLIST_CIRI_BERSAMA`).
+      Sekaligus memperbaiki latch kaskade (evaluasi titik-tetap terkecil).
+- [x] Korelasi empiris (Pearson, ambang min_n) — bermakna setelah ±100 sampel terukur.
+- [ ] Grafolog memastikan ciri bernama sama memang identik; bila tidak, matikan flag atau
+      (nanti) pengecualian per grup.
+- [ ] Menutup celah: aturan untuk 18 variabel tak terpakai (butuh ambang dari grafolog).

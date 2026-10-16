@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockCo
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
+use App\Http\Controllers\Api\Admin\KnowledgeMatrixController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
 use App\Http\Controllers\Api\Admin\OrderController;
@@ -172,6 +173,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/knowledge/concept-map', [ConceptMapController::class, 'overview']);
         Route::get('/knowledge/concept-map/aspek/{aspek}', [ConceptMapController::class, 'aspek']);
         Route::get('/knowledge/concept-map/indikator/{indikator}', [ConceptMapController::class, 'indikator']);
+
+        // Matriks keterkaitan (2026-10-16): struktur aturan + korelasi empiris, murni baca.
+        Route::get('/knowledge/matrix', [KnowledgeMatrixController::class, 'struktur']);
+        Route::get('/knowledge/matrix/empiris', [KnowledgeMatrixController::class, 'empiris']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

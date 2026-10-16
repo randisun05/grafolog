@@ -35,7 +35,7 @@ async function load() {
 defineExpose({ load })
 onMounted(load)
 
-const sumberLabel = { auto: 'Auto', cascade: 'Terkait', manual: 'Manual' }
+const sumberLabel = { auto: 'Auto', cascade: 'Terkait', ciri_bersama: 'Ciri sama', manual: 'Manual' }
 
 async function toggleIndikator(indikator, checked) {
   const result = await postToggle(indikator.id, checked)
@@ -84,8 +84,9 @@ function applyTally() {
       </button>
     </div>
     <p class="indikator-checklist__hint">
-      Indikator bertanda <strong>Auto</strong>/<strong>Terkait</strong> tercentang otomatis dari hasil
-      ukur/referensi silang - alasannya ditampilkan di bawah tiap Indikator. Indikator tanpa aturan
+      Indikator bertanda <strong>Auto</strong>/<strong>Terkait</strong>/<strong>Ciri sama</strong> tercentang
+      otomatis dari hasil ukur, referensi silang, atau indikator bernama sama di aspek lain - alasannya
+      ditampilkan di bawah tiap Indikator. Indikator tanpa aturan
       (mayoritas) dicentang manual berdasar pengamatan langsung.
     </p>
 

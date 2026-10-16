@@ -1583,6 +1583,36 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   21 low berisi paragraf duplikat; 37 high berisi kalimat terpotong — semuanya diterjemahkan
   apa adanya, perbaiki di sumber Inggris dulu.
 
+## Matriks keterkaitan & ciri bersama — 2026-10-16
+
+- **`ChecklistEngineService::evaluateSample()` kini titik-tetap TERKECIL.** Baris `cascade` dan
+  `ciri_bersama` tidak lagi jadi titik awal — dibangun ulang dari manual + hasil ukur tiap
+  panggilan. Memperbaiki bug: B yang tercentang karena A tetap tercentang setelah A batal
+  (ukuran dikoreksi), dan A↔B bisa saling mengunci. Baris `auto` tetap dipertahankan saat data
+  ukur belum lengkap (null), seperti sebelumnya. Status ditulis ke DB sekali di akhir.
+- **Ciri bersama** (`config('checklist.ciri_bersama')`, env `CHECKLIST_CIRI_BERSAMA`, default
+  true): Indikator bernama sama (`App\Support\CiriKey::from()` — lowercase, tanda baca dibuang)
+  yang tersebar di >= 2 aspek = satu ciri. Bila satu kembaran tercentang oleh sumber selain ciri
+  bersama, kembaran lain ikut (`sumber='ciri_bersama'`, enum baru — migrasi driver-aware
+  `2026_10_16_100000`), ke arah mana pun; kembaran yang di-uncheck manual tetap tidak tercentang.
+  160 grup / 434 indikator di KB nyata. 242 dari 257 rule `indikator_checked` sumber Excel
+  sebenarnya ciri yang sama, tapi hanya ditulis satu arah (aspek kecil → besar) — sinkronisasi
+  ini yang membuat urutan centang tidak lagi memengaruhi skor. **Mengubah skor laporan baru**;
+  laporan lama tidak berubah (skor tersimpan).
+- `toggle()`: kandidat cascade yang DIPERTAHANKAN grafolog (confirmed, tidak ada di
+  `also_uncheck_cascaded`) kini dibekukan jadi `sumber=manual` tercentang — tanpa ini rekonstruksi
+  dari nol akan ikut membatalkannya.
+- **`KnowledgeMatrixService` + `Admin\KnowledgeMatrixController`** (role administrator):
+  `GET /admin/knowledge/matrix` (variabel×aspek, aspek→aspek dengan daftar tautan per sel, ciri
+  bersama, celah: variabel tanpa aturan 18/34, aspek tanpa indikator terukur 13, tanpa aturan 2,
+  indikator tanpa aturan 396, arah tautan 257 maju/0 mundur, rantai terpanjang 4, tanpa siklus)
+  dan `GET /admin/knowledge/matrix/empiris?min_n=30` (Pearson antar `measurement_readings.nilai`
+  per sample & antar `report_aspek_scores` laporan completed; pasangan < min_n dibuang; min_n 3..10000).
+- Tes: 7 baru di `ChecklistEngineServiceTest` (fixture `indikator()` kini bernama unik per aspek
+  supaya tidak memicu ciri bersama), `KnowledgeMatrixControllerTest` (3, angka KB nyata dikunci).
+  434 total. Live: MariaDB, centang 25-5b "Pressure heavy" → 08-5b ciri_bersama → 21-8a/22-6b
+  cascade; batal → semua bersih.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

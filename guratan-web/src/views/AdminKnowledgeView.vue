@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ConceptMapExplorer from '@/components/admin/ConceptMapExplorer.vue'
+import KnowledgeMatrixExplorer from '@/components/admin/KnowledgeMatrixExplorer.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -14,6 +15,7 @@ const tabs = [
   { key: 'variabel', label: 'Variabel Ukur' },
   { key: 'band', label: 'Band Skor' },
   { key: 'peta', label: 'Peta Konsep' },
+  { key: 'matriks', label: 'Matriks' },
 ]
 const activeTab = ref('sindrom')
 
@@ -211,6 +213,13 @@ function onIndikatorSearchInput() {
   indikatorSearchTimer = setTimeout(() => loadIndikator(1), 400)
 }
 function onIndikatorFilterChange() {
+  loadIndikator(1)
+}
+// Dari tab Matriks: buka tab Indikator dengan pencarian kode tersebut.
+function openIndikatorByKode(kode) {
+  activeTab.value = 'indikator'
+  indikatorAspekFilter.value = ''
+  indikatorSearch.value = kode
   loadIndikator(1)
 }
 function goToIndikatorPage(page) {
@@ -1165,6 +1174,10 @@ onMounted(async () => {
       <!-- PETA KONSEP -->
       <section v-if="activeTab === 'peta'" class="admin-km__panel">
         <ConceptMapExplorer />
+      </section>
+
+      <section v-if="activeTab === 'matriks'" class="admin-km__panel">
+        <KnowledgeMatrixExplorer @open-indikator="openIndikatorByKode" />
       </section>
     </template>
   </div>

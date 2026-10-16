@@ -600,6 +600,17 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - Pilih variant yang paling mirip layout aslinya. Tombol "Menyimpan..." dsb. tetap teks.
 - Dicek Playwright dengan API ditahan (terang, gelap, 390px).
 
+## Tab Matriks Admin KB — 2026-10-16
+
+- `components/admin/KnowledgeMatrixExplorer.vue`, tab ke-7 "Matriks" di `AdminKnowledgeView`.
+  Sub-tampilan: Ringkasan & Celah, Variabel × Aspek (heatmap), Aspek → Aspek (per sindrom/aspek),
+  Ciri Bersama (cari), Korelasi Empiris (ambang min_n, peringatan < 30). Klik sel → panel detail;
+  klik kode indikator → emit `open-indikator` → tab Indikator dengan pencarian kode itu.
+- Warna sel: `color-mix` dari `--color-seal-dark` ke `--color-surface`, 5 tingkat — ikut dark mode.
+- `IndikatorChecklist`: badge `ciri_bersama` = "Ciri sama".
+- Browser-verified (terang, gelap). Catatan: halaman Admin KB sudah melebar ~600px di 390px
+  (tabel tab Sindrom) sebelum perubahan ini — belum diperbaiki.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

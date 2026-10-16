@@ -7,6 +7,7 @@ use App\Models\HandwritingSample;
 use App\Models\Indikator;
 use App\Models\IndikatorRule;
 use App\Models\SampleIndikatorCheck;
+use App\Support\CiriKey;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -40,18 +41,26 @@ class ChecklistEngineService
      * Indikator lain, sampai titik tetap (fixed point) tercapai. Baris
      * `sumber=manual` tidak pernah disentuh.
      *
-     * **Kenapa aman berhenti dalam N iterasi (N = jumlah Indikator)**: rule
-     * indikator_checked HANYA bisa mengembalikan true/null (tidak pernah
-     * false eksplisit - "belum tercentang" bukan berarti "tidak akan
-     * pernah") sehingga status Indikator non-manual di sini monoton naik
-     * (false/tidak-ada-baris -> true), tidak pernah dibalik oleh loop ini.
-     * Kombinasi dengan rule measurement (yang stabil per-panggilan, karena
-     * measurement_readings tidak berubah selama satu evaluateSample())
-     * lewat AND/OR tetap monoton. Jadi tiap iterasi minimal 1 baris
-     * berubah (false/kosong -> true) atau loop berhenti - tidak mungkin
-     * lebih dari N iterasi tanpa perubahan, tidak butuh deteksi siklus
-     * terpisah (siklus A<->B saling bergantung otomatis stabil di false,
-     * bukan infinite loop).
+     * **Titik tetap TERKECIL, dibangun ulang tiap panggilan (2026-10-16).**
+     * Baris `cascade` dan `ciri_bersama` TIDAK dipakai sebagai titik awal -
+     * keduanya mulai dari "tidak tercentang" lalu diturunkan ulang dari
+     * baris manual + hasil ukur. Dulu loop mulai dari state tersimpan, jadi
+     * B yang tercentang karena A tetap tercentang setelah A batal (mis. ukuran
+     * dikoreksi) karena rule indikator_checked hanya bisa true/null - dan
+     * dua Indikator yang saling bergantung bisa saling mengunci. Baris
+     * `auto` tetap jadi titik awal: hasil ukur yang belum lengkap (null)
+     * membiarkan keputusan auto terakhir apa adanya, seperti sebelumnya.
+     *
+     * **Berhenti dalam <= N+1 iterasi**: setelah pass pertama, hasil rule
+     * measurement stabil (measurement_readings tidak berubah selama satu
+     * panggilan), rule indikator_checked hanya true/null, dan ciri bersama
+     * hanya bergantung pada status non-ciri - jadi status hanya bisa naik
+     * (false -> true) setelah pass pertama.
+     *
+     * **Ciri bersama** (config checklist.ciri_bersama): Indikator bernama sama
+     * di aspek lain (App\Support\CiriKey) ikut tercentang bila salah satu
+     * kembarannya tercentang oleh sumber selain ciri bersama. Kembaran yang
+     * di-uncheck manual oleh grafolog tetap tidak tercentang.
      */
     public function evaluateSample(HandwritingSample $sample): void
     {
@@ -71,56 +80,99 @@ class ChecklistEngineService
 
         $existing = $sample->indikatorChecks()->get()->keyBy('indikator_id');
 
-        // Peta status tercentang SAAT INI (manual maupun hasil evaluasi
-        // sebelumnya) - rule indikator_checked butuh melihat Indikator lain
-        // yang SUDAH diputuskan, termasuk yang manual (grafolog mencentang A
-        // manual harus tetap memicu B yang depends_on A).
-        $checkedMap = [];
-        foreach ($existing as $id => $row) {
-            $checkedMap[$id] = (bool) $row->checked;
-        }
+        $ciriGroups = config('checklist.ciri_bersama', true) ? CiriKey::groups($indikatorList) : [];
 
-        $maxIterations = max(1, $indikatorList->count());
+        // State kerja: indikator_id => [checked, sumber, rule_id, reason].
+        // Manual & auto jadi titik awal; cascade/ciri_bersama diturunkan ulang.
+        $state = [];
+        foreach ($existing as $id => $row) {
+            if (in_array($row->sumber, ['manual', 'auto'], true)) {
+                $state[$id] = [(bool) $row->checked, $row->sumber, $row->rule_id, $row->keterangan_pemicu];
+            }
+        }
+        $isManual = fn (int $id) => ($state[$id][1] ?? null) === 'manual';
+
+        $maxIterations = $indikatorList->count() + 1;
         for ($iteration = 0; $iteration < $maxIterations; $iteration++) {
             $anyChange = false;
+            $checkedMap = array_map(fn ($s) => $s[0], $state);
 
-            foreach ($indikatorList as $indikator) {
-                $row = $existing->get($indikator->id);
-                if ($row && $row->sumber === 'manual') {
+            foreach ($indikatorList as $id => $indikator) {
+                if ($isManual($id)) {
                     continue; // keputusan manual beku, tidak pernah ditimpa
                 }
 
                 $eval = $this->evaluateIndikator($indikator, $values, $ranges, $checkedMap);
-                if ($eval['result'] === null) {
-                    continue; // data belum cukup - biarkan state terakhir apa adanya
+                $current = $state[$id] ?? null;
+
+                if ($eval['result'] === true) {
+                    $next = [true, $eval['sumber'], $eval['rule_id'], $eval['reason']];
+                } elseif ($eval['result'] === false && ($current[1] ?? null) !== 'ciri_bersama') {
+                    $next = [false, 'auto', null, null];
+                } else {
+                    continue; // data belum cukup / dipegang ciri bersama - biarkan
                 }
 
-                $nowChecked = $eval['result'] === true;
-                $unchanged = $row
-                    && $row->checked === $nowChecked
-                    && $row->rule_id === $eval['rule_id']
-                    && $row->keterangan_pemicu === $eval['reason'];
-                if ($unchanged) {
+                if ($current !== $next) {
+                    $state[$id] = $next;
+                    $checkedMap[$id] = $next[0];
+                    $anyChange = true;
+                }
+            }
+
+            foreach ($ciriGroups as $ids) {
+                $sumberAsli = null;
+                foreach ($ids as $id) {
+                    if (($state[$id][0] ?? false) && $state[$id][1] !== 'ciri_bersama') {
+                        $sumberAsli = $id;
+                        break;
+                    }
+                }
+                if ($sumberAsli === null) {
                     continue;
                 }
-
-                $check = SampleIndikatorCheck::updateOrCreate(
-                    ['sample_id' => $sample->id, 'indikator_id' => $indikator->id],
-                    [
-                        'checked' => $nowChecked,
-                        'sumber' => $nowChecked ? $eval['sumber'] : 'auto',
-                        'rule_id' => $nowChecked ? $eval['rule_id'] : null,
-                        'keterangan_pemicu' => $nowChecked ? $eval['reason'] : null,
-                    ],
-                );
-                $existing->put($indikator->id, $check);
-                $checkedMap[$indikator->id] = $nowChecked;
-                $anyChange = true;
+                $kodeAsli = $indikatorList[$sumberAsli]->kode;
+                foreach ($ids as $id) {
+                    if ($isManual($id) || ($state[$id][0] ?? false)) {
+                        continue;
+                    }
+                    $state[$id] = [true, 'ciri_bersama', null, "Ciri tulisan sama dengan Indikator {$kodeAsli} yang tercentang."];
+                    $anyChange = true;
+                }
             }
 
             if (! $anyChange) {
                 break;
             }
+        }
+
+        foreach ($indikatorList as $id => $indikator) {
+            if ($isManual($id)) {
+                continue;
+            }
+            $row = $existing->get($id);
+            if (isset($state[$id])) {
+                [$checked, $sumber, $ruleId, $reason] = $state[$id];
+            } elseif ($row) {
+                // Dulu cascade/ciri_bersama, sekarang tidak lagi terturunkan.
+                [$checked, $sumber, $ruleId, $reason] = [false, 'auto', null, null];
+            } else {
+                continue;
+            }
+
+            $unchanged = $row
+                && $row->checked === $checked
+                && $row->sumber === $sumber
+                && $row->rule_id == $ruleId
+                && $row->keterangan_pemicu === $reason;
+            if ($unchanged) {
+                continue;
+            }
+
+            SampleIndikatorCheck::updateOrCreate(
+                ['sample_id' => $sample->id, 'indikator_id' => $id],
+                ['checked' => $checked, 'sumber' => $sumber, 'rule_id' => $ruleId, 'keterangan_pemicu' => $reason],
+            );
         }
     }
 
@@ -420,6 +472,16 @@ class ChecklistEngineService
         if ($alsoUncheckCascaded !== []) {
             $sample->indikatorChecks()->whereIn('indikator_id', $alsoUncheckCascaded)
                 ->update(['checked' => false, 'sumber' => 'manual', 'rule_id' => null, 'keterangan_pemicu' => null]);
+        }
+        // Kandidat yang DIPERTAHANKAN grafolog dibekukan jadi manual-tercentang:
+        // evaluateSample() membangun ulang baris cascade dari nol, jadi tanpa
+        // ini target ikut batal walau grafolog memilih mempertahankannya.
+        $kept = $cascadeCandidates->reject(fn ($c) => in_array($c->indikator_id, $alsoUncheckCascaded));
+        foreach ($kept as $c) {
+            $c->update([
+                'checked' => true, 'sumber' => 'manual', 'rule_id' => null,
+                'keterangan_pemicu' => "Dipertahankan grafolog saat Indikator {$indikator->kode} dibatalkan.",
+            ]);
         }
 
         $this->evaluateSample($sample);
