@@ -82,6 +82,13 @@ async function buy() {
     const body = { quantity: quantity.value }
     if (previewResult.value?.code_valid) body.discount_code = discountCode.value
     const { data } = await api.post('/tokens/purchase', body)
+    // Mode uji (akun DOKU belum ada): token langsung masuk saldo.
+    if (data.paid) {
+      toast.push(`Mode uji: ${quantity.value} token langsung ditambahkan tanpa pembayaran.`)
+      buying.value = false
+      await loadWallet()
+      return
+    }
     window.location.href = data.payment_url
   } catch (e) {
     buyError.value = e.response?.data?.message ?? 'Gagal memulai pembayaran.'

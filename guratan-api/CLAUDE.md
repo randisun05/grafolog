@@ -1613,6 +1613,19 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   434 total. Live: MariaDB, centang 25-5b "Pressure heavy" → 08-5b ciri_bersama → 21-8a/22-6b
   cascade; batal → semua bersih.
 
+## Mode uji pembayaran (tanpa DOKU) — 2026-10-17
+
+- `App\Services\Payment\PaymentMode::bypassed()`: true bila `PAYMENT_BYPASS=true`, atau
+  `PAYMENT_BYPASS` kosong DAN `DOKU_CLIENT_ID` kosong. **Selalu false di APP_ENV=production.**
+  Catatan: placeholder seperti `DOKU_CLIENT_ID=SIM-CLIENT` dianggap terkonfigurasi — pakai
+  `PAYMENT_BYPASS=true` eksplisit untuk uji manual.
+- Saat aktif: `PaymentController::store` langsung menandai `Payment` lunas (`notification_payload
+  {bypass:true}`, kuota diskon terpakai, audit `pembayaran_mode_uji`); `TokenPurchaseController`
+  langsung lunas + kredit token (audit `pembelian_token_mode_uji`). Respons `201 {paid:true,
+  bypass:true, invoice_number}` tanpa `payment_url`; frontend menampilkan toast "Mode uji".
+- Tes `PaymentBypassTest` (4); dua tes 503 DOKU kini mem-pin `payment.bypass=false`. 438 total.
+- **Matikan (`PAYMENT_BYPASS=false` atau hapus) begitu kredensial DOKU sandbox ada.**
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

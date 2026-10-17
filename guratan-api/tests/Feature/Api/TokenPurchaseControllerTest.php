@@ -113,7 +113,7 @@ class TokenPurchaseControllerTest extends TestCase
 
     public function test_unconfigured_doku_returns_clean_503(): void
     {
-        config(['services.doku.client_id' => null, 'services.doku.secret_key' => null]);
+        config(['services.doku.client_id' => null, 'services.doku.secret_key' => null, 'payment.bypass' => false]);
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $response = $this->actingAs($grafolog, 'sanctum')

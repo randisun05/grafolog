@@ -611,6 +611,11 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - Browser-verified (terang, gelap). Catatan: halaman Admin KB sudah melebar ~600px di 390px
   (tabel tab Sindrom) sebelum perubahan ini — belum diperbaiki.
 
+## Mode uji pembayaran — 2026-10-17
+
+- `OrderView`/`TokenWalletView`: bila respons pembayaran `paid: true` (backend `PAYMENT_BYPASS`),
+  tidak redirect ke DOKU — order → toast + `/dashboard`, token → toast + muat ulang saldo.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

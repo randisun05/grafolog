@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
+const router = useRouter()
 
 const tierLabel = {
   comprehensive: 'Comprehensive',
@@ -123,6 +125,12 @@ async function pay() {
       `/samples/${createdSample.value.id}/payment`,
       paymentBody,
     )
+    // Mode uji (akun DOKU belum ada): backend langsung menandai lunas.
+    if (payment.paid) {
+      toast.push('Mode uji: pembayaran dinonaktifkan, pesanan langsung dianggap lunas.')
+      router.push({ name: 'dashboard' })
+      return
+    }
     window.location.href = payment.payment_url
   } catch (e) {
     const errors = e.response?.data?.errors
