@@ -7,7 +7,12 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('guratan_token'))
 
   const isAuthenticated = computed(() => !!token.value)
-  const isGrafolog = computed(() => user.value?.role === 'grafolog')
+  // Grafolog pendaftar mandiri berstatus 'pending' sampai diverifikasi admin - selama itu
+  // bukan "grafolog" untuk keperluan menu/akses (cermin User::isGrafolog() di backend).
+  const isGrafolog = computed(
+    () => user.value?.role === 'grafolog' && [null, undefined, 'verified'].includes(user.value?.grafolog_status),
+  )
+  const isPendingGrafolog = computed(() => user.value?.role === 'grafolog' && !isGrafolog.value)
   const isAdministrator = computed(() => user.value?.role === 'administrator')
   const isHr = computed(() => user.value?.role === 'hr')
   const isSupervisor = computed(() => user.value?.role === 'supervisor')
@@ -22,6 +27,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function register(payload) {
     const { data } = await api.post('/auth/register', payload)
+    persist(data.user, data.token)
+    return data
+  }
+
+  async function registerGrafolog(formData) {
+    const { data } = await api.post('/auth/register-grafolog', formData)
     persist(data.user, data.token)
     return data
   }
@@ -55,11 +66,13 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     isAuthenticated,
     isGrafolog,
+    isPendingGrafolog,
     isAdministrator,
     isHr,
     isSupervisor,
     isClient,
     register,
+    registerGrafolog,
     login,
     logout,
     fetchMe,

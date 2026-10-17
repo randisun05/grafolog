@@ -13,8 +13,8 @@ interface LlmProviderInterface
     /**
      * @param  string  $teksAsli  Narasi mentah (Bahasa Inggris) dari knowledge base
      *                            untuk SATU aspek pada SATU level skor.
-     * @param  array   $context   Info tambahan untuk prompt, mis. ['nama_aspek' => ..., 'sindrom' => ...]
-     * @return string  Narasi hasil olahan (mis. sudah diterjemahkan ke Bahasa Indonesia).
+     * @param  array  $context  Info tambahan untuk prompt, mis. ['nama_aspek' => ..., 'sindrom' => ...]
+     * @return string Narasi hasil olahan (mis. sudah diterjemahkan ke Bahasa Indonesia).
      */
     public function rangkaiSatuAspek(string $teksAsli, array $context = []): string;
 }

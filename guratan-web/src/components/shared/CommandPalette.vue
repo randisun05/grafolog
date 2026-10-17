@@ -34,6 +34,7 @@ const commands = computed(() => {
   if (auth.isAdministrator) {
     items.push({ label: 'Pesanan Masuk', to: { name: 'admin-orders' } })
     items.push({ label: 'Kelola Staf', to: { name: 'admin-users' } })
+    items.push({ label: 'Verifikasi Grafolog', to: { name: 'admin-grafolog' } })
     items.push({ label: 'Kelola Harga', to: { name: 'admin-pricing' } })
     items.push({ label: 'Kelola Diskon', to: { name: 'admin-discounts' } })
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })

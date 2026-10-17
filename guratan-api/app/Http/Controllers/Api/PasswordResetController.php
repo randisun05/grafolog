@@ -34,14 +34,20 @@ class PasswordResetController extends Controller
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
             'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->numbers()],
+            'undangan' => ['sometimes', 'boolean'],
         ]);
 
-        $status = Password::reset(
+        // Aktivasi akun dari undangan grafolog memakai broker 'invitations' (berlaku 7 hari,
+        // tabel terpisah) - token lupa-password biasa tetap 60 menit.
+        $invitation = $request->boolean('undangan');
+        $broker = Password::broker($invitation ? 'invitations' : null);
+
+        $status = $broker->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password) use ($request) {
-                $user->forceFill(['password' => $password])->save();
+            function (User $user, string $password) use ($request, $invitation) {
+                $user->forceFill(['password' => $password] + ($invitation ? ['email_verified_at' => now()] : []))->save();
                 $user->tokens()->delete();
-                AuditLog::record('reset_kata_sandi', User::class, $user->id, $user->id, $request->ip());
+                AuditLog::record($invitation ? 'aktivasi_akun_undangan' : 'reset_kata_sandi', User::class, $user->id, $user->id, $request->ip());
             }
         );
 

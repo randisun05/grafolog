@@ -11,6 +11,23 @@ const error = ref('')
 
 const pending = computed(() => samples.value.filter((s) => s.status !== 'completed'))
 
+// Dua prosedur berbeda: penugasan dari biro (klien website/B2B, ada baris assignment) vs
+// klien yang dibawa grafolog sendiri (didaftarkan lewat Portal Grafolog).
+function sourceOf(sample) {
+  if (sample.assignment) {
+    return sample.project?.source === 'hr'
+      ? { key: 'b2b', label: 'Penugasan biro · B2B' }
+      : { key: 'biro', label: 'Penugasan biro · Website' }
+  }
+  return { key: 'mine', label: 'Klien saya' }
+}
+const filter = ref('all')
+const visible = computed(() =>
+  filter.value === 'all'
+    ? pending.value
+    : pending.value.filter((s) => (filter.value === 'mine') === !s.assignment),
+)
+
 onMounted(async () => {
   try {
     const [{ data }, { data: revisionData }] = await Promise.all([
@@ -55,20 +72,38 @@ onMounted(async () => {
     <p v-else-if="pending.length === 0" class="assigned__empty">
       Tidak ada sample yang menunggu diisi skornya.
     </p>
-    <ul v-else class="assigned__list">
-      <li v-for="sample in pending" :key="sample.id" class="assigned__item">
-        <div>
-          <span class="assigned__client">{{ sample.user?.name ?? `User #${sample.user_id}` }}</span>
-          <span class="assigned__meta">{{ sample.tier }} · {{ sample.user?.email }}</span>
-        </div>
-        <RouterLink
-          :to="{ name: 'portal-grafolog', query: { sampleId: sample.id } }"
-          class="btn btn--primary"
-        >
-          Isi Skor
-        </RouterLink>
-      </li>
-    </ul>
+    <template v-else>
+      <div class="assigned__filter" role="group" aria-label="Sumber klien">
+        <button type="button" :aria-pressed="filter === 'all'" @click="filter = 'all'">
+          Semua
+        </button>
+        <button type="button" :aria-pressed="filter === 'biro'" @click="filter = 'biro'">
+          Penugasan biro
+        </button>
+        <button type="button" :aria-pressed="filter === 'mine'" @click="filter = 'mine'">
+          Klien saya
+        </button>
+      </div>
+      <ul class="assigned__list">
+        <li v-for="sample in visible" :key="sample.id" class="assigned__item">
+          <div>
+            <span :class="['assigned__source', `assigned__source--${sourceOf(sample).key}`]">{{
+              sourceOf(sample).label
+            }}</span>
+            <span class="assigned__client">{{
+              sample.user?.name ?? `User #${sample.user_id}`
+            }}</span>
+            <span class="assigned__meta">{{ sample.tier }} · {{ sample.user?.email }}</span>
+          </div>
+          <RouterLink
+            :to="{ name: 'portal-grafolog', query: { sampleId: sample.id } }"
+            class="btn btn--primary"
+          >
+            Isi Skor
+          </RouterLink>
+        </li>
+      </ul>
+    </template>
   </div>
 </template>
 
@@ -103,6 +138,40 @@ onMounted(async () => {
   gap: 8px 16px;
   padding: 14px 4px;
   border-bottom: 1px solid var(--color-border);
+}
+.assigned__filter {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.assigned__filter button {
+  border: 0;
+  background: transparent;
+  color: var(--color-text-soft);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.assigned__filter button[aria-pressed='true'] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.assigned__source {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+  background: var(--color-gold-soft);
+}
+.assigned__source--mine {
+  background: var(--color-sage-soft);
+}
+.assigned__source--b2b {
+  background: var(--color-seal-soft);
 }
 .assigned__client {
   display: block;

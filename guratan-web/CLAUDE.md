@@ -616,6 +616,18 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - `OrderView`/`TokenWalletView`: bila respons pembayaran `paid: true` (backend `PAYMENT_BYPASS`),
   tidak redirect ke DOKU — order → toast + `/dashboard`, token → toast + muat ulang saldo.
 
+## Fase A hasil uji manual — 2026-10-17
+
+- Skoring & koreksi **hanya measurement worksheet + checklist**: mode manual dihapus dari
+  `PortalGrafologView` dan `ReportCorrectionPanel`; `SindromAccordion`/`AspekRow`/`ScoreSelector` dihapus.
+- `GrafologRegisterView` (`/daftar-grafolog`), `GrafologStatusView` (`/status-grafolog`; router
+  mengalihkan grafolog pending ke sini), `AdminGrafologView` (`/admin/grafolog`). `auth.isGrafolog`
+  kini butuh status verified; `auth.isPendingGrafolog`.
+- Portal: daftar klien = nama + HP + persetujuan → banner undangan (+ tautan aktivasi di env lokal,
+  tombol kirim ulang). `ResetPasswordView` `?undangan=1` → "Aktifkan Akun".
+- `lib/handwritingPhoto.js`: cek format/30MB/FHD di browser + petunjuk scan; dipakai `OrderView`
+  dan `SampleImages`. `AssignedToMeView`: badge & filter "Penugasan biro" vs "Klien saya".
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

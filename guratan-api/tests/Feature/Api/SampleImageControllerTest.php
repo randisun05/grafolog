@@ -35,7 +35,7 @@ class SampleImageControllerTest extends TestCase
 
     private function upload(User $user, HandwritingSample $sample, int $count = 1)
     {
-        $files = array_map(fn ($i) => UploadedFile::fake()->image("tulisan{$i}.jpg"), range(1, $count));
+        $files = array_map(fn ($i) => UploadedFile::fake()->image("tulisan{$i}.jpg", 1920, 1080), range(1, $count));
 
         return $this->actingAs($user, 'sanctum')->post("/api/samples/{$sample->id}/images", ['images' => $files], ['Accept' => 'application/json']);
     }
@@ -50,6 +50,18 @@ class SampleImageControllerTest extends TestCase
         Storage::disk(SampleImage::DISK)->assertExists($image->path);
         $this->assertStringStartsWith("samples/{$sample->id}/", $image->path);
         $this->assertDatabaseHas('audit_logs', ['aksi' => 'unggah_foto_tulisan', 'actor_user_id' => $client->id]);
+    }
+
+    public function test_low_resolution_image_rejected_and_portrait_fhd_accepted(): void
+    {
+        [$client, $sample] = $this->clientSample();
+        $post = fn ($file) => $this->actingAs($client, 'sanctum')
+            ->post("/api/samples/{$sample->id}/images", ['images' => [$file]], ['Accept' => 'application/json']);
+
+        $post(UploadedFile::fake()->image('kecil.jpg', 1280, 720))
+            ->assertStatus(422)->assertJsonValidationErrors('images.0');
+        $post(UploadedFile::fake()->image('tegak.jpg', 1080, 1920))->assertCreated()
+            ->assertJsonPath('0.width', 1080)->assertJsonPath('0.height', 1920);
     }
 
     public function test_non_image_file_rejected(): void

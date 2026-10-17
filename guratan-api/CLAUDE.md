@@ -1626,6 +1626,32 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Tes `PaymentBypassTest` (4); dua tes 503 DOKU kini mem-pin `payment.bypass=false`. 438 total.
 - **Matikan (`PAYMENT_BYPASS=false` atau hapus) begitu kredensial DOKU sandbox ada.**
 
+## Fase A hasil uji manual — 2026-10-17
+
+- **Verifikasi grafolog**: `POST /auth/register-grafolog` (publik, throttle 20/menit; multipart: nama,
+  email, phone, password, certificate_number, file sertifikat pdf/jpg/png ≤10MB di disk privat
+  `grafolog-certificates/{id}`) → `role=grafolog, grafolog_status=pending`. `User::isGrafolog()`
+  kini = role grafolog DAN status null/verified, jadi semua cek grafolog lama (lookup, clients,
+  sample, skoring, worksheet) otomatis menolak pendaftar pending; middleware `role:` juga menolak
+  (`isPendingGrafolog()`). Admin: `GET /admin/grafolog-applications?status=`, `GET .../{user}/certificate`
+  (audit `lihat_sertifikat_grafolog`), `POST .../{user}/decision {approve|reject, note}` (note wajib
+  bila tolak; email `GrafologVerificationMail`). `GET /grafologs` hanya yang terverifikasi.
+  Grafolog lama di-backfill `verified`.
+- **Klien bawaan grafolog**: `POST /clients` tidak menerima password lagi (`prohibited`); klien dibuat
+  `acquisition_source=grafolog, referred_by=grafolog` dan menerima `ClientInvitationMail` (broker
+  password `invitations`, tabel `invitation_tokens`, berlaku 7 hari, terpisah dari reset 60 menit).
+  Aktivasi lewat `POST /auth/reset-password` dengan `undangan=true` (set `email_verified_at`).
+  `invitation_url` hanya dikembalikan di env local/testing. `POST /clients/{client}/invite` kirim
+  ulang (hanya grafolog pembawa).
+- **`users.acquisition_source`**: website (register), grafolog, b2b (impor HR); `phone`.
+  `GET /samples` menyertakan `project.source` + `user.acquisition_source` (badge sumber di UI).
+- **Foto tulisan**: JPG/PNG/WEBP (HEIC dihapus), maks 30 MB, minimal 1920×1080 orientasi bebas
+  (`SampleImage::MIN_*`), `width/height` disimpan. PHP default upload 2 MB — `start-dev.bat`
+  menjalankan server bawaan PHP langsung (dari `public/`) dengan `upload_max_filesize=32M`,
+  `post_max_size=160M`. **Production: set hal yang sama di php.ini + `client_max_body_size` nginx.**
+- 446 test (baru: `GrafologRegistrationTest`, tes undangan di `UserLookupControllerTest`, resolusi
+  di `SampleImageControllerTest`; `phpunit.xml` mem-pin `PAYMENT_BYPASS=""`).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

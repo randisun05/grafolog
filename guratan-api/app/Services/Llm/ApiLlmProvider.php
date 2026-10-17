@@ -23,7 +23,7 @@ class ApiLlmProvider implements LlmProviderInterface
         $namaAspek = $context['nama_aspek'] ?? '';
         $level = $context['level'] ?? '';
 
-        $systemPrompt = <<<PROMPT
+        $systemPrompt = <<<'PROMPT'
         Kamu membantu menerjemahkan & merapikan satu paragraf narasi grafologi
         dari Bahasa Inggris ke Bahasa Indonesia yang natural dan profesional
         namun tetap hangat (untuk laporan psikologi personal).

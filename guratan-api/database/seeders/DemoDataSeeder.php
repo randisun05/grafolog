@@ -119,20 +119,26 @@ class DemoDataSeeder extends Seeder
             'name' => $name, 'email' => $email, 'password' => self::PASSWORD, 'role' => $role, ...$extra,
         ]);
 
+        $web = [...$consent, 'consent_source' => 'self', 'acquisition_source' => 'website'];
+        $ani = $make('Ani Grafolog', 'ani.grafolog@guratan.test', 'grafolog', ['grafolog_status' => 'verified']);
+        $bima = $make('Bima Grafolog', 'bima.grafolog@guratan.test', 'grafolog', ['grafolog_status' => 'verified']);
+        $bawaan = fn (User $g) => [...$consent, 'consent_source' => 'grafolog', 'acquisition_source' => 'grafolog', 'referred_by' => $g->id];
+        $b2b = [...$consent, 'consent_source' => 'hr', 'acquisition_source' => 'b2b', 'company_id' => $company->id];
+
         return [
             'admin' => $make('Admin Demo', 'admin.demo@guratan.test', 'administrator'),
             'supervisor' => $make('Sari Supervisor', 'supervisor@guratan.test', 'supervisor'),
-            'ani' => $make('Ani Grafolog', 'ani.grafolog@guratan.test', 'grafolog'),
-            'bima' => $make('Bima Grafolog', 'bima.grafolog@guratan.test', 'grafolog'),
+            'ani' => $ani,
+            'bima' => $bima,
             'hr' => $make('Rina HR', 'hr@majujaya.test', 'hr', ['company_id' => $company->id]),
-            'budi' => $make('Budi Santoso', 'budi@guratan.test', 'user', [...$consent, 'consent_source' => 'self']),
-            'citra' => $make('Citra Lestari', 'citra@guratan.test', 'user', [...$consent, 'consent_source' => 'self']),
-            'dewi' => $make('Dewi Anggraini', 'dewi@guratan.test', 'user', [...$consent, 'consent_source' => 'self']),
-            'eko' => $make('Eko Prasetyo', 'eko@guratan.test', 'user', [...$consent, 'consent_source' => 'self']),
-            'fajar' => $make('Fajar Nugroho', 'fajar@guratan.test', 'user', [...$consent, 'consent_source' => 'grafolog']),
-            'gita' => $make('Gita Permata', 'gita@guratan.test', 'user', [...$consent, 'consent_source' => 'grafolog']),
-            'hendra' => $make('Hendra Wijaya', 'hendra@majujaya.test', 'user', [...$consent, 'consent_source' => 'hr', 'company_id' => $company->id]),
-            'intan' => $make('Intan Sari', 'intan@majujaya.test', 'user', [...$consent, 'consent_source' => 'hr', 'company_id' => $company->id]),
+            'budi' => $make('Budi Santoso', 'budi@guratan.test', 'user', $web),
+            'citra' => $make('Citra Lestari', 'citra@guratan.test', 'user', $web),
+            'dewi' => $make('Dewi Anggraini', 'dewi@guratan.test', 'user', $web),
+            'eko' => $make('Eko Prasetyo', 'eko@guratan.test', 'user', $web),
+            'fajar' => $make('Fajar Nugroho', 'fajar@guratan.test', 'user', $bawaan($bima)),
+            'gita' => $make('Gita Permata', 'gita@guratan.test', 'user', $bawaan($ani)),
+            'hendra' => $make('Hendra Wijaya', 'hendra@majujaya.test', 'user', $b2b),
+            'intan' => $make('Intan Sari', 'intan@majujaya.test', 'user', $b2b),
         ];
     }
 
@@ -232,7 +238,8 @@ class DemoDataSeeder extends Seeder
 
     private function attachPhoto(HandwritingSample $sample, User $subject, User $uploader): void
     {
-        $img = imagecreatetruecolor(900, 600);
+        // Minimal FHD, sama seperti aturan unggah (StoreSampleImagesRequest).
+        $img = imagecreatetruecolor(1920, 1080);
         imagefill($img, 0, 0, imagecolorallocate($img, 250, 248, 240));
         $ink = imagecolorallocate($img, 30, 40, 110);
         $lines = [
@@ -243,7 +250,7 @@ class DemoDataSeeder extends Seeder
             'Tanggal: '.now()->format('d-m-Y'),
         ];
         foreach ($lines as $i => $line) {
-            imagestring($img, 5, 60 + $i * 6, 80 + $i * 90, $line, $ink);
+            imagestring($img, 5, 120 + $i * 12, 180 + $i * 160, $line, $ink);
         }
         ob_start();
         imagejpeg($img, null, 85);
@@ -255,6 +262,7 @@ class DemoDataSeeder extends Seeder
         $sample->images()->create([
             'path' => $path, 'original_name' => 'tulisan-tangan.jpg', 'mime_type' => 'image/jpeg',
             'size_bytes' => strlen($bytes), 'uploaded_by' => $uploader->id,
+            'width' => 1920, 'height' => 1080,
         ]);
     }
 

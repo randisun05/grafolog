@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClientRequest;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\ClientInvitationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -45,32 +46,54 @@ class UserLookupController extends Controller
      * karena MAIL_MAILER proyek ini masih `log` (belum tersambung SMTP
      * sungguhan) - jalur email baru masuk akal setelah itu beres.
      */
-    public function store(StoreClientRequest $request): JsonResponse
+    public function store(StoreClientRequest $request, ClientInvitationService $invitations): JsonResponse
     {
-        abort_unless($request->user()->isGrafolog(), 403);
+        $grafolog = $request->user();
+        abort_unless($grafolog->isGrafolog(), 403);
 
-        $password = $request->validated('password');
-        $wasGenerated = ! $password;
-        $password ??= Str::password(10);
-
+        // Klien bawaan grafolog (2026-10-17): tidak ada lagi password dari grafolog. Klien
+        // menerima undangan email dan mengatur kata sandinya sendiri, supaya akunnya benar-benar
+        // dipakai (laporan, promo, produk lain). referred_by mencatat grafolog pembawanya.
         $client = User::create([
             'name' => $request->validated('name'),
             'email' => $request->validated('email'),
-            'password' => $password,
+            'phone' => $request->validated('phone'),
+            'password' => Str::password(32),
             'role' => 'user',
+            'acquisition_source' => 'grafolog',
+            'referred_by' => $grafolog->id,
             'consented_at' => now(),
             'consent_source' => 'grafolog',
             'consent_version' => User::CONSENT_VERSION,
         ]);
 
-        AuditLog::record('daftarkan_klien', User::class, $client->id, $request->user()->id, $request->ip());
+        $url = $invitations->send($client, $grafolog);
+        AuditLog::record('daftarkan_klien', User::class, $client->id, $grafolog->id, $request->ip());
 
         return response()->json([
             'id' => $client->id,
             'name' => $client->name,
             'email' => $client->email,
-            'generated_password' => $wasGenerated ? $password : null,
+            'acquisition_source' => 'grafolog',
+            'invitation_sent' => true,
+            // Hanya untuk uji lokal (MAIL_MAILER=log): tautan ini = akses akun klien.
+            'invitation_url' => app()->environment('local', 'testing') ? $url : null,
         ], 201);
+    }
+
+    /** Kirim ulang undangan - hanya grafolog pembawa klien tersebut. */
+    public function resendInvitation(Request $request, User $client, ClientInvitationService $invitations): JsonResponse
+    {
+        $grafolog = $request->user();
+        abort_unless($grafolog->isGrafolog() && $client->referred_by === $grafolog->id, 403);
+
+        $url = $invitations->send($client, $grafolog);
+        AuditLog::record('kirim_ulang_undangan_klien', User::class, $client->id, $grafolog->id, $request->ip());
+
+        return response()->json([
+            'invitation_sent' => true,
+            'invitation_url' => app()->environment('local', 'testing') ? $url : null,
+        ]);
     }
 
     /**
@@ -81,6 +104,8 @@ class UserLookupController extends Controller
      */
     public function grafologs(): JsonResponse
     {
-        return response()->json(User::where('role', 'grafolog')->get(['id', 'name', 'email']));
+        return response()->json(User::where('role', 'grafolog')
+            ->where(fn ($q) => $q->whereNull('grafolog_status')->orWhere('grafolog_status', 'verified'))
+            ->get(['id', 'name', 'email']));
     }
 }

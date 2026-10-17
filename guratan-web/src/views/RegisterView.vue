@@ -71,6 +71,7 @@ async function submit() {
         {{ loading ? 'Memproses...' : 'Daftar' }}
       </button>
     </form>
+    <RouterLink to="/daftar-grafolog" class="register__grafolog">Anda grafolog bersertifikat? Daftar di sini</RouterLink>
   </div>
 </template>
 
@@ -112,5 +113,11 @@ label {
 .btn--primary {
   width: 100%;
   padding: 11px;
+}
+.register__grafolog {
+  display: block;
+  margin-top: 14px;
+  font-size: 13px;
+  text-align: center;
 }
 </style>

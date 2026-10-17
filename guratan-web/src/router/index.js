@@ -22,6 +22,18 @@ const router = createRouter({
       meta: { guestOnly: true },
     },
     {
+      path: '/daftar-grafolog',
+      name: 'register-grafolog',
+      component: () => import('../views/GrafologRegisterView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/status-grafolog',
+      name: 'grafolog-status',
+      component: () => import('../views/GrafologStatusView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/lupa-password',
       name: 'forgot-password',
       component: () => import('../views/ForgotPasswordView.vue'),
@@ -119,6 +131,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/grafolog',
+      name: 'admin-grafolog',
+      component: () => import('../views/AdminGrafologView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/knowledge',
       name: 'admin-knowledge',
       component: () => import('../views/AdminKnowledgeView.vue'),
@@ -167,8 +185,14 @@ router.beforeEach((to) => {
     return { name: 'dashboard' }
   }
 
+  // Grafolog yang belum diverifikasi hanya boleh melihat halaman statusnya.
+  if (to.meta.requiresAuth && auth.isPendingGrafolog && to.name !== 'grafolog-status') {
+    return { name: 'grafolog-status' }
+  }
+
   const allowedRoles = [to.meta.role].flat().filter(Boolean)
-  if (allowedRoles.length && !allowedRoles.includes(auth.user?.role)) {
+  const effectiveRole = auth.isPendingGrafolog ? 'grafolog_pending' : auth.user?.role
+  if (allowedRoles.length && !allowedRoles.includes(effectiveRole)) {
     return { name: 'dashboard' }
   }
 

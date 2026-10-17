@@ -26,8 +26,11 @@ async function handleLogout() {
 
     <nav class="app-navbar__nav">
       <template v-if="auth.isAuthenticated">
-        <RouterLink to="/dashboard">Dashboard</RouterLink>
-        <RouterLink to="/riwayat">Riwayat</RouterLink>
+        <RouterLink v-if="auth.isPendingGrafolog" to="/status-grafolog">Status Pendaftaran</RouterLink>
+        <template v-else>
+          <RouterLink to="/dashboard">Dashboard</RouterLink>
+          <RouterLink to="/riwayat">Riwayat</RouterLink>
+        </template>
         <RouterLink v-if="auth.isClient" to="/pesan">Pesan Laporan</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
@@ -35,6 +38,7 @@ async function handleLogout() {
         <RouterLink v-if="auth.isSupervisor || auth.isAdministrator" to="/supervisor/reviews">Review Laporan</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/orders">Pesanan Masuk</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/users">Kelola Staf</RouterLink>
+        <RouterLink v-if="auth.isAdministrator" to="/admin/grafolog">Verifikasi Grafolog</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/pricing">Kelola Harga</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/discounts">Kelola Diskon</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/content">Kelola Konten</RouterLink>

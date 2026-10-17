@@ -20,6 +20,7 @@ class AuthController extends Controller
             'email' => $request->validated('email'),
             'password' => $request->validated('password'),
             'role' => 'user',
+            'acquisition_source' => 'website',
             'consented_at' => now(),
             'consent_source' => 'self',
             'consent_version' => User::CONSENT_VERSION,

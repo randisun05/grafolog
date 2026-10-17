@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import api from '@/lib/api'
+import { PHOTO_ACCEPT, PHOTO_HINT, partitionPhotos } from '@/lib/handwritingPhoto'
 import { useToast } from '@/composables/useToast'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
@@ -44,8 +45,11 @@ async function load() {
 }
 
 async function onFiles(event) {
-  const files = Array.from(event.target.files ?? [])
+  const picked = Array.from(event.target.files ?? [])
   event.target.value = ''
+  if (!picked.length) return
+  const { ok: files, errors: invalid } = await partitionPhotos(picked)
+  invalid.forEach((msg) => toast.push(msg))
   if (!files.length) return
   uploading.value = true
   try {
@@ -104,11 +108,12 @@ onBeforeUnmount(revokePreviews)
       </figure>
     </div>
 
+    <p v-if="canUpload" class="sample-images__note">{{ PHOTO_HINT }}</p>
     <label v-if="canUpload" class="btn sample-images__upload">
       {{ uploading ? 'Mengunggah...' : 'Tambah Foto' }}
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic"
+        :accept="PHOTO_ACCEPT"
         multiple
         hidden
         :disabled="uploading"

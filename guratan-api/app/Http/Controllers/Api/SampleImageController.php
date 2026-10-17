@@ -39,7 +39,10 @@ class SampleImageController extends Controller
         );
 
         $images = DB::transaction(fn () => collect($files)->map(function ($file) use ($sample, $user) {
+            [$width, $height] = getimagesize($file->getRealPath());
             $image = $sample->images()->create([
+                'width' => $width,
+                'height' => $height,
                 'path' => $file->store("samples/{$sample->id}", SampleImage::DISK),
                 'original_name' => mb_substr($file->getClientOriginalName(), 0, 255),
                 'mime_type' => $file->getMimeType(),

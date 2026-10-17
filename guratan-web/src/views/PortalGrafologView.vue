@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/lib/api'
-import SindromAccordion from '@/components/scoring/SindromAccordion.vue'
+import { useToast } from '@/composables/useToast'
 import ProgressTracker from '@/components/shared/ProgressTracker.vue'
 import AutoCalculationPanel from '@/components/scoring/AutoCalculationPanel.vue'
 import MeasurementWorksheet from '@/components/scoring/MeasurementWorksheet.vue'
@@ -19,6 +19,7 @@ const currentStep = computed(() => {
   return 3
 })
 
+const toast = useToast()
 const sindromList = ref([])
 const totalAspek = computed(() => sindromList.value.reduce((n, s) => n + s.aspek.length, 0))
 
@@ -27,13 +28,9 @@ const client = ref(null)
 const tier = ref('comprehensive')
 const sample = ref(null)
 
-// KM-G: cara mengisi skor - 'manual' (form dropdown 1-10, alur asli) atau
-// 'worksheet' (measurement worksheet + checklist Indikator, dihitung
-// otomatis dari indikator_rules). Keduanya cuma mengisi `scores` di bawah
-// dengan bentuk yang sama persis ({skor}) - preview/submit tidak tahu dan
-// tidak perlu tahu cara skor itu didapat. 'manual' tetap default supaya
-// alur lama tidak berubah untuk grafolog yang belum pakai worksheet.
-const scoringMode = ref('manual')
+// Skor hanya diisi dari measurement worksheet + checklist Indikator (2026-10-17, hasil uji
+// manual: "pengisian skoring dari measurement worksheet, jangan dari sindrom"). Form manual
+// 1-10 per sindrom dihapus dari alur grafolog.
 const indikatorChecklistRef = ref(null)
 const scores = ref({}) // { [kode]: { skor, catatan_grafolog } }
 const scoredCount = computed(
@@ -47,11 +44,12 @@ const creatingSample = ref(false)
 
 const showRegisterForm = ref(false)
 const newClientName = ref('')
-const newClientPassword = ref('')
+const newClientPhone = ref('')
 const newClientConsent = ref(false)
 const registering = ref(false)
 const registerError = ref('')
-const generatedPassword = ref('')
+const invitation = ref(null) // { email, url } setelah klien didaftarkan
+const resending = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
 const submittedReport = ref(null)
@@ -148,7 +146,7 @@ async function lookupClient() {
   lookupError.value = ''
   client.value = null
   showRegisterForm.value = false
-  generatedPassword.value = ''
+  invitation.value = null
   lookupLoading.value = true
   try {
     const { data } = await api.get('/users/lookup', { params: { email: clientEmail.value } })
@@ -164,14 +162,13 @@ function openRegisterForm() {
   showRegisterForm.value = true
   registerError.value = ''
   newClientName.value = ''
-  newClientPassword.value = ''
+  newClientPhone.value = ''
   newClientConsent.value = false
 }
 
-// Klien walk-in yang belum pernah /register sendiri - grafolog daftarkan
-// langsung dari sini. Password opsional (kosongkan = sistem generate acak,
-// ditampilkan sekali lewat generatedPassword untuk disampaikan ke klien -
-// lihat catatan di UserLookupController::store kenapa bukan email undangan).
+// Klien yang dibawa grafolog: didaftarkan di sini dan menerima undangan email untuk mengatur
+// kata sandinya sendiri (bukan password dari grafolog), supaya klien memakai aplikasi -
+// melihat laporan, promo, dan produk lain. invitation_url hanya dikirim backend di env lokal.
 async function registerClient() {
   registerError.value = ''
   registering.value = true
@@ -179,17 +176,31 @@ async function registerClient() {
     const { data } = await api.post('/clients', {
       name: newClientName.value,
       email: clientEmail.value,
-      password: newClientPassword.value || undefined,
+      phone: newClientPhone.value || undefined,
       consent_confirmed: newClientConsent.value,
     })
     client.value = { id: data.id, name: data.name, email: data.email }
     lookupError.value = ''
     showRegisterForm.value = false
-    generatedPassword.value = data.generated_password ?? ''
+    invitation.value = { email: data.email, url: data.invitation_url }
   } catch (e) {
     registerError.value = e.response?.data?.message ?? 'Gagal mendaftarkan klien.'
   } finally {
     registering.value = false
+  }
+}
+
+async function resendInvitation() {
+  if (!client.value) return
+  resending.value = true
+  try {
+    const { data } = await api.post(`/clients/${client.value.id}/invite`)
+    invitation.value = { email: client.value.email, url: data.invitation_url }
+    toast.push('Undangan dikirim ulang.', 'success')
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengirim ulang undangan.')
+  } finally {
+    resending.value = false
   }
 }
 
@@ -259,9 +270,12 @@ function viewReport() {
             <input v-model="newClientName" type="text" placeholder="Nama lengkap klien" />
           </label>
           <label>
-            Kata Sandi Awal (opsional)
-            <input v-model="newClientPassword" type="text" placeholder="Kosongkan untuk dibuatkan otomatis" />
+            Nomor HP / WhatsApp (opsional)
+            <input v-model="newClientPhone" type="tel" placeholder="08..." />
           </label>
+          <p class="portal-grafolog__register-note">
+            Klien akan menerima email undangan untuk mengaktifkan akunnya sendiri.
+          </p>
           <label class="portal-grafolog__consent">
             <input v-model="newClientConsent" type="checkbox" />
             Klien sudah menyetujui pemrosesan data tulisan tangan &amp; hasil analisisnya (Kebijakan Privasi).
@@ -281,10 +295,18 @@ function viewReport() {
         </div>
       </div>
 
-      <p v-if="generatedPassword" class="portal-grafolog__generated-password">
-        Klien terdaftar. Kata sandi awal: <strong>{{ generatedPassword }}</strong> — sampaikan
-        langsung ke klien, mereka bisa menggantinya nanti.
-      </p>
+      <div v-if="invitation" class="portal-grafolog__generated-password">
+        <p>
+          Klien terdaftar. Undangan aktivasi dikirim ke <strong>{{ invitation.email }}</strong>. Minta klien
+          membuka email tersebut untuk membuat kata sandi.
+        </p>
+        <p v-if="invitation.url" class="portal-grafolog__invite-dev">
+          Mode lokal (email tidak terkirim sungguhan): <a :href="invitation.url" target="_blank">tautan aktivasi</a>
+        </p>
+        <button type="button" class="btn" :disabled="resending" @click="resendInvitation">
+          {{ resending ? 'Mengirim...' : 'Kirim ulang undangan' }}
+        </button>
+      </div>
 
       <p v-if="client" class="portal-grafolog__client-found">
         Klien ditemukan: <strong>{{ client.name }}</strong> ({{ client.email }})
@@ -311,17 +333,6 @@ function viewReport() {
         isian skor akan hilang.
       </p>
 
-      <div class="portal-grafolog__mode">
-        <span>Cara isi skor:</span>
-        <label>
-          <input v-model="scoringMode" type="radio" value="manual" />
-          Manual (1-10)
-        </label>
-        <label>
-          <input v-model="scoringMode" type="radio" value="worksheet" />
-          Measurement Worksheet
-        </label>
-      </div>
 
       <div class="assessment-workspace">
         <aside class="assessment-workspace__col assessment-workspace__col--info">
@@ -342,19 +353,8 @@ function viewReport() {
         </aside>
 
         <div class="assessment-workspace__col assessment-workspace__col--form">
-          <template v-if="scoringMode === 'manual'">
-            <SindromAccordion
-              v-for="sindrom in sindromList"
-              :key="sindrom.id"
-              :sindrom="sindrom"
-              :scores="scores"
-              @update:scores="(v) => (scores = v)"
-            />
-          </template>
-          <template v-else>
-            <MeasurementWorksheet :sample-id="sample.id" @saved="onMeasurementsSaved" />
-            <IndikatorChecklist ref="indikatorChecklistRef" :sample-id="sample.id" @apply="applyChecklistTally" />
-          </template>
+          <MeasurementWorksheet :sample-id="sample.id" @saved="onMeasurementsSaved" />
+          <IndikatorChecklist ref="indikatorChecklistRef" :sample-id="sample.id" @apply="applyChecklistTally" />
         </div>
 
         <aside class="assessment-workspace__col assessment-workspace__col--calc">

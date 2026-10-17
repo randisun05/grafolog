@@ -8,7 +8,11 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
+// Aktivasi akun klien yang didaftarkan grafolog memakai halaman yang sama (?undangan=1).
+const isInvitation = route.query.undangan === '1'
+
 const form = ref({
+  undangan: isInvitation,
   token: route.query.token ?? '',
   email: route.query.email ?? '',
   password: '',
@@ -36,7 +40,10 @@ async function submit() {
 
 <template>
   <div class="auth-form">
-    <h1>Buat Kata Sandi Baru</h1>
+    <h1>{{ isInvitation ? 'Aktifkan Akun Anda' : 'Buat Kata Sandi Baru' }}</h1>
+    <p v-if="isInvitation" class="auth-form__hint">
+      Grafolog Anda sudah mendaftarkan akun ini. Buat kata sandi untuk mulai memakai Guratan.
+    </p>
     <form @submit.prevent="submit">
       <label>
         Email
@@ -62,10 +69,11 @@ async function submit() {
       <p v-if="errors.token" class="error">{{ errors.token[0] }}</p>
 
       <button type="submit" class="btn btn--primary" :disabled="loading || !form.token">
-        {{ loading ? 'Menyimpan...' : 'Simpan Kata Sandi' }}
+        {{ loading ? 'Menyimpan...' : isInvitation ? 'Aktifkan Akun' : 'Simpan Kata Sandi' }}
       </button>
     </form>
-    <RouterLink to="/lupa-password" class="auth-form__link">Minta tautan baru</RouterLink>
+    <RouterLink v-if="!isInvitation" to="/lupa-password" class="auth-form__link">Minta tautan baru</RouterLink>
+    <p v-else class="auth-form__hint">Tautan kedaluwarsa? Minta grafolog Anda mengirim ulang undangan.</p>
   </div>
 </template>
 

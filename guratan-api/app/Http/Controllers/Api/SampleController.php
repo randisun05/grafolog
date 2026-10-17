@@ -24,7 +24,8 @@ class SampleController extends Controller
             ->withCount('images')
             ->with([
                 'reports:id,sample_id,tier,status,generated_at',
-                'user:id,name,email',
+                'user:id,name,email,acquisition_source,referred_by',
+                'project:id,source',
                 'assignment.grafolog:id,name,email',
             ])
             ->latest()

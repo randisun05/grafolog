@@ -7,7 +7,6 @@ use App\Http\Requests\Admin\UpdatePricingRequest;
 use App\Models\AuditLog;
 use App\Models\PricingPlan;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * Gated by 'role:administrator' on its routes. Harga adalah data bisnis

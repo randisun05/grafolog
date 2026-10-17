@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Api;
 
+use App\Mail\ClientInvitationMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class UserLookupControllerTest extends TestCase
@@ -57,45 +59,68 @@ class UserLookupControllerTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_grafolog_can_create_client_with_explicit_password(): void
+    public function test_grafolog_cannot_set_client_password_directly(): void
     {
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
-        $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
-            'consent_confirmed' => true,
-            'name' => 'Klien Walk-in',
-            'email' => 'walkin@example.com',
-            'password' => 'Password123',
-        ]);
-
-        $response->assertCreated()
-            ->assertJsonPath('name', 'Klien Walk-in')
-            ->assertJsonPath('email', 'walkin@example.com')
-            ->assertJsonPath('generated_password', null);
-        $this->assertDatabaseHas('users', ['email' => 'walkin@example.com', 'role' => 'user']);
-        $this->assertDatabaseHas('audit_logs', ['aksi' => 'daftarkan_klien', 'actor_user_id' => $grafolog->id]);
+        $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
+            'consent_confirmed' => true, 'name' => 'Klien', 'email' => 'walkin@example.com', 'password' => 'Password123',
+        ])->assertStatus(422)->assertJsonValidationErrors('password');
     }
 
-    public function test_grafolog_can_create_client_without_password_and_it_actually_works(): void
+    public function test_grafolog_registers_client_by_invitation_and_client_can_activate(): void
     {
+        Mail::fake();
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
-            'consent_confirmed' => true,
-            'name' => 'Klien Tanpa Sandi',
-            'email' => 'nopassword@example.com',
+            'consent_confirmed' => true, 'name' => 'Klien Walk-in', 'email' => 'walkin@example.com', 'phone' => '0812',
         ]);
 
-        $response->assertCreated();
-        $generatedPassword = $response->json('generated_password');
-        $this->assertNotEmpty($generatedPassword);
+        $response->assertCreated()->assertJsonPath('invitation_sent', true)->assertJsonMissingPath('generated_password');
+        $this->assertDatabaseHas('users', [
+            'email' => 'walkin@example.com', 'role' => 'user', 'acquisition_source' => 'grafolog', 'referred_by' => $grafolog->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', ['aksi' => 'daftarkan_klien', 'actor_user_id' => $grafolog->id]);
+        Mail::assertQueued(ClientInvitationMail::class, fn ($m) => $m->hasTo('walkin@example.com'));
 
-        // Password yang di-generate harus benar-benar cocok dengan hash yang
-        // tersimpan - dicek langsung lewat Hash::check(), bukan HTTP login
-        // sungguhan (memanggil /api/auth/login di dalam test yang sudah
-        // actingAs() mengacaukan resolusi guard default Laravel).
-        $client = User::where('email', 'nopassword@example.com')->first();
-        $this->assertTrue(Hash::check($generatedPassword, $client->password));
+        // Klien mengaktifkan akun lewat tautan undangan (broker 'invitations').
+        parse_str(parse_url($response->json('invitation_url'), PHP_URL_QUERY), $q);
+        $this->postJson('/api/auth/reset-password', [
+            'token' => $q['token'], 'email' => 'walkin@example.com', 'undangan' => true,
+            'password' => 'Rahasia123', 'password_confirmation' => 'Rahasia123',
+        ])->assertOk();
+
+        $client = User::where('email', 'walkin@example.com')->first();
+        $this->assertTrue(Hash::check('Rahasia123', $client->password));
+        $this->assertNotNull($client->email_verified_at);
+    }
+
+    public function test_invitation_token_is_not_accepted_as_regular_reset(): void
+    {
+        Mail::fake();
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $url = $this->actingAs($grafolog, 'sanctum')->postJson('/api/clients', [
+            'consent_confirmed' => true, 'name' => 'Klien', 'email' => 'k@example.com',
+        ])->json('invitation_url');
+        parse_str(parse_url($url, PHP_URL_QUERY), $q);
+
+        $this->postJson('/api/auth/reset-password', [
+            'token' => $q['token'], 'email' => 'k@example.com',
+            'password' => 'Rahasia123', 'password_confirmation' => 'Rahasia123',
+        ])->assertStatus(422);
+    }
+
+    public function test_only_referring_grafolog_can_resend_invitation(): void
+    {
+        Mail::fake();
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $other = User::factory()->create(['role' => 'grafolog']);
+        $client = User::factory()->create(['role' => 'user', 'referred_by' => $grafolog->id, 'acquisition_source' => 'grafolog']);
+
+        $this->actingAs($other, 'sanctum')->postJson("/api/clients/{$client->id}/invite")->assertForbidden();
+        $this->actingAs($grafolog, 'sanctum')->postJson("/api/clients/{$client->id}/invite")->assertOk();
+        Mail::assertQueued(ClientInvitationMail::class, 1);
     }
 
     public function test_duplicate_email_rejected(): void

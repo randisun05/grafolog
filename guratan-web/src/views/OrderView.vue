@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/lib/api'
+import { PHOTO_ACCEPT, PHOTO_HINT, partitionPhotos } from '@/lib/handwritingPhoto'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
@@ -35,10 +36,14 @@ const photos = ref([])
 const createdSample = ref(null)
 const photosUploaded = ref(false)
 
-function onPhotos(event) {
+const photoErrors = ref([])
+
+async function onPhotos(event) {
   const picked = Array.from(event.target.files ?? [])
   event.target.value = ''
-  photos.value = [...photos.value, ...picked].slice(0, MAX_PHOTOS)
+  const { ok, errors } = await partitionPhotos(picked)
+  photoErrors.value = errors
+  photos.value = [...photos.value, ...ok].slice(0, MAX_PHOTOS)
 }
 
 function removePhoto(index) {
@@ -195,10 +200,10 @@ onMounted(loadPricing)
             >Foto Tulisan Tangan ({{ photos.length }}/{{ MAX_PHOTOS }})</span
           >
           <p class="order__photos-hint">
-            Tulis minimal satu halaman tangan di kertas polos tanpa garis, tanda tangani di
-            bawahnya, lalu foto tegak lurus dengan cahaya cukup. JPG/PNG/WEBP/HEIC, maks. 10 MB per
-            foto.
+            Tulis minimal satu halaman tangan di kertas polos tanpa garis dan tanda tangani di bawahnya.
+            {{ PHOTO_HINT }}
           </p>
+          <p v-for="(msg, i) in photoErrors" :key="`pe-${i}`" class="error">{{ msg }}</p>
           <ul v-if="photos.length" class="order__photos-list">
             <li v-for="(f, i) in photos" :key="i">
               <span>{{ f.name }}</span>
@@ -216,7 +221,7 @@ onMounted(loadPricing)
             Pilih Foto
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic"
+              :accept="PHOTO_ACCEPT"
               multiple
               hidden
               @change="onPhotos"

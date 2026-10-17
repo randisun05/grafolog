@@ -82,6 +82,7 @@ class CandidateImportController extends Controller
                 'email' => $row['email'],
                 'password' => Str::random(32),
                 'role' => 'user',
+                'acquisition_source' => 'b2b',
                 'company_id' => $hr->company_id,
                 'consented_at' => now(),
                 'consent_source' => 'hr',

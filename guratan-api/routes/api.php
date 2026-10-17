@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
+use App\Http\Controllers\Api\Admin\GrafologVerificationController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\KnowledgeMatrixController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
+use App\Http\Controllers\Api\Auth\GrafologRegistrationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChecklistController;
 use App\Http\Controllers\Api\ConsultationController;
@@ -45,6 +47,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('throttle:20,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/register-grafolog', [GrafologRegistrationController::class, 'store']);
 });
 
 Route::middleware('throttle:password-reset')->group(function () {
@@ -113,9 +116,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::get('/sindrom', [SindromController::class, 'index']);
     Route::middleware('throttle:15,1')->get('/users/lookup', [UserLookupController::class, 'byEmail']);
     Route::post('/clients', [UserLookupController::class, 'store']);
+    Route::middleware('throttle:10,1')->post('/clients/{client}/invite', [UserLookupController::class, 'resendInvitation']);
     Route::middleware('role:hr,administrator')->get('/grafologs', [UserLookupController::class, 'grafologs']);
 
     Route::middleware('role:administrator')->prefix('admin')->group(function () {
+        // Verifikasi pendaftar grafolog (2026-10-17).
+        Route::get('/grafolog-applications', [GrafologVerificationController::class, 'index']);
+        Route::get('/grafolog-applications/{user}/certificate', [GrafologVerificationController::class, 'certificate']);
+        Route::post('/grafolog-applications/{user}/decision', [GrafologVerificationController::class, 'decide']);
+
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::post('/users', [AdminUserController::class, 'store']);

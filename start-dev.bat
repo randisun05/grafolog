@@ -38,7 +38,10 @@ echo.
 
 REM --- 2. API Laravel ---
 echo [2/3] Menyalakan API Laravel di port 8123...
-start "Guratan - API (8123)" cmd /k "cd /d %API_DIR% && php artisan serve --port=8123"
+REM php artisan serve tidak meneruskan setting php.ini; batas unggah default PHP (2 MB) terlalu kecil
+REM untuk hasil scan tulisan (maks. 30 MB x 5 file). Server bawaan PHP dijalankan langsung dengan
+REM router yang sama dengan artisan serve.
+start "Guratan - API (8123)" cmd /k "cd /d %API_DIR%\public && php -d upload_max_filesize=32M -d post_max_size=160M -S 127.0.0.1:8123 ..\vendor\laravel\framework\src\Illuminate\Foundation\resources\server.php"
 
 REM --- 3. Frontend Vite ---
 echo [3/3] Menyalakan frontend Vite di port 5173...

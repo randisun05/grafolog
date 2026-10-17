@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class StoreClientRequest extends FormRequest
 {
@@ -27,7 +26,9 @@ class StoreClientRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['nullable', 'string', Password::min(8)->letters()->numbers()],
+            'phone' => ['nullable', 'string', 'max:30'],
+            // Password tidak lagi diterima: klien mengatur sendiri lewat undangan email.
+            'password' => ['prohibited'],
             'consent_confirmed' => ['accepted'],
         ];
     }

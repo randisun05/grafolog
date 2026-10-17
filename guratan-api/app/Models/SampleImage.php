@@ -16,7 +16,15 @@ class SampleImage extends Model
 
     public const MAX_PER_SAMPLE = 10;
 
-    protected $fillable = ['sample_id', 'path', 'original_name', 'mime_type', 'size_bytes', 'uploaded_by'];
+    /** Batas unggah (KB). Hasil scan resolusi tinggi bisa besar - semakin jelas semakin baik. */
+    public const MAX_KB = 30720;
+
+    /** Resolusi minimum: sisi panjang >= 1920 px dan sisi pendek >= 1080 px (FHD, orientasi bebas). */
+    public const MIN_LONG_SIDE = 1920;
+
+    public const MIN_SHORT_SIDE = 1080;
+
+    protected $fillable = ['sample_id', 'path', 'original_name', 'mime_type', 'size_bytes', 'uploaded_by', 'width', 'height'];
 
     protected $hidden = ['path'];
 

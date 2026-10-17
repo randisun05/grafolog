@@ -99,6 +99,14 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+        // Undangan klien yang didaftarkan grafolog (2026-10-17): tabel terpisah supaya
+        // masa berlaku 7 hari tidak ikut melonggarkan token lupa-password biasa (60 menit).
+        'invitations' => [
+            'provider' => 'users',
+            'table' => 'invitation_tokens',
+            'expire' => 10080,
+            'throttle' => 60,
+        ],
     ],
 
     /*

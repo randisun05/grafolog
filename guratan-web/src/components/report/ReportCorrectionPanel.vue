@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
-import SindromAccordion from '@/components/scoring/SindromAccordion.vue'
 import MeasurementWorksheet from '@/components/scoring/MeasurementWorksheet.vue'
 import IndikatorChecklist from '@/components/scoring/IndikatorChecklist.vue'
 import { useToast } from '@/composables/useToast'
@@ -21,11 +20,9 @@ const scores = ref({})
 const catatan = ref('')
 const submitting = ref(false)
 const submitError = ref('')
-// Koreksi bisa lewat form manual (skor 1-10 langsung, seperti semula) atau
-// membuka ulang measurement worksheet + checklist Indikator - dibutuhkan
-// untuk sample yang aslinya diskor lewat mode worksheet (KM-G), supaya
-// koreksi juga bisa mengubah hasil ukur, bukan cuma angka skor akhir.
-const correctionMode = ref('manual')
+// Koreksi hanya lewat measurement worksheet + checklist Indikator (2026-10-17, hasil uji
+// manual: "laporan koreksi dari measurement worksheet, jangan dari sindrom"). Skor lama tetap
+// ter-prefill dari report, jadi aspek yang tidak berubah tidak perlu diisi ulang.
 const checklistRef = ref(null)
 
 function applyChecklistTally(skor) {
@@ -91,30 +88,8 @@ async function submitCorrection() {
       </p>
       <SkeletonLoader v-if="loading" variant="form" :rows="5" label="Memuat form skor..." />
       <template v-else>
-        <div class="report-correction__mode">
-          <label>
-            <input v-model="correctionMode" type="radio" value="manual" />
-            Form Skor Manual
-          </label>
-          <label>
-            <input v-model="correctionMode" type="radio" value="worksheet" />
-            Measurement Worksheet
-          </label>
-        </div>
-
-        <template v-if="correctionMode === 'manual'">
-          <SindromAccordion
-            v-for="sindrom in sindromList"
-            :key="sindrom.id"
-            :sindrom="sindrom"
-            :scores="scores"
-            @update:scores="(v) => (scores = v)"
-          />
-        </template>
-        <template v-else>
-          <MeasurementWorksheet :sample-id="sampleId" @saved="onMeasurementsSaved" />
-          <IndikatorChecklist ref="checklistRef" :sample-id="sampleId" @apply="applyChecklistTally" />
-        </template>
+        <MeasurementWorksheet :sample-id="sampleId" @saved="onMeasurementsSaved" />
+        <IndikatorChecklist ref="checklistRef" :sample-id="sampleId" @apply="applyChecklistTally" />
 
         <label class="report-correction__catatan">
           Alasan koreksi (opsional, tersimpan di riwayat)
