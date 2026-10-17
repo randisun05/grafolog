@@ -124,7 +124,12 @@ class HandwritingSample extends Model
 
     public function isPaid(): bool
     {
-        return $this->payments()->where('status', 'paid')->exists()
-            || $this->order()->whereNotNull('paid_at')->exists();
+        // Sampel dari pesanan produk: status pesanan yang berlaku (lunas & tidak di-refund).
+        // Sampel lama (sebelum katalog produk) masih memakai payments.sample_id.
+        if ($order = $this->order) {
+            return $order->paid_at !== null && $order->status !== Order::STATUS_REFUNDED;
+        }
+
+        return $this->payments()->where('status', 'paid')->exists();
     }
 }

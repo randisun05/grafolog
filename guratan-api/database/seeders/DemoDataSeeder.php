@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AffiliateProduct;
 use App\Models\Announcement;
 use App\Models\Aspek;
 use App\Models\Assignment;
@@ -173,6 +174,14 @@ class DemoDataSeeder extends Seeder
 
     private function createCommerceData(User $admin, array $grafologs = []): void
     {
+        // Produk mitra contoh (afiliasi, Fase E) - tautan example.com, bukan mitra sungguhan.
+        AffiliateProduct::create(['nama' => 'Jurnal Refleksi Harian (contoh)', 'mitra' => 'Mitra Demo',
+            'ringkasan' => 'Contoh produk mitra untuk uji tampilan afiliasi.', 'url' => 'https://example.com/jurnal',
+            'target' => 'b2c', 'created_by' => $admin->id]);
+        AffiliateProduct::create(['nama' => 'Tes Kompetensi Online (contoh)', 'mitra' => 'Mitra Demo',
+            'ringkasan' => 'Contoh produk mitra untuk tim HR.', 'url' => 'https://example.com/kompetensi',
+            'target' => 'b2b', 'created_by' => $admin->id]);
+
         // Biaya validasi supervisor 2 token + saldo awal grafolog demo.
         TokenCost::setTokensFor(ReportValidationService::COST_KEY, 2, $admin);
         foreach ($grafologs as $g) {

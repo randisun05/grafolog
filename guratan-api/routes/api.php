@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminUserController;
+use App\Http\Controllers\Api\Admin\AffiliateAdminController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\Api\Admin\ArticleAdminController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\CompanyVerificationController;
@@ -17,11 +19,15 @@ use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasure
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\RefundController;
 use App\Http\Controllers\Api\Admin\ScoringRuleBandController;
+use App\Http\Controllers\Api\Admin\SelfCheckAdminController;
 use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
+use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AnnouncementController;
+use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\Auth\CompanyRegistrationController;
 use App\Http\Controllers\Api\Auth\GrafologRegistrationController;
@@ -30,6 +36,7 @@ use App\Http\Controllers\Api\ChecklistController;
 use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\Hr\B2bOrderController;
 use App\Http\Controllers\Api\Hr\CandidateAnalysisController;
 use App\Http\Controllers\Api\Hr\CandidateController;
@@ -49,6 +56,7 @@ use App\Http\Controllers\Api\ReportValidationController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\SampleImageController;
 use App\Http\Controllers\Api\ScoringController;
+use App\Http\Controllers\Api\SelfCheckController;
 use App\Http\Controllers\Api\ServiceDeliveryController;
 use App\Http\Controllers\Api\SindromController;
 use App\Http\Controllers\Api\TokenController;
@@ -78,6 +86,16 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::get('/promos', [ProductController::class, 'promos']);
 Route::get('/content', [ContentController::class, 'index']);
 
+// Fase E (2026-10-17): cek tulisan terpandu (lead magnet), afiliasi, artikel, kuis - publik.
+Route::get('/self-check', [SelfCheckController::class, 'index']);
+Route::middleware('throttle:10,1')->post('/self-check', [SelfCheckController::class, 'store']);
+Route::get('/self-check/{uuid}', [SelfCheckController::class, 'show'])->whereUuid('uuid');
+Route::get('/affiliate-products', [AffiliateController::class, 'index']);
+Route::middleware('throttle:30,1')->post('/affiliate-products/{product}/click', [AffiliateController::class, 'click']);
+Route::get('/articles', [ArticleController::class, 'index']);
+Route::get('/articles/{slug}', [ArticleController::class, 'show']);
+Route::middleware('throttle:30,1')->get('/games/quiz', [GameController::class, 'quiz']);
+
 // 120/menit: halaman HR & SampleImages memuat pratinjau per scan (1 GET per gambar).
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -94,6 +112,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::post('/orders/{order}/payment', [OrderController::class, 'pay']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
+    Route::post('/orders/{order}/refund-request', [OrderController::class, 'requestRefund']);
     Route::get('/service-deliveries', [ServiceDeliveryController::class, 'index']);
     Route::get('/service-deliveries/{delivery}', [ServiceDeliveryController::class, 'show']);
     Route::post('/service-deliveries/{delivery}/assign', [ServiceDeliveryController::class, 'assign']);
@@ -172,6 +191,19 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/grafolog-applications/{user}/certificate', [GrafologVerificationController::class, 'certificate']);
         Route::post('/grafolog-applications/{user}/decision', [GrafologVerificationController::class, 'decide']);
         Route::get('/company-applications', [CompanyVerificationController::class, 'index']);
+        Route::get('/refunds', [RefundController::class, 'index']);
+        Route::post('/orders/{order}/refund', [RefundController::class, 'decide']);
+        Route::get('/self-check', [SelfCheckAdminController::class, 'index']);
+        Route::post('/self-check/questions', [SelfCheckAdminController::class, 'storeQuestion']);
+        Route::put('/self-check/questions/{question}', [SelfCheckAdminController::class, 'updateQuestion']);
+        Route::put('/self-check/options/{option}', [SelfCheckAdminController::class, 'updateOption']);
+        Route::get('/self-check/results', [SelfCheckAdminController::class, 'results']);
+        Route::get('/affiliate-products', [AffiliateAdminController::class, 'index']);
+        Route::post('/affiliate-products', [AffiliateAdminController::class, 'store']);
+        Route::put('/affiliate-products/{product}', [AffiliateAdminController::class, 'update']);
+        Route::get('/articles', [ArticleAdminController::class, 'index']);
+        Route::post('/articles', [ArticleAdminController::class, 'store']);
+        Route::put('/articles/{article}', [ArticleAdminController::class, 'update']);
         Route::post('/company-applications/{company}/decision', [CompanyVerificationController::class, 'decide']);
 
         Route::get('/orders', [AdminOrderController::class, 'index']);

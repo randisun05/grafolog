@@ -278,8 +278,10 @@ onMounted(load)
         </button>
         <p class="order__sop">
           Dengan membayar, Anda menyetujui
-          <RouterLink to="/syarat" target="_blank">Syarat Layanan</RouterLink> termasuk ketentuan
-          pembatalan dan refund.
+          <RouterLink to="/syarat" target="_blank">Syarat Layanan</RouterLink> dan
+          <RouterLink to="/kebijakan-transaksi" target="_blank"
+            >Kebijakan Pembelian, Pembatalan &amp; Refund</RouterLink
+          >.
         </p>
       </div>
     </template>

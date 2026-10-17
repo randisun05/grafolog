@@ -3,12 +3,13 @@ import { computed } from 'vue'
 import { marked } from 'marked'
 import privacySource from '../../../legal/privacy-policy.md?raw'
 import termsSource from '../../../legal/terms-of-service.md?raw'
+import sopSource from '../../../legal/sop-transaksi.md?raw'
 
 const props = defineProps({
   doc: { type: String, required: true },
 })
 
-const sources = { privasi: privacySource, syarat: termsSource }
+const sources = { privasi: privacySource, syarat: termsSource, transaksi: sopSource }
 
 const markdown = computed(() => (sources[props.doc] ?? '').replace(/<!--[\s\S]*?-->/g, '').trim())
 const isDraft = computed(() => /\[[A-Z][^\]]*\]/.test(markdown.value))

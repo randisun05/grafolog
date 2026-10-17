@@ -31,6 +31,7 @@ export const STATUS_PESANAN = {
   diproses: 'Diproses',
   selesai: 'Selesai',
   dibatalkan: 'Dibatalkan',
+  dikembalikan: 'Dana dikembalikan',
 }
 
 export const STATUS_LAYANAN = {

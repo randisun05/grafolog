@@ -193,6 +193,46 @@ const router = createRouter({
       props: { doc: 'syarat' },
     },
     {
+      path: '/kebijakan-transaksi',
+      name: 'transaction-policy',
+      component: () => import('../views/LegalView.vue'),
+      props: { doc: 'transaksi' },
+    },
+    // Fase E (2026-10-17): lead magnet, konten, mini game - publik.
+    {
+      path: '/cek-tulisan',
+      name: 'self-check',
+      component: () => import('../views/SelfCheckView.vue'),
+    },
+    {
+      path: '/cek-tulisan/:uuid',
+      name: 'self-check-result',
+      component: () => import('../views/SelfCheckView.vue'),
+      props: true,
+    },
+    {
+      path: '/artikel',
+      name: 'articles',
+      component: () => import('../views/ArticlesView.vue'),
+    },
+    {
+      path: '/artikel/:slug',
+      name: 'article',
+      component: () => import('../views/ArticlesView.vue'),
+      props: true,
+    },
+    {
+      path: '/kuis',
+      name: 'quiz',
+      component: () => import('../views/QuizView.vue'),
+    },
+    {
+      path: '/admin/engagement',
+      name: 'admin-engagement',
+      component: () => import('../views/AdminEngagementView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Commerce\StoreOrderRequest;
+use App\Models\AuditLog;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\Commerce\OrderService;
@@ -95,6 +96,19 @@ class OrderController extends Controller
         return response()->json($this->present($order->fresh()));
     }
 
+    /** SOP refund: klien mengajukan; admin memutuskan (Admin\RefundController). */
+    public function requestRefund(Request $request, Order $order): JsonResponse
+    {
+        abort_unless($order->user_id === $request->user()->id && ! $order->batch_id, 403);
+        $reason = $request->validate(['reason' => ['required', 'string', 'min:10', 'max:1000']])['reason'];
+        abort_unless($order->isRefundable(), 422, 'Pesanan ini tidak dapat di-refund: hasil layanan sudah diserahkan atau pesanan tidak sedang diproses.');
+
+        $order->update(['refund_requested_at' => now(), 'refund_reason' => $reason, 'refund_status' => 'diajukan', 'refund_note' => null]);
+        AuditLog::record('ajukan_refund', Order::class, $order->id, $request->user()->id, $request->ip());
+
+        return response()->json($this->present($order->fresh(['product', 'deliveries', 'sample'])));
+    }
+
     private function present(Order $order): array
     {
         $report = $order->sample?->reports?->firstWhere('review_status', 'disetujui');
@@ -110,6 +124,9 @@ class OrderController extends Controller
             'sample_id' => $order->sample_id,
             'sample_status' => $order->sample?->status,
             'report_id' => $report?->id,
+            'refund_status' => $order->refund_status,
+            'refund_note' => $order->refund_note,
+            'refundable' => $order->isRefundable(),
             'deliveries' => $order->deliveries->map(fn ($d) => [
                 'id' => $d->id,
                 'status' => $d->status,

@@ -21,9 +21,13 @@ class Order extends Model
 
     public const STATUS_CANCELLED = 'dibatalkan';
 
+    /** Dana dikembalikan setelah admin menyetujui permintaan refund (SOP Fase E). */
+    public const STATUS_REFUNDED = 'dikembalikan';
+
     protected $fillable = [
         'batch_id', 'user_id', 'product_id', 'sample_id', 'grafolog_id', 'status', 'base_amount', 'amount', 'discount_code_id',
         'source', 'created_by', 'paid_at', 'completed_at', 'cancelled_at', 'cancel_reason',
+        'refund_requested_at', 'refund_reason', 'refund_status', 'refund_note', 'refund_decided_by', 'refunded_at',
     ];
 
     protected $attributes = ['status' => self::STATUS_UNPAID, 'source' => 'website'];
@@ -34,6 +38,8 @@ class Order extends Model
             'paid_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'refund_requested_at' => 'datetime',
+            'refunded_at' => 'datetime',
         ];
     }
 
@@ -81,5 +87,20 @@ class Order extends Model
     public function isPaid(): bool
     {
         return $this->paid_at !== null;
+    }
+
+    /**
+     * SOP refund: boleh diajukan selama pesanan diproses dan BELUM ada hasil yang diserahkan
+     * (laporan grafologi belum terbit, belum ada layanan yang selesai).
+     */
+    public function isRefundable(): bool
+    {
+        if ($this->status !== self::STATUS_PROCESSING || $this->refund_status === 'diajukan') {
+            return false;
+        }
+        $reportReleased = $this->sample_id
+            && $this->sample?->reports()->where('review_status', PersonalityReport::REVIEW_APPROVED)->exists();
+
+        return ! $reportReleased && $this->deliveries()->where('status', 'selesai')->doesntExist();
     }
 }

@@ -42,6 +42,7 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Produk & Harga', to: { name: 'admin-products' } })
     items.push({ label: 'Kelola Diskon', to: { name: 'admin-discounts' } })
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })
+    items.push({ label: 'Cek Tulisan, Mitra & Artikel', to: { name: 'admin-engagement' } })
     items.push({ label: 'Pengumuman', to: { name: 'admin-announcements' } })
     items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })
     items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
@@ -50,6 +51,9 @@ const commands = computed(() => {
     items.push({ label: 'Rekrutmen: Kandidat & Analisis', to: { name: 'hr-candidates' } })
   }
   items.push({ label: 'Profil Saya', to: { name: 'profile' } })
+  items.push({ label: 'Cek Tulisan Gratis', to: { name: 'self-check' } })
+  items.push({ label: 'Artikel', to: { name: 'articles' } })
+  items.push({ label: 'Kuis Ciri Tulisan', to: { name: 'quiz' } })
   items.push({ label: 'Ganti Mode Terang/Gelap', action: toggleTheme })
 
   return items

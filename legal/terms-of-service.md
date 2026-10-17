@@ -48,19 +48,19 @@ berlisensi atau layanan darurat setempat.
 ## 4. Akun Pengguna
 
 - Anda bertanggung jawab menjaga kerahasiaan kata sandi akun Anda.
-- Akun grafolog hanya dibuat oleh administrator Guratan setelah
-  sertifikasi grafologinya diverifikasi - tidak bisa didaftarkan sendiri.
+- Grafolog dapat mendaftar sendiri, tetapi akunnya baru aktif setelah
+  administrator Guratan memverifikasi sertifikat grafologinya.
   [Tuliskan kriteria verifikasi sertifikasi yang dipakai.]
+- Akun perusahaan (B2B) aktif setelah administrator memverifikasi data
+  perusahaan.
 
-## 5. Pembayaran & Pengembalian Dana (Tier Comprehensive/Master)
+## 5. Pembayaran & Pengembalian Dana
 
 - Pembayaran diproses melalui mitra payment gateway pihak ketiga, DOKU.
 - Harga berlaku sesuai yang tertera di halaman pemesanan saat transaksi
   dilakukan.
-- Kebijakan pengembalian dana: [BELUM DITULIS - wajib diputuskan sebelum
-  go-live: apakah ada refund kalau grafolog belum mulai mengerjakan skor?
-  Bagaimana kalau pembayaran DOKU sukses tapi terjadi kegagalan teknis di
-  sisi kami?]
+- Pembelian, pembatalan, dan pengembalian dana mengikuti
+  [Kebijakan Pembelian, Pembatalan & Pengembalian Dana](/kebijakan-transaksi).
 
 ## 6. Kekayaan Intelektual
 

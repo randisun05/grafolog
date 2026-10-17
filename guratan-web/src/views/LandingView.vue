@@ -252,6 +252,7 @@ onMounted(async () => {
           <RouterLink to="/register" class="btn btn--primary">{{
             content.landing_cta_label
           }}</RouterLink>
+          <RouterLink to="/cek-tulisan" class="btn btn--ghost">Cek Tulisan Gratis</RouterLink>
           <a href="#cara-kerja" class="btn btn--ghost">Lihat Cara Kerja ↓</a>
         </div>
         <p class="hero__trust">{{ content.landing_hero_trust }}</p>
@@ -463,6 +464,14 @@ onMounted(async () => {
       <RouterLink to="/privasi">Kebijakan Privasi</RouterLink>
       <span aria-hidden="true">·</span>
       <RouterLink to="/syarat">Syarat Layanan</RouterLink>
+      <span aria-hidden="true">·</span>
+      <RouterLink to="/kebijakan-transaksi">Kebijakan Transaksi</RouterLink>
+      <span aria-hidden="true">·</span>
+      <RouterLink to="/artikel">Artikel</RouterLink>
+      <span aria-hidden="true">·</span>
+      <RouterLink to="/kuis">Kuis Ciri Tulisan</RouterLink>
+      <span aria-hidden="true">·</span>
+      <RouterLink to="/daftar-perusahaan">Untuk Perusahaan</RouterLink>
     </footer>
   </div>
 </template>

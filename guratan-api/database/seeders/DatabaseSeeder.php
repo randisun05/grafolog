@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             PricingPlanSeeder::class,
             ProductSeeder::class,
             ContentBlockSeeder::class,
+            SelfCheckSeeder::class, // setelah KB: melengkapi pemetaan opsi -> Indikator
+            ContentSeeder::class,
         ]);
     }
 }

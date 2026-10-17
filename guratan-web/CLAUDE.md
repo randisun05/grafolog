@@ -662,6 +662,17 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   "Antrean Validasi". `TokenWalletView` (`/token-saya`) juga untuk supervisor (tanpa form beli).
   `AdminTokensView`: biaya Laporan Master + Validasi Supervisor.
 
+## Fase E engagement & SOP — 2026-10-17
+
+- Publik: `SelfCheckView` (`/cek-tulisan`, `/cek-tulisan/:uuid`; ilustrasi opsi =
+  `components/engagement/HandwritingSample.vue`, CSS murni dari token `ilustrasi`),
+  `ArticlesView` (`/artikel`, `/artikel/:slug`), `QuizView` (`/kuis`), LegalView doc `transaksi`
+  (`/kebijakan-transaksi`). Navbar tamu + footer landing + CTA hero mengarah ke sini.
+- `RiwayatView`: ajukan refund (bila `refundable`) + status/catatan refund. `AdminOrdersView`:
+  `AdminRefundQueue`. `ClientOffers`: tautan cek tulisan/kuis/artikel + "Rekomendasi mitra"
+  (pengungkapan afiliasi; klik dicatat lalu buka tab baru). `AdminEngagementView`
+  (`/admin/engagement`): panel cek tulisan & lead, produk mitra, artikel.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

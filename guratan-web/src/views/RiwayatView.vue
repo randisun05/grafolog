@@ -60,6 +60,26 @@ async function cancelOrder(order) {
   }
 }
 
+// SOP refund (Fase E): ajukan selama pesanan diproses & belum ada hasil yang diserahkan.
+const refundFor = ref(null)
+const refundReason = ref('')
+async function requestRefund(order) {
+  try {
+    await api.post(`/orders/${order.id}/refund-request`, { reason: refundReason.value })
+    toast.push('Permintaan refund dikirim. Admin akan meninjau.', 'success')
+    refundFor.value = null
+    refundReason.value = ''
+    await load()
+  } catch (e) {
+    const errors = e.response?.data?.errors
+    toast.push(
+      errors
+        ? Object.values(errors).flat()[0]
+        : (e.response?.data?.message ?? 'Gagal mengajukan refund.'),
+    )
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -99,6 +119,43 @@ onMounted(load)
             <span v-else class="riwayat__meta">Sedang dikerjakan grafolog</span>
           </div>
           <ServiceDeliveryCard v-for="d in o.deliveries" :key="d.id" :delivery="d" mode="client" />
+
+          <p v-if="o.refund_status" class="riwayat__refund">
+            Refund
+            {{
+              {
+                diajukan: 'diajukan - menunggu keputusan admin',
+                disetujui: 'disetujui',
+                ditolak: 'ditolak',
+              }[o.refund_status]
+            }}<template v-if="o.refund_note">: {{ o.refund_note }}</template>
+          </p>
+          <template v-if="o.refundable">
+            <button
+              v-if="refundFor !== o.id"
+              type="button"
+              class="riwayat__refund-link"
+              @click="refundFor = o.id"
+            >
+              Ajukan pembatalan &amp; refund
+            </button>
+            <form v-else class="riwayat__refund-form" @submit.prevent="requestRefund(o)">
+              <textarea
+                v-model="refundReason"
+                rows="2"
+                minlength="10"
+                required
+                placeholder="Alasan pengajuan (min. 10 karakter)"
+              ></textarea>
+              <div class="riwayat__actions">
+                <button type="submit" class="btn">Kirim pengajuan</button>
+                <button type="button" class="btn" @click="refundFor = null">Batal</button>
+              </div>
+              <RouterLink to="/kebijakan-transaksi" target="_blank" class="riwayat__meta"
+                >Baca kebijakan refund</RouterLink
+              >
+            </form>
+          </template>
         </li>
       </ul>
     </template>
@@ -208,5 +265,26 @@ onMounted(load)
   color: var(--color-text-soft);
   font-size: 13px;
   white-space: nowrap;
+}
+.riwayat__refund {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--color-text-soft);
+}
+.riwayat__refund-link {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-soft);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.riwayat__refund-form {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 </style>

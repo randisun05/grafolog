@@ -8,6 +8,21 @@ import { formatRupiah, TIPE_LAYANAN } from '@/lib/format'
 
 const products = ref([])
 const codes = ref([])
+const partners = ref([])
+
+// Produk afiliasi: catat klik dulu, lalu buka tautan mitra di tab baru.
+async function openPartner(p) {
+  // Buka tab dulu (masih dalam gesture klik - tidak diblokir popup blocker), putus opener.
+  const tab = window.open('', '_blank')
+  if (tab) tab.opener = null
+  try {
+    const { data } = await api.post(`/affiliate-products/${p.id}/click`)
+    if (tab) tab.location.href = data.url
+    else window.location.href = data.url
+  } catch {
+    tab?.close()
+  }
+}
 
 onMounted(async () => {
   try {
@@ -17,6 +32,7 @@ onMounted(async () => {
     ])
     products.value = list
     codes.value = promo.codes
+    partners.value = (await api.get('/affiliate-products')).data
   } catch {
     // Penawaran bersifat tambahan - dashboard tetap jalan bila gagal dimuat.
   }
@@ -68,6 +84,33 @@ const main = computed(() => products.value.find((p) => p.kategori === 'utama'))
         <span class="offers__price">{{ formatRupiah(p.price) }}</span>
       </RouterLink>
     </div>
+
+    <div class="offers__explore">
+      <RouterLink to="/cek-tulisan">Cek tulisan gratis</RouterLink>
+      <RouterLink to="/kuis">Kuis ciri tulisan</RouterLink>
+      <RouterLink to="/artikel">Artikel</RouterLink>
+    </div>
+
+    <template v-if="partners.length">
+      <h2>Rekomendasi mitra</h2>
+      <p class="offers__disclosure">
+        Produk pihak ketiga. Guratan dapat menerima komisi dari pembelian melalui tautan ini.
+      </p>
+      <div class="offers__grid">
+        <button
+          v-for="p in partners"
+          :key="p.id"
+          type="button"
+          class="offers__card"
+          @click="openPartner(p)"
+        >
+          <span class="offers__label">{{ p.mitra }}</span>
+          <strong>{{ p.nama }}</strong>
+          <span class="offers__desc">{{ p.ringkasan }}</span>
+          <span class="offers__desc">Kunjungi mitra ↗</span>
+        </button>
+      </div>
+    </template>
   </section>
 </template>
 
@@ -144,5 +187,21 @@ const main = computed(() => products.value.find((p) => p.kategori === 'utama'))
 .offers__price {
   margin-top: auto;
   font-weight: 600;
+}
+.offers__explore {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.offers__disclosure {
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: var(--color-text-soft);
+}
+button.offers__card {
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
 }
 </style>

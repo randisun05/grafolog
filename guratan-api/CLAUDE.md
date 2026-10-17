@@ -1731,6 +1731,33 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Laporan lama di-backfill `validation=supervisor`. Demo: biaya validasi 2 token, Ani/Bima 10
   token, laporan Citra terbit mandiri. 475 test (baru `ReportValidationTest`).
 
+## Fase E engagement & SOP — 2026-10-17
+
+- **Cek tulisan terpandu (Rapid dihidupkan sebagai lead magnet)**: `self_check_questions` /
+  `self_check_options` (tiap opsi → satu `indikator_id` KB; `SelfCheckSeeder` memetakan lewat nama
+  indikator + kode aspek, dipanggil migrasi DAN `DatabaseSeeder` setelah KB) / `self_check_results`
+  (uuid, email hanya dengan `consent`, user bila login). Publik: `GET /self-check`,
+  `POST /self-check` (throttle 10/menit, ≥3 jawaban valid), `GET /self-check/{uuid}`. Hasil =
+  maks 5 aspek terurut jumlah indikator terpilih, berisi `keterangan_umum_id` aspek + teks
+  indikator KB (EN) apa adanya + disclaimer + CTA Master. **Tanpa skor, tanpa CV, tanpa teks
+  karangan.** Admin `/admin/self-check` (pertanyaan, opsi → indikator, `results` = lead).
+- **SOP refund**: `orders.refund_*`. Klien `POST /orders/{o}/refund-request {reason≥10}` bila
+  `Order::isRefundable()` (diproses, laporan belum terbit, belum ada layanan selesai; bukan batch).
+  Admin `GET /admin/refunds`, `POST /admin/orders/{o}/refund {approve|reject, note}` — approve →
+  status `dikembalikan`, layanan terbuka dibatalkan, `HandwritingSample::isPaid()` (kini membaca
+  status order bila ada) jadi false sehingga skoring terkunci. Dana dikembalikan manual di DOKU.
+  Dokumen: `legal/sop-transaksi.md` (`/kebijakan-transaksi`, placeholder keputusan bisnis).
+- **Afiliasi**: `affiliate_products` (url https, target semua/b2c/b2b) + `affiliate_clicks`.
+  `GET /affiliate-products` (target sesuai role), `POST /affiliate-products/{p}/click` → `{url}`.
+  Admin CRUD `/admin/affiliate-products` (+`clicks_count`).
+- **Artikel**: `articles` (teks polos, paragraf = baris kosong). `GET /articles`,
+  `GET /articles/{slug}` (published saja); admin CRUD `/admin/articles` (slug otomatis unik,
+  `published_at` saat pertama terbit). `ContentSeeder`: 2 artikel faktual (panduan scan, posisi
+  grafologi sebagai alat refleksi).
+- **Mini game**: `GET /games/quiz?n=` — soal = Indikator KB (nama unik di satu aspek, bukan
+  "See listing"), 4 opsi aspek, kunci & penjelasan dari KB. Skor di browser.
+- 486 test (baru `EngagementFeaturesTest`, `RefundFlowTest`). Demo: 2 produk mitra "(contoh)".
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

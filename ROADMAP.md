@@ -957,4 +957,6 @@ supervisor = validasi opsional dibayar token.
       (aspek kunci + wawancara, tanpa skor kecocokan).
 - [x] Fase D (11): validasi supervisor opsional — laporan draf, terbit mandiri atau minta validasi
       berbayar token yang ditransfer ke supervisor peninjau.
-- [ ] Fase E (3,5,15,21): rapid self-check, SOP pembelian/refund/pembatalan, afiliasi, konten & mini games.
+- [x] Fase E (3,5,15,21): cek tulisan terpandu (lead magnet berbasis indikator KB), SOP + alur refund,
+      produk mitra/afiliasi, artikel, kuis ciri tulisan. Sisa keputusan bisnis: placeholder di
+      `legal/sop-transaksi.md` (estimasi waktu, besaran refund, kanal kontak, no-show).
