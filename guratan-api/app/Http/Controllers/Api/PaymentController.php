@@ -10,6 +10,7 @@ use App\Models\HandwritingSample;
 use App\Models\Payment;
 use App\Models\PricingPlan;
 use App\Models\TokenPurchase;
+use App\Services\Commerce\OrderService;
 use App\Services\Payment\DokuService;
 use App\Services\Payment\PaymentMode;
 use App\Services\TokenWalletService;
@@ -171,6 +172,10 @@ class PaymentController extends Controller
         // jaga-jaga DOKU mengirim notifikasi SUCCESS dobel untuk invoice yang sama.
         if ($status === 'SUCCESS' && ! $wasAlreadyPaid) {
             $payment->discountCode?->incrementUsage();
+            // Pembayaran pesanan produk (2026-10-17): buat layanan pendukungnya.
+            if ($payment->order) {
+                app(OrderService::class)->markPaid($payment->order);
+            }
         }
     }
 

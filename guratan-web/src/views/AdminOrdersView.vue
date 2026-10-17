@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import SampleImages from '@/components/shared/SampleImages.vue'
+import AdminServiceQueue from '@/components/commerce/AdminServiceQueue.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -72,8 +73,8 @@ onMounted(() => Promise.all([loadOrders(), loadGrafologs()]))
   <div class="admin-orders">
     <h1>Pesanan Masuk</h1>
     <p class="admin-orders__note">
-      Pesanan yang dibuat klien lewat halaman Pesan Laporan. Tugaskan grafolog setelah pembayaran
-      lunas.
+      Analisis tulisan tangan dari pesanan klien (Master). Tugaskan grafolog setelah pembayaran
+      lunas. Layanan pendukung (wawancara, konsultasi, konseling, intervensi) ada di bagian bawah.
     </p>
 
     <div class="admin-orders__filters" role="tablist">
@@ -136,6 +137,7 @@ onMounted(() => Promise.all([loadOrders(), loadGrafologs()]))
         <SampleImages v-if="expanded === o.id" :sample-id="o.id" />
       </li>
     </ul>
+    <AdminServiceQueue :grafologs="grafologs" />
   </div>
 </template>
 

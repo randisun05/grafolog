@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             VariableEqualityRuleSeeder::class,
             AdministratorSeeder::class,
             PricingPlanSeeder::class,
+            ProductSeeder::class,
             ContentBlockSeeder::class,
         ]);
     }

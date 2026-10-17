@@ -40,17 +40,19 @@ class DiscountCodeController extends Controller
      */
     public function update(Request $request, DiscountCode $discountCode): JsonResponse
     {
-        $request->validate(['is_active' => ['required', 'boolean']]);
+        // Yang boleh diubah setelah dibuat hanya status aktif dan tampil-sebagai-promo (is_public):
+        // nilai/kuota/produk tetap beku supaya arti pemakaian lama tidak berubah.
+        $data = $request->validate([
+            'is_active' => ['required_without:is_public', 'boolean'],
+            'is_public' => ['required_without:is_active', 'boolean'],
+        ]);
 
-        $discountCode->update(['is_active' => $request->boolean('is_active')]);
+        $discountCode->update($data);
 
-        AuditLog::record(
-            $request->boolean('is_active') ? 'aktifkan_kode_diskon' : 'nonaktifkan_kode_diskon',
-            DiscountCode::class,
-            $discountCode->id,
-            $request->user()->id,
-            $request->ip()
-        );
+        $aksi = array_key_exists('is_active', $data)
+            ? ($data['is_active'] ? 'aktifkan_kode_diskon' : 'nonaktifkan_kode_diskon')
+            : ($data['is_public'] ? 'tampilkan_promo' : 'sembunyikan_promo');
+        AuditLog::record($aksi, DiscountCode::class, $discountCode->id, $request->user()->id, $request->ip());
 
         return response()->json($discountCode);
     }

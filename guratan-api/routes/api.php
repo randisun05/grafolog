@@ -13,8 +13,9 @@ use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\KnowledgeMatrixController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
-use App\Http\Controllers\Api\Admin\OrderController;
+use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\PricingController as AdminPricingController;
+use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\ScoringRuleBandController;
 use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
@@ -30,14 +31,17 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\MeasurementVariableController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PricingController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReportReviewController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\SampleImageController;
 use App\Http\Controllers\Api\ScoringController;
+use App\Http\Controllers\Api\ServiceDeliveryController;
 use App\Http\Controllers\Api\SindromController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TokenPurchaseController;
@@ -61,6 +65,8 @@ Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentContr
 
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/promos', [ProductController::class, 'promos']);
 Route::get('/content', [ContentController::class, 'index']);
 
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
@@ -69,6 +75,18 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::post('/pricing/preview', [PricingController::class, 'preview']);
+
+    // Pesanan produk & layanan pendukung (2026-10-17).
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::post('/orders/preview', [OrderController::class, 'preview']);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::post('/orders/{order}/payment', [OrderController::class, 'pay']);
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
+    Route::get('/service-deliveries', [ServiceDeliveryController::class, 'index']);
+    Route::get('/service-deliveries/{delivery}', [ServiceDeliveryController::class, 'show']);
+    Route::post('/service-deliveries/{delivery}/assign', [ServiceDeliveryController::class, 'assign']);
+    Route::put('/service-deliveries/{delivery}/schedule', [ServiceDeliveryController::class, 'schedule']);
+    Route::post('/service-deliveries/{delivery}/report', [ServiceDeliveryController::class, 'report']);
     Route::get('/announcements', [AnnouncementController::class, 'index']);
 
     Route::get('/tokens/price', [TokenController::class, 'price']);
@@ -120,12 +138,22 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::middleware('role:hr,administrator')->get('/grafologs', [UserLookupController::class, 'grafologs']);
 
     Route::middleware('role:administrator')->prefix('admin')->group(function () {
+        // Kelola Produk (2026-10-17) - harga lewat PUT /admin/pricing/{kode}.
+        Route::get('/products', [AdminProductController::class, 'index']);
+        Route::get('/products/templates', [AdminProductController::class, 'templates']);
+        Route::post('/products', [AdminProductController::class, 'store']);
+        Route::put('/products/{product}', [AdminProductController::class, 'update']);
+        Route::delete('/products/{product}', [AdminProductController::class, 'destroy']);
+        Route::post('/products/{product}/components', [AdminProductController::class, 'storeComponent']);
+        Route::put('/product-components/{component}', [AdminProductController::class, 'updateComponent']);
+        Route::delete('/product-components/{component}', [AdminProductController::class, 'destroyComponent']);
+
         // Verifikasi pendaftar grafolog (2026-10-17).
         Route::get('/grafolog-applications', [GrafologVerificationController::class, 'index']);
         Route::get('/grafolog-applications/{user}/certificate', [GrafologVerificationController::class, 'certificate']);
         Route::post('/grafolog-applications/{user}/decision', [GrafologVerificationController::class, 'decide']);
 
-        Route::get('/orders', [OrderController::class, 'index']);
+        Route::get('/orders', [AdminOrderController::class, 'index']);
         Route::get('/users', [AdminUserController::class, 'index']);
         Route::post('/users', [AdminUserController::class, 'store']);
         Route::get('/companies', [CompanyController::class, 'index']);

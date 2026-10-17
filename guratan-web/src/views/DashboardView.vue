@@ -3,7 +3,10 @@ import { ref, onMounted, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
+import ClientOffers from '@/components/commerce/ClientOffers.vue'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const dashboard = ref(null)
 const loading = ref(true)
 const error = ref('')
@@ -69,7 +72,12 @@ onMounted(async () => {
           <strong>{{ a.title }}</strong>
           <p>{{ a.body }}</p>
         </div>
-        <button type="button" class="dashboard__announcement-close" aria-label="Tutup" @click="dismissAnnouncement(a.id)">
+        <button
+          type="button"
+          class="dashboard__announcement-close"
+          aria-label="Tutup"
+          @click="dismissAnnouncement(a.id)"
+        >
           &times;
         </button>
       </div>
@@ -92,13 +100,16 @@ onMounted(async () => {
           <li v-for="item in dashboard.activity" :key="item.id" class="dashboard__activity-item">
             <RouterLink :to="`/reports/${item.id}`">{{ item.label }}</RouterLink>
             <span class="dashboard__activity-meta">
-              <span :class="['badge', `badge--${item.status}`]">{{ statusLabel[item.status] ?? item.status }}</span>
+              <span :class="['badge', `badge--${item.status}`]">{{
+                statusLabel[item.status] ?? item.status
+              }}</span>
               <span>{{ formatDate(item.occurred_at) }}</span>
             </span>
           </li>
         </ul>
       </section>
     </template>
+    <ClientOffers v-if="auth.isClient" />
   </div>
 </template>
 

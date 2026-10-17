@@ -101,11 +101,13 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
-      path: '/admin/pricing',
-      name: 'admin-pricing',
-      component: () => import('../views/AdminPricingView.vue'),
+      path: '/admin/products',
+      name: 'admin-products',
+      component: () => import('../views/AdminProductsView.vue'),
       meta: { requiresAuth: true, role: 'administrator' },
     },
+    // Harga kini dikelola per produk (2026-10-17).
+    { path: '/admin/pricing', redirect: { name: 'admin-products' } },
     {
       path: '/admin/discounts',
       name: 'admin-discounts',

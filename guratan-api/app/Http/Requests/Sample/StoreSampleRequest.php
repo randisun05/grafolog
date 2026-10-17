@@ -25,7 +25,7 @@ class StoreSampleRequest extends FormRequest
         $isGrafolog = $this->user()->isGrafolog();
 
         return [
-            'tier' => ['required', 'string', 'in:comprehensive,master'],
+            'tier' => ['required', 'string', 'in:master'],
             'client_user_id' => [$isGrafolog ? 'required' : 'prohibited', 'integer', 'exists:users,id'],
             'image' => ['prohibited'],
         ];

@@ -18,8 +18,8 @@ class PricingPlanSeeder extends Seeder
 {
     public function run(): void
     {
+        // Comprehensive tidak dijual lagi (2026-10-17); harga produk lain diisi ProductSeeder.
         $defaults = [
-            'comprehensive' => 49000,
             'master' => 149000,
         ];
 

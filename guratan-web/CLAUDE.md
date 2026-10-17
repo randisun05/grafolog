@@ -628,6 +628,20 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - `lib/handwritingPhoto.js`: cek format/30MB/FHD di browser + petunjuk scan; dipakai `OrderView`
   dan `SampleImages`. `AssignedToMeView`: badge & filter "Penugasan biro" vs "Klien saya".
 
+## Fase B katalog produk — 2026-10-17
+
+- `OrderView` (`/pesan?produk=&kode=`): kartu produk utama/pendukung dari `GET /products`, chip promo
+  dari `GET /promos`; alur `POST /orders` → unggah scan ke `order.sample_id` (bila butuh tulisan) →
+  `POST /orders/{id}/payment` → `/riwayat`.
+- `components/commerce/`: `ServiceDeliveryCard` (klien: baca laporan; grafolog: jadwal + form
+  laporan dari `report_fields`), `AdminServiceQueue` (di `AdminOrdersView`, tugaskan grafolog),
+  `ClientOffers` (Dashboard klien). `RiwayatView` → "Pesanan Saya" (bayar/batal + layanan).
+  `AssignedToMeView` → "Layanan Pendukung Ditugaskan".
+- `AdminProductsView` (`/admin/products`, `/admin/pricing` dialihkan ke sini; `AdminPricingView`
+  dihapus): produk, harga + riwayat, komponen & template laporan. `AdminDiscountsView`: centang
+  produk, "Jadikan promo". Landing `#harga` dari `/products`. `lib/format.js` (rupiah, tanggal, label).
+- Navbar admin jadi dropdown `<details>` "Admin".
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

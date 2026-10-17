@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdatePricingRequest;
 use App\Models\AuditLog;
 use App\Models\PricingPlan;
+use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -24,7 +25,8 @@ class PricingController extends Controller
 
     public function update(UpdatePricingRequest $request, string $tier): JsonResponse
     {
-        abort_unless(in_array($tier, ['comprehensive', 'master'], true), 404);
+        // Harga produk disimpan per kode produk (2026-10-17) - lihat App\Models\Product.
+        abort_unless(Product::where('kode', $tier)->exists(), 404);
 
         $plan = PricingPlan::setPriceFor($tier, $request->validated('price'), $request->user());
 

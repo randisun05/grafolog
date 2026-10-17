@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PreviewPricingRequest;
 use App\Models\DiscountCode;
 use App\Models\PricingPlan;
+use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -19,7 +20,10 @@ class PricingController extends Controller
 {
     public function index(): JsonResponse
     {
-        $prices = PricingPlan::where('is_active', true)->get(['tier', 'price', 'updated_at']);
+        // Hanya harga produk B2C yang aktif (Comprehensive tidak dijual lagi sejak 2026-10-17).
+        $prices = PricingPlan::where('is_active', true)
+            ->whereIn('tier', Product::forClients()->pluck('kode'))
+            ->get(['tier', 'price', 'updated_at']);
 
         return response()->json($prices);
     }

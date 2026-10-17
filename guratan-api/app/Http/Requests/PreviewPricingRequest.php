@@ -21,7 +21,7 @@ class PreviewPricingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tier' => ['required', 'string', 'in:comprehensive,master'],
+            'tier' => ['required', 'string', 'exists:products,kode'],
             'code' => ['nullable', 'string', 'max:32'],
         ];
     }

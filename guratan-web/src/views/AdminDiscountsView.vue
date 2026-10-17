@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast'
 const toast = useToast()
 
 const codes = ref([])
+const products = ref([]) // kode promo berlaku per produk (Kelola Produk) + 'token'
 const loading = ref(true)
 const loadError = ref('')
 
@@ -14,9 +15,11 @@ const form = ref({
   code: '',
   type: 'percentage',
   value: '',
-  tiers: [], // kosong = berlaku semua tier
+  tiers: [], // kosong = berlaku semua produk
   max_uses: '',
   valid_until: '',
+  is_public: false,
+  description: '',
 })
 const errors = ref({})
 const submitting = ref(false)
@@ -26,8 +29,12 @@ async function loadCodes() {
   loading.value = true
   loadError.value = ''
   try {
-    const { data } = await api.get('/admin/discount-codes')
+    const [{ data }, { data: productData }] = await Promise.all([
+      api.get('/admin/discount-codes'),
+      api.get('/admin/products'),
+    ])
     codes.value = data.data
+    products.value = productData
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat kode diskon.'
   } finally {
@@ -46,9 +53,20 @@ async function submit() {
       applicable_tiers: form.value.tiers.length ? form.value.tiers : null,
       max_uses: form.value.max_uses ? Number(form.value.max_uses) : null,
       valid_until: form.value.valid_until || null,
+      is_public: form.value.is_public,
+      description: form.value.description || null,
     })
     toast.push(`Kode ${form.value.code.toUpperCase()} berhasil dibuat.`, 'success')
-    form.value = { code: '', type: 'percentage', value: '', tiers: [], max_uses: '', valid_until: '' }
+    form.value = {
+      code: '',
+      type: 'percentage',
+      value: '',
+      tiers: [],
+      max_uses: '',
+      valid_until: '',
+      is_public: false,
+      description: '',
+    }
     await loadCodes()
   } catch (e) {
     errors.value = e.response?.data?.errors ?? {}
@@ -62,7 +80,10 @@ async function toggleActive(discount) {
   togglingId.value = discount.id
   try {
     await api.patch(`/admin/discount-codes/${discount.id}`, { is_active: !discount.is_active })
-    toast.push(`Kode ${discount.code} ${discount.is_active ? 'dinonaktifkan' : 'diaktifkan'}.`, 'success')
+    toast.push(
+      `Kode ${discount.code} ${discount.is_active ? 'dinonaktifkan' : 'diaktifkan'}.`,
+      'success',
+    )
     await loadCodes()
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal mengubah status kode.')
@@ -71,8 +92,33 @@ async function toggleActive(discount) {
   }
 }
 
+async function togglePublic(discount) {
+  togglingId.value = discount.id
+  try {
+    await api.patch(`/admin/discount-codes/${discount.id}`, { is_public: !discount.is_public })
+    toast.push(
+      `Kode ${discount.code} ${discount.is_public ? 'disembunyikan' : 'ditampilkan di halaman klien'}.`,
+      'success',
+    )
+    await loadCodes()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah tampilan promo.')
+  } finally {
+    togglingId.value = null
+  }
+}
+
+function productNames(kodes) {
+  if (!kodes) return 'Semua produk'
+  return kodes
+    .map((k) => (k === 'token' ? 'Token' : (products.value.find((p) => p.kode === k)?.nama ?? k)))
+    .join(', ')
+}
+
 function formatValue(discount) {
-  return discount.type === 'percentage' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`
+  return discount.type === 'percentage'
+    ? `${discount.value}%`
+    : `Rp ${discount.value.toLocaleString('id-ID')}`
 }
 
 onMounted(loadCodes)
@@ -80,7 +126,7 @@ onMounted(loadCodes)
 
 <template>
   <div class="admin-discounts">
-    <h1>Kelola Diskon</h1>
+    <h1>Kelola Promo &amp; Diskon</h1>
     <p class="admin-discounts__note">
       Kode yang sudah pernah dipakai tidak bisa diedit nilainya — nonaktifkan, lalu buat kode baru
       kalau perlu perilaku berbeda.
@@ -109,11 +155,15 @@ onMounted(loadCodes)
 
       <div class="admin-discounts__row">
         <label class="admin-discounts__checkboxes">
-          Berlaku untuk tier (kosongkan = semua)
+          Berlaku untuk produk (kosongkan = semua)
           <span>
-            <label><input v-model="form.tiers" type="checkbox" value="comprehensive" /> Comprehensive</label>
-            <label><input v-model="form.tiers" type="checkbox" value="master" /> Master</label>
-            <label><input v-model="form.tiers" type="checkbox" value="token" /> Token (pembelian token grafolog)</label>
+            <label v-for="p in products" :key="p.kode"
+              ><input v-model="form.tiers" type="checkbox" :value="p.kode" /> {{ p.nama }}</label
+            >
+            <label
+              ><input v-model="form.tiers" type="checkbox" value="token" /> Token (pembelian token
+              grafolog)</label
+            >
           </span>
         </label>
         <label>
@@ -123,6 +173,21 @@ onMounted(loadCodes)
         <label>
           Berlaku sampai (opsional)
           <input v-model="form.valid_until" type="date" />
+        </label>
+      </div>
+
+      <div class="admin-discounts__row">
+        <label>
+          Keterangan promo (tampil di halaman klien)
+          <input
+            v-model="form.description"
+            type="text"
+            placeholder="mis. Hemat 20% Master bulan ini"
+          />
+        </label>
+        <label class="admin-discounts__public">
+          <input v-model="form.is_public" type="checkbox" /> Tampilkan sebagai promo di halaman
+          klien
         </label>
       </div>
 
@@ -140,7 +205,7 @@ onMounted(loadCodes)
         <tr>
           <th>Kode</th>
           <th>Nilai</th>
-          <th>Tier</th>
+          <th>Produk</th>
           <th>Pemakaian</th>
           <th>Status</th>
           <th></th>
@@ -150,16 +215,30 @@ onMounted(loadCodes)
         <tr v-for="d in codes" :key="d.id">
           <td class="admin-discounts__code">{{ d.code }}</td>
           <td>{{ formatValue(d) }}</td>
-          <td>{{ d.applicable_tiers?.join(', ') ?? 'Semua' }}</td>
+          <td>{{ productNames(d.applicable_tiers) }}</td>
           <td>{{ d.used_count }}{{ d.max_uses ? ` / ${d.max_uses}` : '' }}</td>
           <td>
             <span class="badge" :class="d.is_active ? 'badge--active' : 'badge--inactive'">
               {{ d.is_active ? 'Aktif' : 'Nonaktif' }}
             </span>
+            <span v-if="d.is_public" class="badge badge--active">Promo publik</span>
           </td>
           <td>
-            <button type="button" class="btn" :disabled="togglingId === d.id" @click="toggleActive(d)">
+            <button
+              type="button"
+              class="btn"
+              :disabled="togglingId === d.id"
+              @click="toggleActive(d)"
+            >
               {{ d.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+            </button>
+            <button
+              type="button"
+              class="btn"
+              :disabled="togglingId === d.id"
+              @click="togglePublic(d)"
+            >
+              {{ d.is_public ? 'Sembunyikan promo' : 'Jadikan promo' }}
             </button>
           </td>
         </tr>
@@ -171,6 +250,14 @@ onMounted(loadCodes)
 <style scoped>
 .admin-discounts {
   max-width: 820px;
+}
+.admin-discounts__public {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-discounts__public input {
+  width: auto;
 }
 .admin-discounts__note {
   color: var(--color-text-soft);

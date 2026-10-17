@@ -10,7 +10,7 @@ class DiscountCode extends Model
 {
     protected $fillable = [
         'code', 'type', 'value', 'applicable_tiers', 'max_uses',
-        'used_count', 'valid_from', 'valid_until', 'is_active', 'created_by',
+        'used_count', 'valid_from', 'valid_until', 'is_active', 'is_public', 'description', 'created_by',
     ];
 
     /**
@@ -20,6 +20,7 @@ class DiscountCode extends Model
      * the DB's true/0 until you ->fresh() it.
      */
     protected $attributes = [
+        'is_public' => false,
         'is_active' => true,
         'used_count' => 0,
     ];
@@ -28,6 +29,7 @@ class DiscountCode extends Model
     {
         return [
             'applicable_tiers' => 'array',
+            'is_public' => 'boolean',
             'valid_from' => 'datetime',
             'valid_until' => 'datetime',
             'is_active' => 'boolean',
@@ -46,27 +48,19 @@ class DiscountCode extends Model
      */
     public function isValidFor(string $tier): bool
     {
-        if (! $this->is_active) {
-            return false;
-        }
+        return $this->isCurrentlyUsable()
+            && ($this->applicable_tiers === null || in_array($tier, $this->applicable_tiers, true));
+    }
 
+    /** Aktif, dalam jendela waktu, dan kuota belum habis - tanpa melihat produk/tier. */
+    public function isCurrentlyUsable(): bool
+    {
         $now = Carbon::now();
-        if ($this->valid_from && $now->lt($this->valid_from)) {
-            return false;
-        }
-        if ($this->valid_until && $now->gt($this->valid_until)) {
-            return false;
-        }
 
-        if ($this->max_uses !== null && $this->used_count >= $this->max_uses) {
-            return false;
-        }
-
-        if ($this->applicable_tiers !== null && ! in_array($tier, $this->applicable_tiers, true)) {
-            return false;
-        }
-
-        return true;
+        return $this->is_active
+            && ! ($this->valid_from && $now->lt($this->valid_from))
+            && ! ($this->valid_until && $now->gt($this->valid_until))
+            && ! ($this->max_uses !== null && $this->used_count >= $this->max_uses);
     }
 
     /**

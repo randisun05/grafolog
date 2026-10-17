@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
@@ -14,6 +14,11 @@ const isDark = computed(() => {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 })
 
+const adminMenu = ref(null)
+function closeAdminMenu() {
+  if (adminMenu.value) adminMenu.value.open = false
+}
+
 async function handleLogout() {
   await auth.logout()
   router.push({ name: 'landing' })
@@ -26,25 +31,34 @@ async function handleLogout() {
 
     <nav class="app-navbar__nav">
       <template v-if="auth.isAuthenticated">
-        <RouterLink v-if="auth.isPendingGrafolog" to="/status-grafolog">Status Pendaftaran</RouterLink>
+        <RouterLink v-if="auth.isPendingGrafolog" to="/status-grafolog"
+          >Status Pendaftaran</RouterLink
+        >
         <template v-else>
           <RouterLink to="/dashboard">Dashboard</RouterLink>
           <RouterLink to="/riwayat">Riwayat</RouterLink>
         </template>
-        <RouterLink v-if="auth.isClient" to="/pesan">Pesan Laporan</RouterLink>
+        <RouterLink v-if="auth.isClient" to="/pesan">Pesan Layanan</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/token-saya">Token Saya</RouterLink>
-        <RouterLink v-if="auth.isSupervisor || auth.isAdministrator" to="/supervisor/reviews">Review Laporan</RouterLink>
+        <RouterLink v-if="auth.isSupervisor || auth.isAdministrator" to="/supervisor/reviews"
+          >Review Laporan</RouterLink
+        >
         <RouterLink v-if="auth.isAdministrator" to="/admin/orders">Pesanan Masuk</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/users">Kelola Staf</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/grafolog">Verifikasi Grafolog</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/pricing">Kelola Harga</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/discounts">Kelola Diskon</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/content">Kelola Konten</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/announcements">Pengumuman</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/tokens">Kelola Token</RouterLink>
-        <RouterLink v-if="auth.isAdministrator" to="/admin/knowledge">Knowledge Base</RouterLink>
+        <details v-if="auth.isAdministrator" ref="adminMenu" class="app-navbar__menu">
+          <summary>Admin</summary>
+          <div class="app-navbar__menu-list" @click="closeAdminMenu">
+            <RouterLink to="/admin/products">Kelola Produk</RouterLink>
+            <RouterLink to="/admin/discounts">Kelola Promo &amp; Diskon</RouterLink>
+            <RouterLink to="/admin/users">Kelola Staf</RouterLink>
+            <RouterLink to="/admin/grafolog">Verifikasi Grafolog</RouterLink>
+            <RouterLink to="/admin/tokens">Kelola Token</RouterLink>
+            <RouterLink to="/admin/content">Kelola Konten</RouterLink>
+            <RouterLink to="/admin/announcements">Pengumuman</RouterLink>
+            <RouterLink to="/admin/knowledge">Knowledge Base</RouterLink>
+          </div>
+        </details>
         <RouterLink v-if="auth.isHr" to="/hr/candidates">Kandidat</RouterLink>
         <span class="app-navbar__user">{{ auth.user?.name }}</span>
         <span class="app-navbar__cmdk-hint" title="Buka command palette">Ctrl/&#8984;+K</span>
@@ -62,13 +76,29 @@ async function handleLogout() {
         :title="isDark ? 'Mode terang' : 'Mode gelap'"
         @click="toggleTheme"
       >
-        <svg v-if="isDark" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          v-if="isDark"
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <circle cx="12" cy="12" r="4" />
           <path
             d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
           />
         </svg>
-        <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          v-else
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>
       </button>
@@ -108,6 +138,45 @@ async function handleLogout() {
 .app-navbar__nav a:hover,
 .app-navbar__nav a.router-link-exact-active {
   color: var(--color-seal);
+}
+.app-navbar__menu {
+  position: relative;
+}
+.app-navbar__menu summary {
+  cursor: pointer;
+  color: var(--color-ink-soft);
+  list-style: none;
+}
+.app-navbar__menu summary::-webkit-details-marker {
+  display: none;
+}
+.app-navbar__menu summary::after {
+  content: ' ▾';
+  font-size: 11px;
+}
+.app-navbar__menu[open] summary {
+  color: var(--color-seal);
+}
+.app-navbar__menu-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+.app-navbar__menu-list a {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+.app-navbar__menu-list a:hover {
+  background: var(--color-seal-soft);
 }
 .app-navbar__user {
   color: var(--color-ink-soft);

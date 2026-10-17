@@ -6,7 +6,7 @@ type: project
 Decisions (AskUserQuestion 2026-10-17): rapid = guided self-check (no CV, no random scores);
 products = catalog + components each with own report; B2B = HR chooses grafolog;
 supervisor validation = optional, paid by token transfer from grafolog.
-Phases: A (6,8,9,10,16,17) DONE 2026-10-17; B products (1,2,4,7,12); C B2B (13,14,18,19,20);
+Phases: A (6,8,9,10,16,17) DONE 2026-10-17; B products (1,2,4,7,12) DONE 2026-10-17 (products/product_components/orders/service_deliveries, OrderService); C B2B (13,14,18,19,20);
 D supervisor (11); E rapid/SOP/affiliate/content (3,5,15,21). See ROADMAP "Hasil Uji Manual".
 **Why:** user tested the app manually; Master is the main product, Comprehensive to be removed.
 **How to apply:** continue phases in order; Phase B is the foundation for pricing/discount/promo/B2B.

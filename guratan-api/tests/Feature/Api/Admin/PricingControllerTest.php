@@ -29,18 +29,18 @@ class PricingControllerTest extends TestCase
     public function test_administrator_can_update_price_and_old_row_is_deactivated(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
-        $old = PricingPlan::create(['tier' => 'comprehensive', 'price' => 49000, 'is_active' => true]);
+        $old = PricingPlan::where('tier', 'wawancara')->where('is_active', true)->first();
 
         $response = $this->actingAs($admin, 'sanctum')
-            ->putJson('/api/admin/pricing/comprehensive', ['price' => 55000]);
+            ->putJson('/api/admin/pricing/wawancara', ['price' => 55000]);
 
         $response->assertCreated()
-            ->assertJsonPath('tier', 'comprehensive')
+            ->assertJsonPath('tier', 'wawancara')
             ->assertJsonPath('price', 55000)
             ->assertJsonPath('is_active', true);
 
         $this->assertDatabaseHas('pricing_plans', ['id' => $old->id, 'is_active' => false]);
-        $this->assertSame(55000, PricingPlan::activePriceFor('comprehensive'));
+        $this->assertSame(55000, PricingPlan::activePriceFor('wawancara'));
     }
 
     public function test_price_change_is_audit_logged(): void
@@ -57,13 +57,13 @@ class PricingControllerTest extends TestCase
         ]);
     }
 
-    public function test_invalid_tier_rejected(): void
+    public function test_unknown_product_rejected(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
 
-        $this->actingAs($admin, 'sanctum')
-            ->putJson('/api/admin/pricing/rapid', ['price' => 1000])
-            ->assertNotFound();
+        $this->actingAs($admin, 'sanctum')->putJson('/api/admin/pricing/rapid', ['price' => 1000])->assertNotFound();
+        // Comprehensive bukan produk lagi (2026-10-17).
+        $this->actingAs($admin, 'sanctum')->putJson('/api/admin/pricing/comprehensive', ['price' => 1000])->assertNotFound();
     }
 
     public function test_negative_price_rejected(): void
@@ -71,18 +71,19 @@ class PricingControllerTest extends TestCase
         $admin = User::factory()->create(['role' => 'administrator']);
 
         $this->actingAs($admin, 'sanctum')
-            ->putJson('/api/admin/pricing/comprehensive', ['price' => -1])
+            ->putJson('/api/admin/pricing/master', ['price' => -1])
             ->assertUnprocessable();
     }
 
     public function test_index_lists_price_history(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
-        PricingPlan::setPriceFor('comprehensive', 40000, $admin);
-        PricingPlan::setPriceFor('comprehensive', 49000, $admin);
+        PricingPlan::setPriceFor('konseling', 40000, $admin);
+        PricingPlan::setPriceFor('konseling', 49000, $admin);
 
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/pricing');
 
-        $response->assertOk()->assertJsonCount(2, 'data');
+        $konseling = collect($response->assertOk()->json('data'))->where('tier', 'konseling');
+        $this->assertEqualsCanonicalizing([49000, 40000, 250000], $konseling->pluck('price')->all());
     }
 }

@@ -42,7 +42,7 @@ class ContentBlockSeeder extends Seeder
             'landing_steps_heading' => 'Cara Kerja',
             'landing_steps_subtext' => 'Empat langkah dari sampel tulisan tangan sampai laporan siap dibaca.',
             'landing_steps' => json_encode([
-                ['title' => 'Pilih Tier & Kirim', 'desc' => 'Daftar, pilih Comprehensive atau Master, kirim sampel tulisan tangan Anda.'],
+                ['title' => 'Pilih Layanan & Kirim', 'desc' => 'Daftar, pilih layanan Master atau layanan pendukung, kirim hasil scan tulisan tangan Anda.'],
                 ['title' => 'Grafolog Mengukur', 'desc' => 'Grafolog bersertifikat menilai tulisan tangan Anda memakai kaliper & pakem grafologi ilmiah.'],
                 ['title' => 'Laporan Tersusun', 'desc' => 'Sistem merangkai narasi dari basis pengetahuan grafologi - bukan karangan bebas.'],
                 ['title' => 'Unduh & Baca', 'desc' => 'Laporan lengkap tersedia di dashboard Anda, bisa diunduh sebagai PDF.'],
@@ -52,7 +52,7 @@ class ContentBlockSeeder extends Seeder
             'landing_analysis_subtext' => 'Setiap laporan ditarik dari basis pengetahuan grafologi profesional yang terstruktur.',
 
             'landing_pricing_heading' => 'Harga',
-            'landing_pricing_subtext' => 'Dua tingkat layanan, keduanya dinilai manual oleh grafolog bersertifikat.',
+            'landing_pricing_subtext' => 'Master Graphology sebagai layanan utama, dilengkapi layanan pendukung - semua dikerjakan grafolog bersertifikat.',
 
             'landing_honesty_quote' => 'Insight reflektif untuk mengenal diri - bukan vonis, bukan diagnosis.',
             'landing_honesty_points' => json_encode([

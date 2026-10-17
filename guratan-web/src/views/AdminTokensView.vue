@@ -47,7 +47,7 @@ async function loadAll() {
     prices.value = priceRes.data.data
     costs.value = costRes.data.data
     priceDraft.value = activePrice.value?.price_per_token ?? ''
-    for (const tier of ['comprehensive', 'master']) {
+    for (const tier of ['master']) {
       costDraft.value[tier] = activeCostByTier.value[tier]?.tokens_required ?? ''
     }
   } catch (e) {
@@ -94,7 +94,11 @@ async function saveCost(tier) {
 }
 
 function formatRupiah(value) {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
 
 onMounted(loadAll)
@@ -104,10 +108,10 @@ onMounted(loadAll)
   <div class="admin-tokens">
     <h1>Kelola Token Grafolog</h1>
     <p class="admin-tokens__note">
-      Grafolog membeli token untuk membuat laporan. Harga per token dan jumlah token yang
-      terpotong per laporan bisa diubah di sini — perubahan tidak menghapus riwayat lama, dan
-      setiap perubahan tercatat di log audit. Kalau biaya token satu tier belum diatur (kosong),
-      laporan tier itu tidak memotong token sama sekali.
+      Grafolog membeli token untuk membuat laporan. Harga per token dan jumlah token yang terpotong
+      per laporan bisa diubah di sini — perubahan tidak menghapus riwayat lama, dan setiap perubahan
+      tercatat di log audit. Kalau biaya token satu tier belum diatur (kosong), laporan tier itu
+      tidak memotong token sama sekali.
     </p>
 
     <SkeletonLoader v-if="loading" variant="cards" :rows="2" label="Memuat..." />
@@ -117,7 +121,9 @@ onMounted(loadAll)
         <h3>Harga per Token</h3>
         <p class="admin-tokens__current">
           Harga aktif:
-          <strong>{{ activePrice ? formatRupiah(activePrice.price_per_token) : 'Belum diatur' }}</strong>
+          <strong>{{
+            activePrice ? formatRupiah(activePrice.price_per_token) : 'Belum diatur'
+          }}</strong>
         </p>
         <div class="admin-tokens__edit">
           <input v-model="priceDraft" type="number" min="0" step="500" />
@@ -140,7 +146,7 @@ onMounted(loadAll)
 
       <h2 class="admin-tokens__section-title">Biaya Token per Tier Laporan</h2>
       <div class="admin-tokens__grid">
-        <div v-for="tier in ['comprehensive', 'master']" :key="tier" class="admin-tokens__card">
+        <div v-for="tier in ['master']" :key="tier" class="admin-tokens__card">
           <h3>{{ tierLabel[tier] }}</h3>
           <p class="admin-tokens__current">
             Biaya aktif:

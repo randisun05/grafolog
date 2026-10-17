@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Jobs\SendReportCompletedNotification;
 use App\Models\AuditLog;
 use App\Models\PersonalityReport;
+use App\Services\Commerce\OrderService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 
@@ -31,6 +32,9 @@ class PersonalityReportObserver
         // sebelum itu klien memang belum bisa membukanya.
         if ($personalityReport->wasChanged('review_status') && $personalityReport->isApproved()) {
             SendReportCompletedNotification::dispatch($personalityReport);
+            if ($order = $personalityReport->sample?->order) {
+                app(OrderService::class)->refreshStatus($order);
+            }
         }
     }
 

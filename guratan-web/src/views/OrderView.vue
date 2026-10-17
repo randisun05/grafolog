@@ -1,29 +1,26 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import api from '@/lib/api'
 import { PHOTO_ACCEPT, PHOTO_HINT, partitionPhotos } from '@/lib/handwritingPhoto'
+import { formatRupiah, TIPE_LAYANAN } from '@/lib/format'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
+// Pemesanan berbasis katalog produk (2026-10-17): Master sebagai produk utama + produk pendukung.
+// Pesanan dibuat sekali per sesi halaman; foto diunggah ke sample pesanan bila produk butuh
+// tulisan tangan; lalu pembayaran (DOKU, atau langsung lunas di mode uji).
 const toast = useToast()
 const router = useRouter()
+const route = useRoute()
 
-const tierLabel = {
-  comprehensive: 'Comprehensive',
-  master: 'Master',
-}
-const tierDesc = {
-  comprehensive: 'Analisis mendalam 40 aspek oleh grafolog bersertifikat.',
-  master: 'Comprehensive + sesi konsultasi langsung dengan grafolog.',
-}
-
-const pricing = ref([])
+const products = ref([])
+const promos = ref([])
 const loading = ref(true)
 const loadError = ref('')
 
-const selectedTier = ref(null)
-const discountCode = ref('')
+const selected = ref(null)
+const discountCode = ref(route.query.kode ?? '')
 const previewResult = ref(null)
 const previewLoading = ref(false)
 const previewError = ref('')
@@ -33,10 +30,18 @@ const payError = ref('')
 
 const MAX_PHOTOS = 5
 const photos = ref([])
-const createdSample = ref(null)
+const photoErrors = ref([])
+const createdOrder = ref(null)
 const photosUploaded = ref(false)
 
-const photoErrors = ref([])
+const utama = computed(() => products.value.filter((p) => p.kategori === 'utama'))
+const pendukung = computed(() => products.value.filter((p) => p.kategori !== 'utama'))
+const needsPhotos = computed(() => !!selected.value?.requires_handwriting)
+const finalPrice = computed(() =>
+  previewResult.value?.code_valid
+    ? previewResult.value.final_price
+    : (selected.value?.price ?? null),
+)
 
 async function onPhotos(event) {
   const picked = Array.from(event.target.files ?? [])
@@ -50,90 +55,84 @@ function removePhoto(index) {
   photos.value = photos.value.filter((_, i) => i !== index)
 }
 
-const basePrice = computed(
-  () => pricing.value.find((p) => p.tier === selectedTier.value)?.price ?? null,
-)
-const finalPrice = computed(() => {
-  if (previewResult.value?.code_valid) return previewResult.value.final_price
-  return basePrice.value
-})
-
-function formatRupiah(value) {
-  if (value === null || value === undefined) return '–'
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(value)
-}
-
-async function loadPricing() {
+async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const { data } = await api.get('/pricing')
-    pricing.value = data
+    const [{ data: list }, { data: promo }] = await Promise.all([
+      api.get('/products'),
+      api.get('/promos'),
+    ])
+    products.value = list
+    promos.value = promo.codes
+    const pre =
+      list.find((p) => p.kode === route.query.produk) ?? list.find((p) => p.kode === 'master')
+    if (pre) selectProduct(pre)
   } catch (e) {
-    loadError.value = e.response?.data?.message ?? 'Gagal memuat harga.'
+    loadError.value = e.response?.data?.message ?? 'Gagal memuat produk.'
   } finally {
     loading.value = false
   }
 }
 
-function selectTier(tier) {
-  if (createdSample.value && createdSample.value.tier !== tier) {
-    createdSample.value = null
+function selectProduct(p) {
+  if (createdOrder.value && createdOrder.value.product?.id !== p.id) {
+    createdOrder.value = null
     photosUploaded.value = false
   }
-  selectedTier.value = tier
+  selected.value = p
   previewResult.value = null
   previewError.value = ''
+  if (discountCode.value) applyCode()
 }
 
 async function applyCode() {
-  if (!selectedTier.value || !discountCode.value) return
+  if (!selected.value || !discountCode.value) return
   previewLoading.value = true
   previewError.value = ''
   try {
-    const { data } = await api.post('/pricing/preview', {
-      tier: selectedTier.value,
-      code: discountCode.value,
+    const { data } = await api.post('/orders/preview', {
+      product_id: selected.value.id,
+      discount_code: discountCode.value,
     })
     previewResult.value = data
-    if (!data.code_valid) previewError.value = data.code_message ?? 'Kode diskon tidak berlaku.'
+    if (data.code_valid === false)
+      previewError.value = data.code_message ?? 'Kode promo tidak berlaku.'
   } catch (e) {
-    previewError.value = e.response?.data?.message ?? 'Gagal memeriksa kode diskon.'
+    previewError.value = e.response?.data?.message ?? 'Gagal memeriksa kode promo.'
   } finally {
     previewLoading.value = false
   }
 }
 
-// Sample & foto dibuat sekali saja per sesi halaman - kalau pembayaran gagal
-// lalu dicoba lagi, tidak membuat pesanan/foto duplikat.
+function usePromo(code) {
+  discountCode.value = code
+  applyCode()
+}
+
 async function pay() {
-  if (!selectedTier.value || !photos.value.length) return
+  if (!selected.value || (needsPhotos.value && !photos.value.length)) return
   paying.value = true
   payError.value = ''
   try {
-    if (!createdSample.value) {
-      const { data } = await api.post('/samples', { tier: selectedTier.value })
-      createdSample.value = data
+    if (!createdOrder.value) {
+      const { data } = await api.post('/orders', {
+        product_id: selected.value.id,
+        discount_code: previewResult.value?.code_valid ? discountCode.value : undefined,
+      })
+      createdOrder.value = data
     }
-    if (!photosUploaded.value) {
+    if (needsPhotos.value && !photosUploaded.value) {
       const formData = new FormData()
       photos.value.forEach((f) => formData.append('images[]', f))
-      await api.post(`/samples/${createdSample.value.id}/images`, formData)
+      await api.post(`/samples/${createdOrder.value.sample_id}/images`, formData)
       photosUploaded.value = true
     }
-    const paymentBody = previewResult.value?.code_valid ? { discount_code: discountCode.value } : {}
-    const { data: payment } = await api.post(
-      `/samples/${createdSample.value.id}/payment`,
-      paymentBody,
-    )
+    const { data: payment } = await api.post(`/orders/${createdOrder.value.id}/payment`)
     // Mode uji (akun DOKU belum ada): backend langsung menandai lunas.
     if (payment.paid) {
       toast.push('Mode uji: pembayaran dinonaktifkan, pesanan langsung dianggap lunas.')
-      router.push({ name: 'dashboard' })
+      router.push({ name: 'riwayat' })
       return
     }
     window.location.href = payment.payment_url
@@ -147,37 +146,76 @@ async function pay() {
   }
 }
 
-onMounted(loadPricing)
+onMounted(load)
 </script>
 
 <template>
   <div class="order">
-    <h1>Pesan Laporan</h1>
+    <h1>Pesan Layanan</h1>
     <p class="order__note">
-      Pilih tier, bayar online, grafolog kami akan segera menangani laporan Anda.
+      Master Graphology adalah layanan utama kami. Layanan pendukung melengkapi hasilnya -
+      masing-masing punya laporan sendiri yang tersimpan di akun Anda.
     </p>
 
-    <SkeletonLoader v-if="loading" variant="cards" :rows="2" label="Memuat harga..." />
+    <SkeletonLoader v-if="loading" variant="cards" :rows="3" label="Memuat produk..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
-      <div class="order__tiers">
+      <div v-if="promos.length" class="order__promos">
+        <span class="order__promos-title">Promo berlaku</span>
         <button
-          v-for="p in pricing"
-          :key="p.tier"
+          v-for="pr in promos"
+          :key="pr.code"
           type="button"
-          class="order__tier-card"
-          :class="{ 'order__tier-card--selected': selectedTier === p.tier }"
-          @click="selectTier(p.tier)"
+          class="order__promo"
+          @click="usePromo(pr.code)"
         >
-          <span class="order__tier-name">{{ tierLabel[p.tier] ?? p.tier }}</span>
-          <span class="order__tier-price">{{ formatRupiah(p.price) }}</span>
-          <span class="order__tier-desc">{{ tierDesc[p.tier] }}</span>
+          <strong>{{ pr.code }}</strong>
+          <span>{{
+            pr.description ||
+            (pr.type === 'percentage' ? `Hemat ${pr.value}%` : `Hemat ${formatRupiah(pr.value)}`)
+          }}</span>
         </button>
       </div>
 
-      <div v-if="selectedTier" class="order__checkout">
+      <template
+        v-for="group in [
+          { title: 'Layanan utama', list: utama },
+          { title: 'Layanan pendukung', list: pendukung },
+        ]"
+        :key="group.title"
+      >
+        <h2 v-if="group.list.length" class="order__group">{{ group.title }}</h2>
+        <div v-if="group.list.length" class="order__tiers">
+          <button
+            v-for="p in group.list"
+            :key="p.id"
+            type="button"
+            class="order__tier-card"
+            :class="{ 'order__tier-card--selected': selected?.id === p.id }"
+            @click="selectProduct(p)"
+          >
+            <span v-if="p.promo_label" class="order__badge">{{ p.promo_label }}</span>
+            <span class="order__tier-name">{{ p.nama }}</span>
+            <span class="order__tier-price">{{ formatRupiah(p.price) }}</span>
+            <span class="order__tier-desc">{{ p.ringkasan }}</span>
+            <span class="order__components">
+              <span v-for="c in p.components" :key="c.nama" class="order__component">{{
+                TIPE_LAYANAN[c.tipe] ?? c.tipe
+              }}</span>
+            </span>
+          </button>
+        </div>
+      </template>
+
+      <div v-if="selected" class="order__checkout">
+        <h2 class="order__checkout-title">{{ selected.nama }}</h2>
+        <p v-if="selected.deskripsi" class="order__tier-desc">{{ selected.deskripsi }}</p>
+        <ul class="order__includes">
+          <li v-for="c in selected.components" :key="c.nama">{{ c.nama }}</li>
+        </ul>
+
         <label class="order__code-label">
-          Kode Diskon (opsional)
+          Kode promo (opsional)
           <div class="order__code-row">
             <input v-model="discountCode" type="text" placeholder="mis. HEMAT10" />
             <button
@@ -195,12 +233,13 @@ onMounted(loadPricing)
           Kode diterapkan — hemat {{ formatRupiah(previewResult.discount_amount) }}.
         </p>
 
-        <div class="order__photos">
+        <div v-if="needsPhotos" class="order__photos">
           <span class="order__photos-title"
-            >Foto Tulisan Tangan ({{ photos.length }}/{{ MAX_PHOTOS }})</span
+            >Foto/scan tulisan tangan ({{ photos.length }}/{{ MAX_PHOTOS }})</span
           >
           <p class="order__photos-hint">
-            Tulis minimal satu halaman tangan di kertas polos tanpa garis dan tanda tangani di bawahnya.
+            Tulis minimal satu halaman tangan di kertas polos tanpa garis dan tanda tangani di
+            bawahnya.
             {{ PHOTO_HINT }}
           </p>
           <p v-for="(msg, i) in photoErrors" :key="`pe-${i}`" class="error">{{ msg }}</p>
@@ -218,19 +257,13 @@ onMounted(loadPricing)
             </li>
           </ul>
           <label v-if="photos.length < MAX_PHOTOS && !photosUploaded" class="btn order__photos-add">
-            Pilih Foto
-            <input
-              type="file"
-              :accept="PHOTO_ACCEPT"
-              multiple
-              hidden
-              @change="onPhotos"
-            />
+            Pilih File
+            <input type="file" :accept="PHOTO_ACCEPT" multiple hidden @change="onPhotos" />
           </label>
         </div>
 
         <div class="order__summary">
-          <span>Total Bayar</span>
+          <span>Total bayar</span>
           <strong>{{ formatRupiah(finalPrice) }}</strong>
         </div>
 
@@ -238,11 +271,16 @@ onMounted(loadPricing)
         <button
           type="button"
           class="btn btn--primary order__pay-btn"
-          :disabled="paying || !photos.length"
+          :disabled="paying || (needsPhotos && !photos.length)"
           @click="pay"
         >
           {{ paying ? 'Menyiapkan pembayaran...' : 'Bayar Sekarang' }}
         </button>
+        <p class="order__sop">
+          Dengan membayar, Anda menyetujui
+          <RouterLink to="/syarat" target="_blank">Syarat Layanan</RouterLink> termasuk ketentuan
+          pembatalan dan refund.
+        </p>
       </div>
     </template>
   </div>
@@ -250,7 +288,74 @@ onMounted(loadPricing)
 
 <style scoped>
 .order {
-  max-width: 640px;
+  max-width: 760px;
+}
+.order__group {
+  font-size: 17px;
+  margin: 8px 0 10px;
+}
+.order__badge {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-gold-soft);
+}
+.order__components {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.order__component {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-soft);
+}
+.order__promos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border: 1px dashed var(--color-gold);
+  border-radius: var(--radius-md);
+  background: var(--color-gold-soft);
+}
+.order__promos-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+.order__promo {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-gold);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.order__checkout-title {
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+.order__includes {
+  margin: 10px 0 16px;
+  padding-left: 18px;
+  font-size: 13.5px;
+}
+.order__sop {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--color-text-soft);
 }
 .order__note {
   color: var(--color-text-soft);

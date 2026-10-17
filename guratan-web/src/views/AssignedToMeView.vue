@@ -3,13 +3,22 @@ import { ref, onMounted, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
+import ServiceDeliveryCard from '@/components/commerce/ServiceDeliveryCard.vue'
 
 const samples = ref([])
 const revisions = ref([])
+const services = ref([])
 const loading = ref(true)
 const error = ref('')
 
 const pending = computed(() => samples.value.filter((s) => s.status !== 'completed'))
+
+const openServices = computed(() =>
+  services.value.filter((d) => !['selesai', 'dibatalkan'].includes(d.status)),
+)
+async function reloadServices() {
+  services.value = (await api.get('/service-deliveries')).data
+}
 
 // Dua prosedur berbeda: penugasan dari biro (klien website/B2B, ada baris assignment) vs
 // klien yang dibawa grafolog sendiri (didaftarkan lewat Portal Grafolog).
@@ -30,12 +39,14 @@ const visible = computed(() =>
 
 onMounted(async () => {
   try {
-    const [{ data }, { data: revisionData }] = await Promise.all([
+    const [{ data }, { data: revisionData }, { data: serviceData }] = await Promise.all([
       api.get('/samples'),
       api.get('/reports', { params: { review_status: 'perlu_revisi' } }),
+      api.get('/service-deliveries'),
     ])
     samples.value = data.data
     revisions.value = revisionData.data
+    services.value = serviceData
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Gagal memuat daftar sample.'
   } finally {
@@ -67,6 +78,18 @@ onMounted(async () => {
       </ul>
     </section>
 
+    <section v-if="openServices.length" class="assigned__services">
+      <h2>Layanan Pendukung Ditugaskan</h2>
+      <ServiceDeliveryCard
+        v-for="d in openServices"
+        :key="d.id"
+        :delivery="d"
+        mode="grafolog"
+        @updated="reloadServices"
+      />
+    </section>
+
+    <h2 class="assigned__h2">Analisis Tulisan Tangan</h2>
     <SkeletonLoader v-if="loading" variant="list" label="Memuat..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <p v-else-if="pending.length === 0" class="assigned__empty">
@@ -109,7 +132,7 @@ onMounted(async () => {
 
 <style scoped>
 .assigned {
-  max-width: 640px;
+  max-width: 760px;
 }
 .assigned__note {
   color: var(--color-text-soft);
@@ -138,6 +161,16 @@ onMounted(async () => {
   gap: 8px 16px;
   padding: 14px 4px;
   border-bottom: 1px solid var(--color-border);
+}
+.assigned__services {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.assigned__services h2,
+.assigned__h2 {
+  font-size: 16px;
 }
 .assigned__filter {
   display: inline-flex;

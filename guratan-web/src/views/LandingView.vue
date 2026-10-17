@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 
@@ -11,16 +11,19 @@ const content = ref({
   landing_tagline:
     'Analisis kepribadian berbasis grafologi - laporan komprehensif dari tulisan tangan, disusun oleh grafolog bersertifikat.',
   landing_cta_label: 'Mulai Sekarang',
-  landing_hero_trust: '8 Sindrom · 40 Aspek · 704 Indikator tulisan tangan dianalisis grafolog bersertifikat.',
+  landing_hero_trust:
+    '8 Sindrom · 40 Aspek · 704 Indikator tulisan tangan dianalisis grafolog bersertifikat.',
   landing_compare_heading: 'Insight kepribadian, tanpa antre psikotes',
   landing_compare_subtext:
     'Psikotes konvensional lambat, mahal, dan butuh jadwal psikolog. Guratan menawarkan alternatif yang lebih cepat dan terjangkau - tanpa berpura-pura jadi pengganti diagnosis klinis.',
   landing_steps_heading: 'Cara Kerja',
   landing_steps_subtext: 'Empat langkah dari sampel tulisan tangan sampai laporan siap dibaca.',
   landing_analysis_heading: 'Bukan sekadar tebak-tebak kepribadian',
-  landing_analysis_subtext: 'Setiap laporan ditarik dari basis pengetahuan grafologi profesional yang terstruktur.',
+  landing_analysis_subtext:
+    'Setiap laporan ditarik dari basis pengetahuan grafologi profesional yang terstruktur.',
   landing_pricing_heading: 'Harga',
-  landing_pricing_subtext: 'Dua tingkat layanan, keduanya dinilai manual oleh grafolog bersertifikat.',
+  landing_pricing_subtext:
+    'Master Graphology sebagai layanan utama, dilengkapi layanan pendukung - semua dikerjakan grafolog bersertifikat.',
   landing_honesty_quote: 'Insight reflektif untuk mengenal diri - bukan vonis, bukan diagnosis.',
   landing_signup_heading: 'Cara Daftar',
   landing_cta_band_heading: 'Penasaran apa kata tulisan tangan Anda?',
@@ -39,15 +42,36 @@ const listDefaults = {
     'Dinilai manual oleh grafolog bersertifikat',
   ],
   landing_steps: [
-    { title: 'Pilih Tier & Kirim', desc: 'Daftar, pilih Comprehensive atau Master, kirim sampel tulisan tangan Anda.' },
-    { title: 'Grafolog Mengukur', desc: 'Grafolog bersertifikat menilai tulisan tangan Anda memakai kaliper & pakem grafologi ilmiah.' },
-    { title: 'Laporan Tersusun', desc: 'Sistem merangkai narasi dari basis pengetahuan grafologi - bukan karangan bebas.' },
-    { title: 'Unduh & Baca', desc: 'Laporan lengkap tersedia di dashboard Anda, bisa diunduh sebagai PDF.' },
+    {
+      title: 'Pilih Layanan & Kirim',
+      desc: 'Daftar, pilih layanan Master atau layanan pendukung, kirim hasil scan tulisan tangan Anda.',
+    },
+    {
+      title: 'Grafolog Mengukur',
+      desc: 'Grafolog bersertifikat menilai tulisan tangan Anda memakai kaliper & pakem grafologi ilmiah.',
+    },
+    {
+      title: 'Laporan Tersusun',
+      desc: 'Sistem merangkai narasi dari basis pengetahuan grafologi - bukan karangan bebas.',
+    },
+    {
+      title: 'Unduh & Baca',
+      desc: 'Laporan lengkap tersedia di dashboard Anda, bisa diunduh sebagai PDF.',
+    },
   ],
   landing_honesty_points: [
-    { title: 'Dinilai manusia, bukan AI generatif', desc: 'Skor 40 aspek diisi manual oleh grafolog bersertifikat - bukan hasil tebakan model bahasa.' },
-    { title: 'Narasi dari basis pengetahuan nyata', desc: 'Setiap kalimat laporan ditarik dari referensi grafologi terstruktur, bukan dikarang bebas.' },
-    { title: 'Bukan pengganti diagnosis klinis', desc: 'Guratan adalah alat bantu refleksi diri, bukan alat diagnosis psikologis atau medis.' },
+    {
+      title: 'Dinilai manusia, bukan AI generatif',
+      desc: 'Skor 40 aspek diisi manual oleh grafolog bersertifikat - bukan hasil tebakan model bahasa.',
+    },
+    {
+      title: 'Narasi dari basis pengetahuan nyata',
+      desc: 'Setiap kalimat laporan ditarik dari referensi grafologi terstruktur, bukan dikarang bebas.',
+    },
+    {
+      title: 'Bukan pengganti diagnosis klinis',
+      desc: 'Guratan adalah alat bantu refleksi diri, bukan alat diagnosis psikologis atau medis.',
+    },
   ],
 }
 const lists = ref(structuredClone(listDefaults))
@@ -58,27 +82,103 @@ const lists = ref(structuredClone(listDefaults))
 // sengaja, bukan dari /api/sindrom (endpoint itu perlu auth grafolog dan
 // istilahnya memang beda tujuan - lihat catatan di guratan-web/CLAUDE.md).
 const sindromData = [
-  { roman: 'I', nama: 'Dorongan & Ambisi', hijau: true, aspek: ['Ketegasan', 'Kebutuhan Diakui', 'Kebutuhan Diterima', 'Cita-cita', 'Kepatuhan pada Norma'] },
-  { roman: 'II', nama: 'Cara Berpikir', hijau: true, aspek: ['Ketajaman Berpikir', 'Fokus Berpikir', 'Motivasi', 'Daya Tangkap', 'Kreativitas'] },
-  { roman: 'III', nama: 'Kepercayaan & Kendali Diri', hijau: true, aspek: ['Rasa Percaya Diri', 'Penghargaan Diri', 'Keselarasan Kepribadian', 'Integritas', 'Pengendalian Diri'] },
-  { roman: 'IV', nama: 'Cara Bersosialisasi', hijau: true, aspek: ['Kemampuan Beradaptasi', 'Cara Berkomunikasi', 'Keterlibatan Sosial', 'Keramahan', 'Empati'] },
-  { roman: 'V', nama: 'Semangat Berkarya', hijau: true, aspek: ['Keteguhan Hati', 'Energi & Stamina', 'Semangat Berkembang', 'Daya Cipta Solusi', 'Keteraturan'] },
-  { roman: 'VI', nama: 'Ketahanan Menghadapi Tekanan', hijau: false, note: '5 aspek seputar ketahanan terhadap tekanan - dibahas lengkap dalam laporan, bukan di pratinjau publik.' },
-  { roman: 'VII', nama: 'Cara Melindungi Diri', hijau: false, note: '5 aspek seputar pola pertahanan diri - dibahas lengkap dalam laporan, bukan di pratinjau publik.' },
-  { roman: 'VIII', nama: 'Area yang Perlu Diperhatikan', hijau: false, note: '5 aspek seputar area yang perlu perhatian - dibahas lengkap dalam laporan, bukan di pratinjau publik.' },
+  {
+    roman: 'I',
+    nama: 'Dorongan & Ambisi',
+    hijau: true,
+    aspek: [
+      'Ketegasan',
+      'Kebutuhan Diakui',
+      'Kebutuhan Diterima',
+      'Cita-cita',
+      'Kepatuhan pada Norma',
+    ],
+  },
+  {
+    roman: 'II',
+    nama: 'Cara Berpikir',
+    hijau: true,
+    aspek: ['Ketajaman Berpikir', 'Fokus Berpikir', 'Motivasi', 'Daya Tangkap', 'Kreativitas'],
+  },
+  {
+    roman: 'III',
+    nama: 'Kepercayaan & Kendali Diri',
+    hijau: true,
+    aspek: [
+      'Rasa Percaya Diri',
+      'Penghargaan Diri',
+      'Keselarasan Kepribadian',
+      'Integritas',
+      'Pengendalian Diri',
+    ],
+  },
+  {
+    roman: 'IV',
+    nama: 'Cara Bersosialisasi',
+    hijau: true,
+    aspek: [
+      'Kemampuan Beradaptasi',
+      'Cara Berkomunikasi',
+      'Keterlibatan Sosial',
+      'Keramahan',
+      'Empati',
+    ],
+  },
+  {
+    roman: 'V',
+    nama: 'Semangat Berkarya',
+    hijau: true,
+    aspek: [
+      'Keteguhan Hati',
+      'Energi & Stamina',
+      'Semangat Berkembang',
+      'Daya Cipta Solusi',
+      'Keteraturan',
+    ],
+  },
+  {
+    roman: 'VI',
+    nama: 'Ketahanan Menghadapi Tekanan',
+    hijau: false,
+    note: '5 aspek seputar ketahanan terhadap tekanan - dibahas lengkap dalam laporan, bukan di pratinjau publik.',
+  },
+  {
+    roman: 'VII',
+    nama: 'Cara Melindungi Diri',
+    hijau: false,
+    note: '5 aspek seputar pola pertahanan diri - dibahas lengkap dalam laporan, bukan di pratinjau publik.',
+  },
+  {
+    roman: 'VIII',
+    nama: 'Area yang Perlu Diperhatikan',
+    hijau: false,
+    note: '5 aspek seputar area yang perlu perhatian - dibahas lengkap dalam laporan, bukan di pratinjau publik.',
+  },
 ]
 const openSindrom = ref(null)
 function toggleSindrom(i) {
   openSindrom.value = openSindrom.value === i ? null : i
 }
 
-const pricing = ref([])
-function priceFor(tier) {
-  return pricing.value.find((p) => p.tier === tier)?.price ?? null
+// Katalog produk publik (2026-10-17) - menggantikan kartu Comprehensive/Master statis.
+const products = ref([])
+const mainProducts = computed(() => products.value.filter((p) => p.kategori === 'utama'))
+const supportProducts = computed(() => products.value.filter((p) => p.kategori !== 'utama'))
+const TIPE = {
+  grafologi: 'Laporan grafologi 40 aspek',
+  wawancara: 'Wawancara',
+  konsultasi: 'Sesi konsultasi',
+  konseling: 'Konseling',
+  intervensi: 'Program pendampingan',
+  lainnya: 'Layanan',
 }
 function formatRupiah(value) {
   if (value === null || value === undefined) return '—'
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
 
 const statNums = ref([])
@@ -104,8 +204,8 @@ onMounted(async () => {
   }
 
   try {
-    const { data } = await api.get('/pricing')
-    pricing.value = data
+    const { data } = await api.get('/products')
+    products.value = data
   } catch {
     // Kartu harga tetap tampil dengan "-" kalau publik pricing gagal dimuat.
   }
@@ -149,13 +249,20 @@ onMounted(async () => {
         <h1>{{ content.landing_hero_title }}</h1>
         <p class="hero__tagline">{{ content.landing_tagline }}</p>
         <div class="hero__actions">
-          <RouterLink to="/register" class="btn btn--primary">{{ content.landing_cta_label }}</RouterLink>
+          <RouterLink to="/register" class="btn btn--primary">{{
+            content.landing_cta_label
+          }}</RouterLink>
           <a href="#cara-kerja" class="btn btn--ghost">Lihat Cara Kerja ↓</a>
         </div>
         <p class="hero__trust">{{ content.landing_hero_trust }}</p>
       </div>
       <div class="hero__visual" aria-hidden="true">
-        <svg viewBox="0 0 320 220" width="72%" role="img" aria-label="Ilustrasi tanda tangan tergambar secara animasi">
+        <svg
+          viewBox="0 0 320 220"
+          width="72%"
+          role="img"
+          aria-label="Ilustrasi tanda tangan tergambar secara animasi"
+        >
           <path
             class="signature-path"
             d="M30 150 C 50 90, 70 90, 85 140 C 95 175, 110 175, 118 130 C 124 100, 135 100, 140 140 C 146 180, 165 60, 175 130 C 182 175, 195 175, 205 100 C 212 55, 225 55, 230 110 C 234 145, 250 145, 258 100"
@@ -163,7 +270,17 @@ onMounted(async () => {
           <g class="seal-stamp" transform="translate(250,150)">
             <circle cx="0" cy="0" r="30" fill="none" stroke="var(--color-gold)" stroke-width="3" />
             <circle cx="0" cy="0" r="23" fill="none" stroke="var(--color-gold)" stroke-width="1" />
-            <text x="0" y="6" text-anchor="middle" font-family="Fraunces, serif" font-size="13" fill="var(--color-gold)" font-weight="700">G</text>
+            <text
+              x="0"
+              y="6"
+              text-anchor="middle"
+              font-family="Fraunces, serif"
+              font-size="13"
+              fill="var(--color-gold)"
+              font-weight="700"
+            >
+              G
+            </text>
           </g>
         </svg>
       </div>
@@ -185,7 +302,9 @@ onMounted(async () => {
         <div class="compare__card compare__card--new">
           <h3>Cara Guratan</h3>
           <ul>
-            <li v-for="item in lists.landing_compare_new" :key="item"><span class="check">✓</span> {{ item }}</li>
+            <li v-for="item in lists.landing_compare_new" :key="item">
+              <span class="check">✓</span> {{ item }}
+            </li>
           </ul>
         </div>
       </div>
@@ -213,12 +332,26 @@ onMounted(async () => {
         <p>{{ content.landing_analysis_subtext }}</p>
       </div>
       <div class="stat-row">
-        <div class="stat"><div class="stat__num" :ref="registerStat" data-count="8">0</div><div class="stat__label">Sindrom</div></div>
-        <div class="stat"><div class="stat__num" :ref="registerStat" data-count="40">0</div><div class="stat__label">Aspek</div></div>
-        <div class="stat"><div class="stat__num" :ref="registerStat" data-count="704">0</div><div class="stat__label">Indikator</div></div>
+        <div class="stat">
+          <div class="stat__num" :ref="registerStat" data-count="8">0</div>
+          <div class="stat__label">Sindrom</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num" :ref="registerStat" data-count="40">0</div>
+          <div class="stat__label">Aspek</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num" :ref="registerStat" data-count="704">0</div>
+          <div class="stat__label">Indikator</div>
+        </div>
       </div>
       <div class="explorer">
-        <div v-for="(s, i) in sindromData" :key="s.roman" class="sindrom-row" :class="{ open: openSindrom === i }">
+        <div
+          v-for="(s, i) in sindromData"
+          :key="s.roman"
+          class="sindrom-row"
+          :class="{ open: openSindrom === i }"
+        >
           <button type="button" class="sindrom-row__head" @click="toggleSindrom(i)">
             <span class="sindrom-row__title">
               <span class="sindrom-row__roman">{{ s.roman }}</span>
@@ -245,28 +378,35 @@ onMounted(async () => {
         <p>{{ content.landing_pricing_subtext }}</p>
       </div>
       <div class="pricing-grid">
-        <div class="price-card">
-          <div class="price-card__tier">Comprehensive</div>
-          <div class="price-card__amount">{{ formatRupiah(priceFor('comprehensive')) }}<span> /laporan</span></div>
-          <p class="price-card__desc">Analisis mendalam 40 aspek kepribadian dari tulisan tangan Anda.</p>
+        <div v-for="p in mainProducts" :key="p.id" class="price-card price-card--master">
+          <span v-if="p.promo_label || p.is_featured" class="price-card__badge badge badge--gold">{{
+            p.promo_label || 'Layanan Utama'
+          }}</span>
+          <div class="price-card__tier">{{ p.nama }}</div>
+          <div class="price-card__amount">{{ formatRupiah(p.price) }}<span> /orang</span></div>
+          <p class="price-card__desc">{{ p.ringkasan }}</p>
           <ul>
-            <li><span class="check">✓</span> Laporan 8 Sindrom &amp; 40 Aspek lengkap</li>
-            <li><span class="check">✓</span> Disusun grafolog bersertifikat</li>
-            <li><span class="check">✓</span> Unduh PDF kapan saja</li>
+            <li v-for="c in p.components" :key="c.nama">
+              <span class="check">✓</span> {{ c.nama }}
+            </li>
+            <li><span class="check">✓</span> Laporan tersimpan di akun, unduh PDF kapan saja</li>
           </ul>
-          <RouterLink to="/register" class="btn btn--ghost price-card__cta">Pilih Comprehensive</RouterLink>
+          <RouterLink :to="`/pesan?produk=${p.kode}`" class="btn btn--primary price-card__cta"
+            >Pilih {{ p.nama }}</RouterLink
+          >
         </div>
-        <div class="price-card price-card--master">
-          <span class="price-card__badge badge badge--gold">Paling Lengkap</span>
-          <div class="price-card__tier">Master</div>
-          <div class="price-card__amount">{{ formatRupiah(priceFor('master')) }}<span> /laporan</span></div>
-          <p class="price-card__desc">Semua isi Comprehensive, plus sesi konsultasi langsung.</p>
+        <div v-for="p in supportProducts" :key="p.id" class="price-card">
+          <div class="price-card__tier">{{ p.nama }}</div>
+          <div class="price-card__amount">{{ formatRupiah(p.price) }}</div>
+          <p class="price-card__desc">{{ p.ringkasan }}</p>
           <ul>
-            <li><span class="check">✓</span> Semua fitur Comprehensive</li>
-            <li><span class="check">✓</span> Sesi konsultasi langsung dengan grafolog</li>
-            <li><span class="check">✓</span> Prioritas pengerjaan</li>
+            <li v-for="c in p.components" :key="c.nama">
+              <span class="check">✓</span> {{ TIPE[c.tipe] ?? c.nama }}
+            </li>
           </ul>
-          <RouterLink to="/register" class="btn btn--primary price-card__cta">Pilih Master</RouterLink>
+          <RouterLink :to="`/pesan?produk=${p.kode}`" class="btn btn--ghost price-card__cta"
+            >Pilih</RouterLink
+          >
         </div>
       </div>
     </section>
@@ -280,27 +420,44 @@ onMounted(async () => {
         <div class="honesty__points">
           <div v-for="p in lists.landing_honesty_points" :key="p.title" class="honesty__point">
             <div class="honesty__point-mark">✓</div>
-            <div><h4>{{ p.title }}</h4><p>{{ p.desc }}</p></div>
+            <div>
+              <h4>{{ p.title }}</h4>
+              <p>{{ p.desc }}</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <section>
-      <div class="section-head"><span class="eyebrow">Mulai dalam 3 langkah</span><h2>{{ content.landing_signup_heading }}</h2></div>
+      <div class="section-head">
+        <span class="eyebrow">Mulai dalam 3 langkah</span>
+        <h2>{{ content.landing_signup_heading }}</h2>
+      </div>
       <div class="signup-flow">
-        <div class="signup-node"><div class="signup-node__dot">1</div><p>Buat akun dengan email</p></div>
+        <div class="signup-node">
+          <div class="signup-node__dot">1</div>
+          <p>Buat akun dengan email</p>
+        </div>
         <div class="signup-arrow"></div>
-        <div class="signup-node"><div class="signup-node__dot">2</div><p>Pilih tier &amp; kirim sampel tulisan tangan</p></div>
+        <div class="signup-node">
+          <div class="signup-node__dot">2</div>
+          <p>Pilih layanan &amp; kirim scan tulisan tangan</p>
+        </div>
         <div class="signup-arrow"></div>
-        <div class="signup-node"><div class="signup-node__dot">3</div><p>Bayar &amp; tunggu laporan Anda</p></div>
+        <div class="signup-node">
+          <div class="signup-node__dot">3</div>
+          <p>Bayar &amp; tunggu laporan Anda</p>
+        </div>
       </div>
     </section>
 
     <section class="cta-band">
       <h2>{{ content.landing_cta_band_heading }}</h2>
       <p>{{ content.landing_cta_band_subtext }}</p>
-      <RouterLink to="/register" class="btn btn--primary">{{ content.landing_cta_label }}</RouterLink>
+      <RouterLink to="/register" class="btn btn--primary">{{
+        content.landing_cta_label
+      }}</RouterLink>
     </section>
     <footer class="landing-footer">
       <RouterLink to="/privasi">Kebijakan Privasi</RouterLink>
@@ -513,7 +670,9 @@ onMounted(async () => {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 .step:hover {
   transform: translateY(-4px);
@@ -645,9 +804,9 @@ onMounted(async () => {
 
 .pricing-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 22px;
-  max-width: 720px;
+  max-width: 1040px;
   margin: 0 auto;
 }
 .price-card {
@@ -656,7 +815,9 @@ onMounted(async () => {
   border-radius: var(--radius-lg);
   border: 1.5px solid var(--color-border);
   background: var(--color-surface);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 .price-card:hover {
   transform: translateY(-5px);

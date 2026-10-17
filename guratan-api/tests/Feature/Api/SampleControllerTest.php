@@ -4,11 +4,9 @@ namespace Tests\Feature\Api;
 
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
-use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\SeedsGrafologiKb;
 use Tests\TestCase;
 
@@ -88,13 +86,23 @@ class SampleControllerTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('client_user_id');
     }
 
-    public function test_grafolog_can_create_comprehensive_sample_for_client(): void
+    public function test_comprehensive_tier_no_longer_accepted_for_new_samples(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $client = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($grafolog, 'sanctum')->postJson('/api/samples', [
+            'tier' => 'comprehensive', 'client_user_id' => $client->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('tier');
+    }
+
+    public function test_grafolog_can_create_master_sample_for_client(): void
     {
         $grafolog = User::factory()->create(['role' => 'grafolog']);
         $client = User::factory()->create(['role' => 'user']);
 
         $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/samples', [
-            'tier' => 'comprehensive',
+            'tier' => 'master',
             'client_user_id' => $client->id,
         ]);
 
@@ -102,7 +110,7 @@ class SampleControllerTest extends TestCase
         $this->assertDatabaseHas('handwriting_samples', [
             'user_id' => $client->id,
             'created_by' => $grafolog->id,
-            'tier' => 'comprehensive',
+            'tier' => 'master',
             'status' => 'pending',
         ]);
         $this->assertDatabaseCount('personality_reports', 0);
@@ -114,7 +122,7 @@ class SampleControllerTest extends TestCase
         $client = User::factory()->create(['role' => 'user']);
 
         $response = $this->actingAs($grafolog, 'sanctum')->postJson('/api/samples', [
-            'tier' => 'comprehensive',
+            'tier' => 'master',
             'client_user_id' => $client->id,
         ]);
 
@@ -134,7 +142,7 @@ class SampleControllerTest extends TestCase
         $client = User::factory()->create(['role' => 'user']);
 
         $response = $this->actingAs($client, 'sanctum')->postJson('/api/samples', [
-            'tier' => 'comprehensive',
+            'tier' => 'master',
         ]);
 
         $sample = HandwritingSample::find($response->json('id'));

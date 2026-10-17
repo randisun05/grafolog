@@ -949,8 +949,9 @@ supervisor = validasi opsional dibayar token.
 
 - [x] Fase A (6,8,9,10,16,17): upload FHD/30MB, skoring & koreksi hanya worksheet, daftar +
       verifikasi grafolog, klien bawaan grafolog via undangan, sumber klien website/biro/grafolog.
-- [ ] Fase B (1,2,4,7,12): katalog produk (hapus Comprehensive, Master utama, produk pendukung),
-      harga & diskon per produk, promo di halaman klien.
+- [x] Fase B (1,2,4,7,12): katalog produk + komponen (Comprehensive dihapus, Master utama, wawancara/
+      konseling/intervensi/paket rekrutmen), harga & diskon per produk, promo di halaman klien,
+      laporan per komponen layanan (template `report_fields`).
 - [ ] Fase C (13,14,18,19,20): B2B — daftar perusahaan, profil, kandidat, HR pilih grafolog, analisis.
 - [ ] Fase D (11): validasi supervisor opsional, fee token.
 - [ ] Fase E (3,5,15,21): rapid self-check, SOP pembelian/refund/pembatalan, afiliasi, konten & mini games.

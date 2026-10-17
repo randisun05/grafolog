@@ -1652,6 +1652,31 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - 446 test (baru: `GrafologRegistrationTest`, tes undangan di `UserLookupControllerTest`, resolusi
   di `SampleImageControllerTest`; `phpunit.xml` mem-pin `PAYMENT_BYPASS=""`).
 
+## Fase B katalog produk — 2026-10-17
+
+- **Tabel**: `products` (kode unik = juga `pricing_plans.tier`, kini string; kategori utama|pendukung,
+  target semua|b2c|b2b, `requires_handwriting`, `is_featured`, `promo_label`), `product_components`
+  (tipe grafologi|konsultasi|wawancara|konseling|intervensi|lainnya + `report_fields` json =
+  template laporan per komponen), `orders` (status menunggu_pembayaran → diproses → selesai /
+  dibatalkan), `service_deliveries` (satu per komponen non-grafologi). `payments.order_id`,
+  `payments.sample_id` nullable. `discount_codes.is_public` + `description` (= promo tampil di klien).
+- **Comprehensive dihapus dari penjualan** (harga dinonaktifkan; `StoreSampleRequest` hanya `master`;
+  sampel lama tetap bisa dibuka). `ProductSeeder` (idempotent per kode, juga dipanggil migrasi):
+  master 149rb (utama), wawancara 99rb, konseling 250rb (b2c), intervensi 600rb, paket-rekrutmen
+  229rb (b2b, grafologi+wawancara). Kode diskon lama `master` tetap berlaku.
+- **Alur**: `OrderService` — `POST /orders` (klien; produk `forClients`) membuat order (+ sampel
+  & project master bila produk berisi grafologi) → `POST /orders/{o}/payment` (bypass/0 rupiah →
+  `markPaid` langsung; selain itu DOKU, webhook memanggil `markPaid`) → `markPaid` membuat
+  service_deliveries → `refreshStatus` menandai order selesai saat laporan grafologi approved
+  (observer) dan semua layanan selesai. `POST /orders/{o}/cancel` hanya sebelum bayar.
+- **Endpoint**: `GET /products`, `GET /promos` (publik); `GET /orders`, `POST /orders/preview`;
+  `GET /service-deliveries` (per role), `GET .../{d}`, `POST .../{d}/assign` (admin / HR pemilik
+  order), `.../{d}/schedule` & `.../{d}/report` (grafolog yang ditugaskan; laporan divalidasi
+  terhadap `report_fields`: score 1–5, choice dari options, textarea wajib). Admin:
+  `/admin/products` CRUD, `/admin/products/templates`, komponen `/admin/products/{p}/components`,
+  `/admin/product-components/{c}`. Harga tetap lewat `PUT /admin/pricing/{kode}` (validasi kode produk).
+- 457 test (baru `OrderFlowTest`).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

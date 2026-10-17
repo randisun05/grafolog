@@ -25,7 +25,7 @@ const totalAspek = computed(() => sindromList.value.reduce((n, s) => n + s.aspek
 
 const clientEmail = ref('')
 const client = ref(null)
-const tier = ref('comprehensive')
+const tier = ref('master') // Comprehensive tidak dijual lagi (2026-10-17)
 const sample = ref(null)
 
 // Skor hanya diisi dari measurement worksheet + checklist Indikator (2026-10-17, hasil uji
@@ -36,7 +36,9 @@ const scores = ref({}) // { [kode]: { skor, catatan_grafolog } }
 const scoredCount = computed(
   () => Object.values(scores.value).filter((s) => Number.isInteger(s?.skor)).length,
 )
-const isFormComplete = computed(() => totalAspek.value > 0 && scoredCount.value === totalAspek.value)
+const isFormComplete = computed(
+  () => totalAspek.value > 0 && scoredCount.value === totalAspek.value,
+)
 
 const lookupError = ref('')
 const lookupLoading = ref(false)
@@ -225,7 +227,9 @@ async function submitScores() {
   submitting.value = true
   submitError.value = ''
   try {
-    const { data } = await api.post(`/samples/${sample.value.id}/scores`, { skor: buildSkorPayload() })
+    const { data } = await api.post(`/samples/${sample.value.id}/scores`, {
+      skor: buildSkorPayload(),
+    })
     submittedReport.value = data
   } catch (e) {
     submitError.value = e.response?.data?.message ?? 'Gagal mengirim skor.'
@@ -244,7 +248,12 @@ function viewReport() {
     <h1>Portal Grafolog</h1>
     <ProgressTracker :steps="steps" :current="currentStep" />
 
-    <SkeletonLoader v-if="resuming" variant="form" :rows="3" label="Memuat sample yang ditugaskan..." />
+    <SkeletonLoader
+      v-if="resuming"
+      variant="form"
+      :rows="3"
+      label="Memuat sample yang ditugaskan..."
+    />
     <p v-else-if="resumeError" class="error">{{ resumeError }}</p>
 
     <section v-else-if="!sample" class="portal-grafolog__step">
@@ -278,7 +287,8 @@ function viewReport() {
           </p>
           <label class="portal-grafolog__consent">
             <input v-model="newClientConsent" type="checkbox" />
-            Klien sudah menyetujui pemrosesan data tulisan tangan &amp; hasil analisisnya (Kebijakan Privasi).
+            Klien sudah menyetujui pemrosesan data tulisan tangan &amp; hasil analisisnya (Kebijakan
+            Privasi).
           </label>
           <p v-if="registerError" class="error">{{ registerError }}</p>
           <div class="portal-grafolog__register-actions">
@@ -297,11 +307,12 @@ function viewReport() {
 
       <div v-if="invitation" class="portal-grafolog__generated-password">
         <p>
-          Klien terdaftar. Undangan aktivasi dikirim ke <strong>{{ invitation.email }}</strong>. Minta klien
-          membuka email tersebut untuk membuat kata sandi.
+          Klien terdaftar. Undangan aktivasi dikirim ke <strong>{{ invitation.email }}</strong
+          >. Minta klien membuka email tersebut untuk membuat kata sandi.
         </p>
         <p v-if="invitation.url" class="portal-grafolog__invite-dev">
-          Mode lokal (email tidak terkirim sungguhan): <a :href="invitation.url" target="_blank">tautan aktivasi</a>
+          Mode lokal (email tidak terkirim sungguhan):
+          <a :href="invitation.url" target="_blank">tautan aktivasi</a>
         </p>
         <button type="button" class="btn" :disabled="resending" @click="resendInvitation">
           {{ resending ? 'Mengirim...' : 'Kirim ulang undangan' }}
@@ -316,11 +327,15 @@ function viewReport() {
         <label>
           Tier:
           <select v-model="tier">
-            <option value="comprehensive">Comprehensive</option>
             <option value="master">Master</option>
           </select>
         </label>
-        <button type="button" class="btn btn--primary" :disabled="creatingSample" @click="createSample">
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="creatingSample"
+          @click="createSample"
+        >
           {{ creatingSample ? 'Membuat...' : 'Buat Sample & Mulai Isi Skor' }}
         </button>
       </div>
@@ -333,7 +348,6 @@ function viewReport() {
         isian skor akan hilang.
       </p>
 
-
       <div class="assessment-workspace">
         <aside class="assessment-workspace__col assessment-workspace__col--info">
           <div class="assessment-workspace__card">
@@ -344,7 +358,9 @@ function viewReport() {
           <div class="assessment-workspace__card">
             <h3>Sample</h3>
             <p class="assessment-workspace__meta">Tier: {{ tier }}</p>
-            <p class="assessment-workspace__meta">Progress: {{ scoredCount }} / {{ totalAspek }} aspek</p>
+            <p class="assessment-workspace__meta">
+              Progress: {{ scoredCount }} / {{ totalAspek }} aspek
+            </p>
           </div>
           <div class="assessment-workspace__card">
             <h3>Foto Tulisan Tangan</h3>
@@ -354,7 +370,11 @@ function viewReport() {
 
         <div class="assessment-workspace__col assessment-workspace__col--form">
           <MeasurementWorksheet :sample-id="sample.id" @saved="onMeasurementsSaved" />
-          <IndikatorChecklist ref="indikatorChecklistRef" :sample-id="sample.id" @apply="applyChecklistTally" />
+          <IndikatorChecklist
+            ref="indikatorChecklistRef"
+            :sample-id="sample.id"
+            @apply="applyChecklistTally"
+          />
         </div>
 
         <aside class="assessment-workspace__col assessment-workspace__col--calc">

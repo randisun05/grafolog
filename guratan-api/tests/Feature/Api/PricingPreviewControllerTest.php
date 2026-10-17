@@ -16,13 +16,13 @@ class PricingPreviewControllerTest extends TestCase
     {
         parent::setUp();
 
-        PricingPlan::create(['tier' => 'comprehensive', 'price' => 49000, 'is_active' => true]);
-        PricingPlan::create(['tier' => 'master', 'price' => 149000, 'is_active' => true]);
+        // Harga produk dari katalog awal; 'wawancara' diset 49000 supaya angka tes tetap bulat.
+        PricingPlan::where('tier', 'wawancara')->update(['price' => 49000]);
     }
 
     public function test_guest_cannot_preview_pricing(): void
     {
-        $this->postJson('/api/pricing/preview', ['tier' => 'comprehensive'])->assertUnauthorized();
+        $this->postJson('/api/pricing/preview', ['tier' => 'wawancara'])->assertUnauthorized();
     }
 
     public function test_preview_without_code_returns_base_price(): void
@@ -30,7 +30,7 @@ class PricingPreviewControllerTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'sanctum')
-            ->postJson('/api/pricing/preview', ['tier' => 'comprehensive']);
+            ->postJson('/api/pricing/preview', ['tier' => 'wawancara']);
 
         $response->assertOk()
             ->assertJsonPath('base_price', 49000)
@@ -45,7 +45,7 @@ class PricingPreviewControllerTest extends TestCase
         DiscountCode::create(['code' => 'HEMAT10', 'type' => 'percentage', 'value' => 10]);
 
         $response = $this->actingAs($user, 'sanctum')
-            ->postJson('/api/pricing/preview', ['tier' => 'comprehensive', 'code' => 'hemat10']);
+            ->postJson('/api/pricing/preview', ['tier' => 'wawancara', 'code' => 'hemat10']);
 
         $response->assertOk()
             ->assertJsonPath('code_valid', true)
@@ -58,7 +58,7 @@ class PricingPreviewControllerTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user, 'sanctum')
-            ->postJson('/api/pricing/preview', ['tier' => 'comprehensive', 'code' => 'TIDAKADA']);
+            ->postJson('/api/pricing/preview', ['tier' => 'wawancara', 'code' => 'TIDAKADA']);
 
         $response->assertOk()
             ->assertJsonPath('code_valid', false)
@@ -75,7 +75,7 @@ class PricingPreviewControllerTest extends TestCase
         ]);
 
         $response = $this->actingAs($user, 'sanctum')
-            ->postJson('/api/pricing/preview', ['tier' => 'comprehensive', 'code' => 'MASTERONLY']);
+            ->postJson('/api/pricing/preview', ['tier' => 'wawancara', 'code' => 'MASTERONLY']);
 
         $response->assertOk()->assertJsonPath('code_valid', false)->assertJsonPath('final_price', 49000);
     }

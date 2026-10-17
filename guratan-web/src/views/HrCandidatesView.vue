@@ -18,7 +18,7 @@ const photosOpenFor = ref(null)
 
 const file = ref(null)
 const projectName = ref('')
-const tier = ref('comprehensive')
+const tier = ref('master') // Comprehensive tidak dijual lagi (2026-10-17)
 const consentConfirmed = ref(false)
 const importing = ref(false)
 const importErrors = ref([])
@@ -127,7 +127,6 @@ onMounted(() => {
       <label>
         Tier
         <select v-model="tier">
-          <option value="comprehensive">Comprehensive</option>
           <option value="master">Master</option>
         </select>
       </label>

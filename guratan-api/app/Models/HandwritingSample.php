@@ -38,6 +38,12 @@ class HandwritingSample extends Model
         return $this->hasMany(Payment::class, 'sample_id');
     }
 
+    /** Pesanan produk yang membuat sample ini (null untuk sample lama / bawaan grafolog). */
+    public function order(): HasOne
+    {
+        return $this->hasOne(Order::class, 'sample_id');
+    }
+
     public function assignment(): HasOne
     {
         return $this->hasOne(Assignment::class, 'sample_id');
