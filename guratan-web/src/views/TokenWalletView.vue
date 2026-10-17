@@ -2,9 +2,12 @@
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
+// Supervisor hanya menerima token (pendapatan validasi), tidak membeli.
+const auth = useAuthStore()
 
 const wallet = ref(null)
 const loading = ref(true)
@@ -19,7 +22,12 @@ const previewError = ref('')
 const buying = ref(false)
 const buyError = ref('')
 
-const typeLabel = { purchase: 'Pembelian', consumption: 'Pemakaian' }
+const typeLabel = {
+  purchase: 'Pembelian',
+  consumption: 'Pemakaian',
+  biaya_validasi: 'Biaya validasi supervisor',
+  pendapatan_validasi: 'Pendapatan validasi',
+}
 
 const finalAmount = computed(() => {
   if (previewResult.value?.code_valid) return previewResult.value.final_amount
@@ -29,11 +37,19 @@ const finalAmount = computed(() => {
 
 function formatRupiah(value) {
   if (value === null || value === undefined) return '–'
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
 
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 async function loadWallet() {
@@ -103,9 +119,14 @@ onMounted(loadWallet)
 <template>
   <div class="token-wallet">
     <h1>Token Saya</h1>
-    <p class="token-wallet__note">
+    <p v-if="auth.isSupervisor" class="token-wallet__note">
+      Token masuk dari setiap validasi laporan yang Anda tinjau (dibayar grafolog yang meminta
+      validasi). Pencairan diatur administrator.
+    </p>
+    <p v-else class="token-wallet__note">
       Setiap laporan yang berhasil dibuat memotong sejumlah token dari saldo Anda (sesuai tier,
-      diatur admin). Beli token di sini untuk menambah saldo.
+      diatur admin), begitu juga permintaan validasi supervisor. Beli token di sini untuk menambah
+      saldo.
     </p>
 
     <SkeletonLoader v-if="loading" variant="form" :rows="2" label="Memuat..." />
@@ -116,7 +137,7 @@ onMounted(loadWallet)
         <strong>{{ wallet.balance }} token</strong>
       </div>
 
-      <section class="token-wallet__buy">
+      <section v-if="!auth.isSupervisor" class="token-wallet__buy">
         <h2>Beli Token</h2>
         <p v-if="!wallet.price_per_token" class="error">
           Harga token belum diatur administrator — pembelian belum bisa dilakukan.
@@ -124,13 +145,24 @@ onMounted(loadWallet)
         <template v-else>
           <label class="token-wallet__field">
             Jumlah Token
-            <input v-model.number="quantity" type="number" min="1" step="1" @change="resetPreview" />
+            <input
+              v-model.number="quantity"
+              type="number"
+              min="1"
+              step="1"
+              @change="resetPreview"
+            />
           </label>
 
           <label class="token-wallet__field">
             Kode Diskon (opsional)
             <div class="token-wallet__code-row">
-              <input v-model="discountCode" type="text" placeholder="mis. HEMAT10" @input="resetPreview" />
+              <input
+                v-model="discountCode"
+                type="text"
+                placeholder="mis. HEMAT10"
+                @input="resetPreview"
+              />
               <button type="button" class="btn" :disabled="previewLoading" @click="applyCode">
                 {{ previewLoading ? '...' : 'Terapkan' }}
               </button>
@@ -147,7 +179,12 @@ onMounted(loadWallet)
           </div>
 
           <p v-if="buyError" class="error">{{ buyError }}</p>
-          <button type="button" class="btn btn--primary token-wallet__buy-btn" :disabled="buying" @click="buy">
+          <button
+            type="button"
+            class="btn btn--primary token-wallet__buy-btn"
+            :disabled="buying"
+            @click="buy"
+          >
             {{ buying ? 'Menyiapkan pembayaran...' : 'Beli Sekarang' }}
           </button>
         </template>
@@ -155,14 +192,21 @@ onMounted(loadWallet)
 
       <section class="token-wallet__history">
         <h2>Riwayat Transaksi</h2>
-        <p v-if="wallet.transactions.length === 0" class="token-wallet__empty">Belum ada transaksi.</p>
+        <p v-if="wallet.transactions.length === 0" class="token-wallet__empty">
+          Belum ada transaksi.
+        </p>
         <ul v-else class="token-wallet__history-list">
           <li v-for="t in wallet.transactions" :key="t.id" class="token-wallet__history-item">
             <span>
               {{ typeLabel[t.type] ?? t.type }}
               <span class="token-wallet__history-meta">{{ formatDate(t.created_at) }}</span>
             </span>
-            <span :class="['token-wallet__delta', t.delta >= 0 ? 'token-wallet__delta--positive' : 'token-wallet__delta--negative']">
+            <span
+              :class="[
+                'token-wallet__delta',
+                t.delta >= 0 ? 'token-wallet__delta--positive' : 'token-wallet__delta--negative',
+              ]"
+            >
               {{ t.delta >= 0 ? '+' : '' }}{{ t.delta }}
             </span>
           </li>

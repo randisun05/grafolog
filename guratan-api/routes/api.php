@@ -45,6 +45,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReportReviewController;
+use App\Http\Controllers\Api\ReportValidationController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\SampleImageController;
 use App\Http\Controllers\Api\ScoringController;
@@ -101,8 +102,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/announcements', [AnnouncementController::class, 'index']);
 
     Route::get('/tokens/price', [TokenController::class, 'price']);
+    // Supervisor juga punya dompet: menerima token dari validasi laporan (Fase D).
+    Route::middleware('role:grafolog,supervisor')->get('/tokens/wallet', [TokenController::class, 'wallet']);
     Route::middleware('role:grafolog')->group(function () {
-        Route::get('/tokens/wallet', [TokenController::class, 'wallet']);
         Route::post('/tokens/preview', [TokenController::class, 'preview']);
         Route::post('/tokens/purchase', [TokenPurchaseController::class, 'store']);
     });
@@ -132,6 +134,12 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware('role:hr,administrator')->post('/samples/{sample}/assignment', [AssignmentController::class, 'store']);
 
     Route::get('/reports', [ReportController::class, 'index']);
+    // Validasi supervisor opsional (Fase D, 2026-10-17) - grafolog penanganan.
+    Route::middleware('role:grafolog')->group(function () {
+        Route::get('/report-validation/fee', [ReportValidationController::class, 'fee']);
+        Route::post('/reports/{report}/publish', [ReportValidationController::class, 'publish']);
+        Route::post('/reports/{report}/request-validation', [ReportValidationController::class, 'request']);
+    });
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
     Route::middleware('role:supervisor,administrator')->group(function () {

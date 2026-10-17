@@ -654,6 +654,14 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   riwayat batch), `HrAnalysisPanel` (tabel aspek kunci/40 aspek + skor wawancara, warna netral =
   intensitas, bukan baik/buruk, plus disclaimer).
 
+## Fase D validasi supervisor opsional — 2026-10-17
+
+- `ReportReviewPanel` prop `canPublish` (grafolog): laporan `draf` → "Terbitkan langsung" /
+  "Minta validasi supervisor (N token)" + saldo (`/report-validation/fee`). Klien melihat catatan
+  `report-view__validation` (divalidasi supervisor vs terbit mandiri). `SupervisorReviewView` =
+  "Antrean Validasi". `TokenWalletView` (`/token-saya`) juga untuk supervisor (tanpa form beli).
+  `AdminTokensView`: biaya Laporan Master + Validasi Supervisor.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

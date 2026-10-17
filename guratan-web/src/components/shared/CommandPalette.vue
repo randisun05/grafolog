@@ -28,6 +28,9 @@ const commands = computed(() => {
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
     items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
   }
+  if (auth.isSupervisor) {
+    items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
+  }
   if (auth.isSupervisor || auth.isAdministrator) {
     items.push({ label: 'Review Laporan', to: { name: 'supervisor-reviews' } })
   }

@@ -19,8 +19,11 @@ use App\Models\Project;
 use App\Models\ReportAspekScore;
 use App\Models\SampleConsultation;
 use App\Models\SampleImage;
+use App\Models\TokenCost;
 use App\Models\User;
+use App\Services\Reporting\ReportValidationService;
 use App\Services\Scoring\ScoringEngineService;
+use App\Services\TokenWalletService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -65,7 +68,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $users = $this->createUsers();
-        $this->createCommerceData($users['admin']);
+        $this->createCommerceData($users['admin'], [$users['ani'], $users['bima']]);
 
         $ani = $users['ani'];
         $bima = $users['bima'];
@@ -79,7 +82,9 @@ class DemoDataSeeder extends Seeder
         // 2. Citra - tier Master, disetujui + jadwal konsultasi.
         $citra = $this->clientOrder($users['citra'], 'master', paid: true, daysAgo: 8);
         $this->assign($citra, $ani, $users['admin']);
-        $this->report($engine, $citra, $ani, 'sosial', PersonalityReport::REVIEW_APPROVED, $spv, daysAgo: 6);
+        // Citra: diterbitkan mandiri oleh grafolog (validasi supervisor opsional, Fase D).
+        $this->report($engine, $citra, $ani, 'sosial', PersonalityReport::REVIEW_APPROVED, $ani, daysAgo: 6)
+            ->update(['validation' => PersonalityReport::VALIDATION_SELF, 'validation_requested_at' => null]);
         SampleConsultation::create([
             'sample_id' => $citra->id,
             'scheduled_at' => now('Asia/Jakarta')->addDays(3)->setTime(10, 0)->utc(),
@@ -166,8 +171,13 @@ class DemoDataSeeder extends Seeder
         ];
     }
 
-    private function createCommerceData(User $admin): void
+    private function createCommerceData(User $admin, array $grafologs = []): void
     {
+        // Biaya validasi supervisor 2 token + saldo awal grafolog demo.
+        TokenCost::setTokensFor(ReportValidationService::COST_KEY, 2, $admin);
+        foreach ($grafologs as $g) {
+            app(TokenWalletService::class)->credit($g, 10);
+        }
         DiscountCode::create([
             'code' => 'DEMO20', 'type' => 'percentage', 'value' => 20, 'applicable_tiers' => ['master'],
             'is_public' => true, 'description' => 'Hemat 20% Master Graphology (demo)',
@@ -297,6 +307,8 @@ class DemoDataSeeder extends Seeder
             'review_status' => $reviewStatus,
             'reviewed_by' => $reviewer?->id,
             'reviewed_at' => $reviewer ? $generatedAt->copy()->addHours(3) : null,
+            'validation' => PersonalityReport::VALIDATION_SUPERVISOR,
+            'validation_requested_at' => $generatedAt,
         ]);
 
         $aspekIds = Aspek::pluck('id', 'kode');

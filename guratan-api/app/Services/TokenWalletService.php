@@ -18,16 +18,16 @@ class TokenWalletService
     /**
      * Tambah saldo (dari pembelian token sukses).
      */
-    public function credit(User $user, int $amount, array $refs = []): TokenLedgerEntry
+    public function credit(User $user, int $amount, array $refs = [], string $type = 'purchase'): TokenLedgerEntry
     {
-        return DB::transaction(function () use ($user, $amount, $refs) {
+        return DB::transaction(function () use ($user, $amount, $refs, $type) {
             $locked = User::whereKey($user->id)->lockForUpdate()->first();
             $newBalance = $locked->token_balance + $amount;
             $locked->forceFill(['token_balance' => $newBalance])->save();
 
             return TokenLedgerEntry::create([
                 'user_id' => $user->id,
-                'type' => 'purchase',
+                'type' => $type,
                 'delta' => $amount,
                 'balance_after' => $newBalance,
                 ...$refs,
@@ -41,18 +41,23 @@ class TokenWalletService
      * ScoringController::submit, jadi kalau ini gagal seluruh pembuatan
      * laporan ikut rollback (laporan tidak pernah setengah jadi).
      */
-    public function debit(User $user, int $amount, array $refs = []): TokenLedgerEntry
-    {
-        return DB::transaction(function () use ($user, $amount, $refs) {
+    public function debit(
+        User $user,
+        int $amount,
+        array $refs = [],
+        string $type = 'consumption',
+        string $insufficientMessage = 'Token Anda tidak cukup untuk membuat laporan ini. Silakan beli token terlebih dahulu.',
+    ): TokenLedgerEntry {
+        return DB::transaction(function () use ($user, $amount, $refs, $type, $insufficientMessage) {
             $locked = User::whereKey($user->id)->lockForUpdate()->first();
-            abort_if($locked->token_balance < $amount, 402, 'Token Anda tidak cukup untuk membuat laporan ini. Silakan beli token terlebih dahulu.');
+            abort_if($locked->token_balance < $amount, 402, $insufficientMessage);
 
             $newBalance = $locked->token_balance - $amount;
             $locked->forceFill(['token_balance' => $newBalance])->save();
 
             return TokenLedgerEntry::create([
                 'user_id' => $user->id,
-                'type' => 'consumption',
+                'type' => $type,
                 'delta' => -$amount,
                 'balance_after' => $newBalance,
                 ...$refs,

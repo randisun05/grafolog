@@ -84,6 +84,11 @@ class DashboardController extends Controller
                     'value' => PersonalityReport::where('review_status', PersonalityReport::REVIEW_REVISION)->count(),
                 ],
                 [
+                    'key' => 'token_balance',
+                    'label' => 'Token dari Validasi',
+                    'value' => $user->token_balance,
+                ],
+                [
                     'key' => 'approved_by_me_this_month',
                     'label' => 'Saya Setujui Bulan Ini',
                     'value' => PersonalityReport::where('reviewed_by', $user->id)
@@ -154,6 +159,12 @@ class DashboardController extends Controller
                     'key' => 'pending_review',
                     'label' => 'Menunggu Skor',
                     'value' => HandwritingSample::whereIn('id', $sampleIds)->where('status', 'pending')->count(),
+                ],
+                [
+                    'key' => 'drafts',
+                    'label' => 'Laporan Draf (belum terbit)',
+                    'value' => PersonalityReport::whereIn('sample_id', $sampleIds)
+                        ->where('review_status', PersonalityReport::REVIEW_DRAFT)->count(),
                 ],
                 [
                     'key' => 'needs_revision',

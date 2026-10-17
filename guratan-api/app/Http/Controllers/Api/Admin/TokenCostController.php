@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateTokenCostRequest;
 use App\Models\AuditLog;
 use App\Models\TokenCost;
+use App\Services\Reporting\ReportValidationService;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -24,7 +25,8 @@ class TokenCostController extends Controller
 
     public function update(UpdateTokenCostRequest $request, string $tier): JsonResponse
     {
-        abort_unless(in_array($tier, ['comprehensive', 'master'], true), 404);
+        // Comprehensive tidak dijual lagi; `validasi_supervisor` = biaya validasi laporan (Fase D).
+        abort_unless(in_array($tier, ['master', ReportValidationService::COST_KEY], true), 404);
 
         $cost = TokenCost::setTokensFor($tier, $request->validated('tokens_required'), $request->user());
 

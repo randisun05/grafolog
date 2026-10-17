@@ -85,7 +85,7 @@ const router = createRouter({
       path: '/token-saya',
       name: 'token-wallet',
       component: () => import('../views/TokenWalletView.vue'),
-      meta: { requiresAuth: true, role: 'grafolog' },
+      meta: { requiresAuth: true, role: ['grafolog', 'supervisor'] },
     },
     {
       path: '/reports/:id',

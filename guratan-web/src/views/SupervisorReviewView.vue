@@ -46,10 +46,11 @@ onMounted(load)
 
 <template>
   <div class="reviews">
-    <h1>Antrean Review Laporan</h1>
+    <h1>Antrean Validasi Laporan</h1>
     <p class="reviews__note">
-      Laporan baru terlihat oleh klien/HR setelah Anda setujui. Periksa kesesuaian skor, narasi, dan
-      catatan grafolog sebelum merilis.
+      Validasi bersifat opsional: hanya laporan yang grafolognya meminta validasi masuk ke sini, dan
+      baru terlihat klien/HR setelah Anda setujui. Biaya validasi (token) masuk ke saldo Anda pada
+      keputusan pertama - setuju maupun minta revisi.
     </p>
 
     <div class="reviews__tabs">
@@ -75,6 +76,7 @@ onMounted(load)
           <span class="reviews__meta">
             {{ r.tier }} · Grafolog: {{ grafologName(r) }} · Selesai
             {{ formatDate(r.generated_at) }}
+            <template v-if="r.validation_fee"> · {{ r.validation_fee }} token</template>
           </span>
           <span v-if="r.review_note && status === 'perlu_revisi'" class="reviews__meta"
             >Catatan: {{ r.review_note }}</span

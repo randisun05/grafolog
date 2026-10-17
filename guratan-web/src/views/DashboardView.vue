@@ -25,7 +25,8 @@ const statusLabel = {
   completed: 'Selesai',
   generating: 'Diproses',
   failed: 'Gagal',
-  menunggu_review: 'Menunggu Review',
+  menunggu_review: 'Menunggu Validasi',
+  draf: 'Draf',
 }
 
 function formatValue(kpi) {

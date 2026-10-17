@@ -1,11 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
 
 const props = defineProps({
   report: { type: Object, required: true },
   canReview: { type: Boolean, default: false },
+  // Grafolog penanganan: memutuskan laporan draf - terbit mandiri / minta validasi (Fase D).
+  canPublish: { type: Boolean, default: false },
 })
 const emit = defineEmits(['reviewed'])
 
@@ -14,11 +16,41 @@ const note = ref('')
 const submitting = ref(false)
 
 const statusLabel = {
-  menunggu_review: 'Menunggu review supervisor',
+  draf: 'Draf — belum terlihat klien',
+  menunggu_review: 'Menunggu validasi supervisor',
   perlu_revisi: 'Perlu revisi',
-  disetujui: 'Disetujui — terlihat oleh klien',
+  disetujui: 'Terbit — terlihat oleh klien',
 }
 const isApproved = computed(() => props.report.review_status === 'disetujui')
+const isDraft = computed(() => props.report.review_status === 'draf')
+const fee = ref(null)
+
+onMounted(async () => {
+  if (!props.canPublish || !isDraft.value) return
+  try {
+    fee.value = (await api.get('/report-validation/fee')).data
+  } catch {
+    fee.value = null
+  }
+})
+
+async function decideDraft(action) {
+  submitting.value = true
+  try {
+    const { data } = await api.post(`/reports/${props.report.id}/${action}`)
+    toast.push(
+      action === 'publish'
+        ? 'Laporan diterbitkan dan dikirim ke klien.'
+        : 'Laporan diajukan ke supervisor untuk validasi.',
+      'success',
+    )
+    emit('reviewed', data)
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal memproses laporan.')
+  } finally {
+    submitting.value = false
+  }
+}
 
 async function review(decision) {
   submitting.value = true
@@ -51,9 +83,44 @@ async function review(decision) {
 <template>
   <section class="review-panel" :class="`review-panel--${report.review_status}`">
     <p class="review-panel__status">
-      <strong>Status QA:</strong> {{ statusLabel[report.review_status] ?? report.review_status }}
+      <strong>Status:</strong> {{ statusLabel[report.review_status] ?? report.review_status }}
+      <span v-if="isApproved">
+        ·
+        {{ report.validation === 'supervisor' ? 'divalidasi supervisor' : 'terbit mandiri' }}</span
+      >
       <span v-if="report.reviewer"> · oleh {{ report.reviewer.name }}</span>
+      <span v-if="report.validation_fee"> · biaya validasi {{ report.validation_fee }} token</span>
     </p>
+
+    <div v-if="canPublish && isDraft" class="review-panel__actions">
+      <p class="review-panel__hint">
+        Periksa laporan, lalu pilih: terbitkan langsung (tanggung jawab Anda), atau minta supervisor
+        memvalidasi lebih dulu. Validasi menambah kredibilitas laporan dan biayanya ditransfer ke
+        supervisor peninjau.
+      </p>
+      <div class="review-panel__buttons">
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="submitting"
+          @click="decideDraft('publish')"
+        >
+          Terbitkan langsung
+        </button>
+        <button
+          type="button"
+          class="btn"
+          :disabled="submitting || (fee && fee.tokens > fee.balance)"
+          @click="decideDraft('request-validation')"
+        >
+          Minta validasi supervisor{{ fee ? ` (${fee.tokens} token)` : '' }}
+        </button>
+      </div>
+      <p v-if="fee" class="review-panel__hint">
+        Saldo token Anda: {{ fee.balance }}
+        <RouterLink v-if="fee.tokens > fee.balance" to="/token-saya">· Beli token</RouterLink>
+      </p>
+    </div>
     <p
       v-if="report.review_note && report.review_status === 'perlu_revisi'"
       class="review-panel__note"
@@ -61,7 +128,10 @@ async function review(decision) {
       <strong>Catatan supervisor:</strong> {{ report.review_note }}
     </p>
 
-    <div v-if="canReview && !isApproved" class="review-panel__actions">
+    <div
+      v-if="canReview && ['menunggu_review', 'perlu_revisi'].includes(report.review_status)"
+      class="review-panel__actions"
+    >
       <textarea
         v-model="note"
         rows="2"
@@ -98,6 +168,14 @@ async function review(decision) {
   margin-bottom: 18px;
   font-size: 14px;
   background: var(--color-surface);
+}
+.review-panel__hint {
+  margin: 0 0 8px;
+  color: var(--color-text-soft);
+  font-size: 13px;
+}
+.review-panel--draf {
+  border-left-color: var(--color-border-hover);
 }
 .review-panel--disetujui {
   border-left-color: var(--color-success);

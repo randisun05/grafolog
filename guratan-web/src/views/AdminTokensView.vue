@@ -6,7 +6,9 @@ import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
 
-const tierLabel = { comprehensive: 'Comprehensive', master: 'Master' }
+// Biaya token per laporan Master + biaya validasi supervisor (Fase D, ditransfer ke supervisor).
+const COST_KEYS = ['master', 'validasi_supervisor']
+const tierLabel = { master: 'Laporan Master', validasi_supervisor: 'Validasi Supervisor' }
 
 const prices = ref([])
 const costs = ref([])
@@ -15,8 +17,8 @@ const loadError = ref('')
 
 const priceDraft = ref('')
 const savingPrice = ref(false)
-const costDraft = ref({ comprehensive: '', master: '' })
-const savingCost = ref({ comprehensive: false, master: false })
+const costDraft = ref({ master: '', validasi_supervisor: '' })
+const savingCost = ref({ master: false, validasi_supervisor: false })
 
 const activePrice = computed(() => prices.value.find((p) => p.is_active) ?? null)
 const priceHistory = computed(() => prices.value.filter((p) => !p.is_active))
@@ -29,7 +31,7 @@ const activeCostByTier = computed(() => {
   return result
 })
 const costHistoryByTier = computed(() => {
-  const result = { comprehensive: [], master: [] }
+  const result = { master: [], validasi_supervisor: [] }
   for (const cost of costs.value) {
     if (!cost.is_active) result[cost.tier]?.push(cost)
   }
@@ -47,7 +49,7 @@ async function loadAll() {
     prices.value = priceRes.data.data
     costs.value = costRes.data.data
     priceDraft.value = activePrice.value?.price_per_token ?? ''
-    for (const tier of ['master']) {
+    for (const tier of COST_KEYS) {
       costDraft.value[tier] = activeCostByTier.value[tier]?.tokens_required ?? ''
     }
   } catch (e) {
@@ -146,7 +148,7 @@ onMounted(loadAll)
 
       <h2 class="admin-tokens__section-title">Biaya Token per Tier Laporan</h2>
       <div class="admin-tokens__grid">
-        <div v-for="tier in ['master']" :key="tier" class="admin-tokens__card">
+        <div v-for="tier in COST_KEYS" :key="tier" class="admin-tokens__card">
           <h3>{{ tierLabel[tier] }}</h3>
           <p class="admin-tokens__current">
             Biaya aktif:

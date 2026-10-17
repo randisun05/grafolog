@@ -44,7 +44,9 @@ async function handleLogout() {
         <RouterLink v-if="auth.isClient" to="/pesan">Pesan Layanan</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
-        <RouterLink v-if="auth.isGrafolog" to="/token-saya">Token Saya</RouterLink>
+        <RouterLink v-if="auth.isGrafolog || auth.isSupervisor" to="/token-saya"
+          >Token Saya</RouterLink
+        >
         <RouterLink v-if="auth.isSupervisor || auth.isAdministrator" to="/supervisor/reviews"
           >Review Laporan</RouterLink
         >

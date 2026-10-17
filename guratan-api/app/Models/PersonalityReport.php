@@ -11,7 +11,15 @@ class PersonalityReport extends Model
     protected $fillable = [
         'sample_id', 'tier', 'status', 'data', 'pdf_path', 'generated_at',
         'review_status', 'reviewed_by', 'reviewed_at', 'review_note',
+        'validation', 'validation_requested_at', 'validation_fee', 'validation_paid_to', 'validation_paid_at',
     ];
+
+    /** Fase D (2026-10-17): laporan baru menunggu keputusan grafolog - terbit mandiri / minta validasi. */
+    public const REVIEW_DRAFT = 'draf';
+
+    public const VALIDATION_SELF = 'mandiri';
+
+    public const VALIDATION_SUPERVISOR = 'supervisor';
 
     public const REVIEW_PENDING = 'menunggu_review';
 
@@ -25,6 +33,8 @@ class PersonalityReport extends Model
             'data' => 'array',
             'generated_at' => 'datetime',
             'reviewed_at' => 'datetime',
+            'validation_requested_at' => 'datetime',
+            'validation_paid_at' => 'datetime',
         ];
     }
 
@@ -56,11 +66,21 @@ class PersonalityReport extends Model
      */
     public function sendBackToReview(): void
     {
+        // Validasi supervisor sudah dibayar -> kembali ke antrean supervisor (tanpa biaya baru).
+        // Terbit mandiri -> kembali ke draf; grafolog memutuskan ulang terbit/validasi.
+        $supervised = $this->validation === self::VALIDATION_SUPERVISOR;
+
         $this->update([
-            'review_status' => self::REVIEW_PENDING,
+            'review_status' => $supervised ? self::REVIEW_PENDING : self::REVIEW_DRAFT,
+            'validation' => $supervised ? self::VALIDATION_SUPERVISOR : null,
             'reviewed_by' => null,
             'reviewed_at' => null,
         ]);
+    }
+
+    public function isSupervisorValidated(): bool
+    {
+        return $this->isApproved() && $this->validation === self::VALIDATION_SUPERVISOR;
     }
 
     public function reviewer(): BelongsTo

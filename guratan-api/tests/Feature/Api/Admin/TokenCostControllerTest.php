@@ -14,7 +14,7 @@ class TokenCostControllerTest extends TestCase
     public function test_guest_cannot_view_or_update_token_costs(): void
     {
         $this->getJson('/api/admin/token-costs')->assertUnauthorized();
-        $this->putJson('/api/admin/token-costs/comprehensive', ['tokens_required' => 1])->assertUnauthorized();
+        $this->putJson('/api/admin/token-costs/master', ['tokens_required' => 1])->assertUnauthorized();
     }
 
     public function test_non_administrator_forbidden(): void
@@ -22,25 +22,25 @@ class TokenCostControllerTest extends TestCase
         $grafolog = User::factory()->create(['role' => 'grafolog']);
 
         $this->actingAs($grafolog, 'sanctum')
-            ->putJson('/api/admin/token-costs/comprehensive', ['tokens_required' => 1])
+            ->putJson('/api/admin/token-costs/master', ['tokens_required' => 1])
             ->assertForbidden();
     }
 
     public function test_administrator_can_set_cost_and_old_row_is_deactivated(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
-        $old = TokenCost::create(['tier' => 'comprehensive', 'tokens_required' => 1, 'is_active' => true]);
+        $old = TokenCost::create(['tier' => 'master', 'tokens_required' => 1, 'is_active' => true]);
 
         $response = $this->actingAs($admin, 'sanctum')
-            ->putJson('/api/admin/token-costs/comprehensive', ['tokens_required' => 2]);
+            ->putJson('/api/admin/token-costs/master', ['tokens_required' => 2]);
 
         $response->assertCreated()
-            ->assertJsonPath('tier', 'comprehensive')
+            ->assertJsonPath('tier', 'master')
             ->assertJsonPath('tokens_required', 2)
             ->assertJsonPath('is_active', true);
 
         $this->assertDatabaseHas('token_costs', ['id' => $old->id, 'is_active' => false]);
-        $this->assertSame(2, TokenCost::activeTokensFor('comprehensive'));
+        $this->assertSame(2, TokenCost::activeTokensFor('master'));
     }
 
     public function test_cost_change_is_audit_logged(): void
@@ -71,7 +71,7 @@ class TokenCostControllerTest extends TestCase
         $admin = User::factory()->create(['role' => 'administrator']);
 
         $this->actingAs($admin, 'sanctum')
-            ->putJson('/api/admin/token-costs/comprehensive', ['tokens_required' => -1])
+            ->putJson('/api/admin/token-costs/master', ['tokens_required' => -1])
             ->assertUnprocessable();
     }
 
@@ -80,15 +80,15 @@ class TokenCostControllerTest extends TestCase
         $admin = User::factory()->create(['role' => 'administrator']);
 
         $this->actingAs($admin, 'sanctum')
-            ->putJson('/api/admin/token-costs/comprehensive', ['tokens_required' => 0])
+            ->putJson('/api/admin/token-costs/master', ['tokens_required' => 0])
             ->assertCreated();
     }
 
     public function test_index_lists_cost_history(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
-        TokenCost::setTokensFor('comprehensive', 1, $admin);
-        TokenCost::setTokensFor('comprehensive', 2, $admin);
+        TokenCost::setTokensFor('master', 1, $admin);
+        TokenCost::setTokensFor('master', 2, $admin);
 
         $response = $this->actingAs($admin, 'sanctum')->getJson('/api/admin/token-costs');
 

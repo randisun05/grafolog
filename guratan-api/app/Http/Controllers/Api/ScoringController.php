@@ -76,7 +76,7 @@ class ScoringController extends Controller
                 'sample_id' => $sample->id,
                 'tier' => $sample->tier,
                 'status' => 'generating',
-                'review_status' => PersonalityReport::REVIEW_PENDING,
+                'review_status' => PersonalityReport::REVIEW_DRAFT,
             ]);
 
             $skorPerAspek = [];

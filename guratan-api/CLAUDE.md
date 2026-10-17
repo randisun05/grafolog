@@ -1709,6 +1709,28 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - 468 test (baru `Hr/B2bFlowTest`). Demo: `hr@sinarabadi.test` (perusahaan pending), posisi
   "Staf Keuangan", batch Paket Rekrutmen Hendra (selesai + wawancara) & Intan (diproses).
 
+## Fase D validasi supervisor opsional — 2026-10-17
+
+- **Mengganti QA wajib (2026-10-03)**: laporan baru (`ScoringController::submit`) berstatus
+  `review_status=draf` — tidak terlihat klien/HR, tidak masuk antrean supervisor. Grafolog
+  penanganan memilih (`ReportValidationController`, role grafolog + `isScorableBy`):
+  `POST /reports/{r}/publish` → `disetujui`, `validation=mandiri`, `reviewed_by`=grafolog; atau
+  `POST /reports/{r}/request-validation` → potong token `TokenCost('validasi_supervisor')` (null =
+  gratis; 402 bila kurang, laporan tetap draf) → `menunggu_review`, `validation=supervisor`.
+  `GET /report-validation/fee` → `{tokens, balance}`.
+- `ReportReviewController::store` hanya untuk `validation=supervisor`; keputusan PERTAMA (setuju
+  atau minta revisi) mentransfer `validation_fee` ke peninjau (`ReportValidationService::payReviewer`,
+  sekali per laporan: `validation_paid_to/at`). Ledger tipe baru `biaya_validasi` /
+  `pendapatan_validasi` (`token_ledger_entries.type` & `token_costs.tier` kini string).
+  Tab "disetujui" di `/reviews` hanya yang divalidasi supervisor.
+- `sendBackToReview()` (koreksi/edit narasi): validasi supervisor → kembali `menunggu_review`
+  tanpa biaya baru; terbit mandiri → kembali `draf` (validation null).
+- Supervisor punya dompet (`GET /tokens/wallet` role grafolog,supervisor; beli token tetap
+  grafolog). Admin `PUT /admin/token-costs/{master|validasi_supervisor}` (comprehensive → 404).
+  Dashboard: grafolog "Laporan Draf", supervisor "Token dari Validasi".
+- Laporan lama di-backfill `validation=supervisor`. Demo: biaya validasi 2 token, Ani/Bima 10
+  token, laporan Citra terbit mandiri. 475 test (baru `ReportValidationTest`).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

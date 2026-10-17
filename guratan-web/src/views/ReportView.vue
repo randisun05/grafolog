@@ -147,8 +147,16 @@ function onNarasiUpdated(updatedReport) {
         v-if="isStaff"
         :report="report"
         :can-review="canReview"
+        :can-publish="canEdit"
         @reviewed="onReviewed"
       />
+      <p v-else-if="report.validation" class="report-view__validation">
+        {{
+          report.validation === 'supervisor'
+            ? '✓ Laporan ini telah divalidasi supervisor Guratan.'
+            : 'Laporan ini diterbitkan langsung oleh grafolog Anda (tanpa validasi supervisor).'
+        }}
+      </p>
 
       <ConsultationPanel
         v-if="report.tier === 'master'"
@@ -227,5 +235,10 @@ function onNarasiUpdated(updatedReport) {
 }
 .report-view__header h1 {
   font-size: 22px;
+}
+.report-view__validation {
+  font-size: 13px;
+  color: var(--color-text-soft);
+  margin: 0 0 14px;
 }
 </style>

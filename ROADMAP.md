@@ -955,5 +955,6 @@ supervisor = validasi opsional dibayar token.
 - [x] Fase C (13,14,18,19,20): B2B — daftar + verifikasi perusahaan, profil grafolog/klien/HR,
       posisi & kandidat (form + CSV), pesanan batch dengan HR memilih grafolog, analisis kandidat
       (aspek kunci + wawancara, tanpa skor kecocokan).
-- [ ] Fase D (11): validasi supervisor opsional, fee token.
+- [x] Fase D (11): validasi supervisor opsional — laporan draf, terbit mandiri atau minta validasi
+      berbayar token yang ditransfer ke supervisor peninjau.
 - [ ] Fase E (3,5,15,21): rapid self-check, SOP pembelian/refund/pembatalan, afiliasi, konten & mini games.

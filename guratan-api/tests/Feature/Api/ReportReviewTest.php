@@ -26,6 +26,9 @@ class ReportReviewTest extends TestCase
         ]);
         $report = PersonalityReport::create([
             'sample_id' => $sample->id, 'tier' => 'comprehensive', 'status' => 'completed', 'generated_at' => now(),
+            // Grafolog sudah meminta validasi supervisor (Fase D: validasi opsional).
+            'review_status' => PersonalityReport::REVIEW_PENDING,
+            'validation' => PersonalityReport::VALIDATION_SUPERVISOR, 'validation_requested_at' => now(),
             'data' => ['sindrom' => [[
                 'id' => $sindrom->id, 'kode_romawi' => 'I', 'nama' => 'Driving Forces', 'polaritas' => 'HIJAU',
                 'aspek' => [['kode' => '01', 'nama' => 'Aspek 1', 'skor' => 5, 'narasi' => 'asli']],
@@ -106,6 +109,7 @@ class ReportReviewTest extends TestCase
         Queue::fake();
         [$report, $grafolog, $client] = $this->pendingReport();
         $report->update(['review_status' => PersonalityReport::REVIEW_APPROVED]);
+        // Validasi supervisor -> kembali ke antrean supervisor.
 
         $this->actingAs($grafolog, 'sanctum')
             ->patchJson("/api/reports/{$report->id}/aspek/01/narasi", ['narasi' => 'ubah setelah disetujui'])->assertOk();
