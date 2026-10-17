@@ -4,11 +4,11 @@ REM Setiap server dibuka di jendela terpisah supaya log-nya kelihatan dan bisa
 REM ditutup satu-satu (Ctrl+C di jendela itu, atau tutup jendelanya).
 REM
 REM Path mysqld di bawah sesuai instalasi Laragon di mesin ini
-REM (D:\laragon\bin\mysql\mysql-8.0.46-winx64) - kalau Laragon di-upgrade dan
+REM (C:\laragon\bin\mysql\mysql-8.4.3-winx64) - kalau Laragon di-upgrade dan
 REM versi MySQL berubah, sesuaikan MYSQL_DIR.
 
 setlocal
-set MYSQL_DIR=D:\laragon\bin\mysql\mysql-8.0.46-winx64
+set MYSQL_DIR=C:\laragon\bin\mysql\mysql-8.4.3-winx64
 set API_DIR=D:\Project\grafolog\guratan-api
 set WEB_DIR=D:\Project\grafolog\guratan-web
 
@@ -44,8 +44,13 @@ REM --- 3. Frontend Vite ---
 echo [3/3] Menyalakan frontend Vite di port 5173...
 start "Guratan - Web (5173)" cmd /k "cd /d %WEB_DIR% && npm run dev"
 
+REM --- 4. Queue worker (email "laporan siap", jadwal konsultasi, reset password) ---
+echo [4/4] Menyalakan queue worker...
+start "Guratan - Queue" cmd /k "cd /d %API_DIR% && php artisan queue:listen --tries=1"
+
 echo.
 echo Semua server sedang menyala di jendela masing-masing.
+echo   - Email mode log: isi email ada di guratan-api\storage\logs\laravel.log
 echo   - API   : http://127.0.0.1:8123
 echo   - Web   : http://localhost:5173
 echo.
