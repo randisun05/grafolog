@@ -71,7 +71,12 @@ async function submit() {
         {{ loading ? 'Memproses...' : 'Daftar' }}
       </button>
     </form>
-    <RouterLink to="/daftar-grafolog" class="register__grafolog">Anda grafolog bersertifikat? Daftar di sini</RouterLink>
+    <RouterLink to="/daftar-grafolog" class="register__grafolog"
+      >Anda grafolog bersertifikat? Daftar di sini</RouterLink
+    >
+    <RouterLink to="/daftar-perusahaan" class="register__grafolog"
+      >Untuk perusahaan / tim HR? Daftarkan perusahaan</RouterLink
+    >
   </div>
 </template>
 

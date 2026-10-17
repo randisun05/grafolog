@@ -40,3 +40,15 @@ export const STATUS_LAYANAN = {
   selesai: 'Selesai',
   dibatalkan: 'Dibatalkan',
 }
+
+export const EMPLOYEE_RANGES = ['1-10', '11-50', '51-200', '201-1000', '1000+']
+
+export const EDUCATION = ['SMA', 'D3', 'S1', 'S2', 'S3', 'Lainnya']
+
+export const TAHAP_KANDIDAT = {
+  baru: 'Baru',
+  asesmen: 'Asesmen',
+  selesai: 'Hasil siap',
+  lanjut: 'Lanjut',
+  tidak_lanjut: 'Tidak lanjut',
+}

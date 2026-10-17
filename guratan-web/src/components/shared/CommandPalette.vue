@@ -35,6 +35,7 @@ const commands = computed(() => {
     items.push({ label: 'Pesanan Masuk', to: { name: 'admin-orders' } })
     items.push({ label: 'Kelola Staf', to: { name: 'admin-users' } })
     items.push({ label: 'Verifikasi Grafolog', to: { name: 'admin-grafolog' } })
+    items.push({ label: 'Verifikasi Perusahaan', to: { name: 'admin-companies' } })
     items.push({ label: 'Kelola Produk & Harga', to: { name: 'admin-products' } })
     items.push({ label: 'Kelola Diskon', to: { name: 'admin-discounts' } })
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })
@@ -43,8 +44,9 @@ const commands = computed(() => {
     items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
   }
   if (auth.isHr) {
-    items.push({ label: 'Kandidat', to: { name: 'hr-candidates' } })
+    items.push({ label: 'Rekrutmen: Kandidat & Analisis', to: { name: 'hr-candidates' } })
   }
+  items.push({ label: 'Profil Saya', to: { name: 'profile' } })
   items.push({ label: 'Ganti Mode Terang/Gelap', action: toggleTheme })
 
   return items

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Payment extends Model
 {
     protected $fillable = [
-        'sample_id', 'order_id', 'invoice_number', 'amount', 'base_amount', 'discount_code_id',
+        'sample_id', 'order_id', 'order_batch_id', 'invoice_number', 'amount', 'base_amount', 'discount_code_id',
         'currency', 'status', 'doku_token_id', 'doku_payment_url',
         'doku_payment_channel', 'notification_payload', 'paid_at',
     ];
@@ -29,6 +29,11 @@ class Payment extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function orderBatch(): BelongsTo
+    {
+        return $this->belongsTo(OrderBatch::class);
     }
 
     public function discountCode(): BelongsTo

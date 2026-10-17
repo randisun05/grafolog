@@ -34,6 +34,9 @@ async function handleLogout() {
         <RouterLink v-if="auth.isPendingGrafolog" to="/status-grafolog"
           >Status Pendaftaran</RouterLink
         >
+        <RouterLink v-else-if="auth.isPendingHr" to="/status-perusahaan"
+          >Status Pendaftaran</RouterLink
+        >
         <template v-else>
           <RouterLink to="/dashboard">Dashboard</RouterLink>
           <RouterLink to="/riwayat">Riwayat</RouterLink>
@@ -53,14 +56,22 @@ async function handleLogout() {
             <RouterLink to="/admin/discounts">Kelola Promo &amp; Diskon</RouterLink>
             <RouterLink to="/admin/users">Kelola Staf</RouterLink>
             <RouterLink to="/admin/grafolog">Verifikasi Grafolog</RouterLink>
+            <RouterLink to="/admin/perusahaan">Verifikasi Perusahaan</RouterLink>
             <RouterLink to="/admin/tokens">Kelola Token</RouterLink>
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
             <RouterLink to="/admin/announcements">Pengumuman</RouterLink>
             <RouterLink to="/admin/knowledge">Knowledge Base</RouterLink>
           </div>
         </details>
-        <RouterLink v-if="auth.isHr" to="/hr/candidates">Kandidat</RouterLink>
-        <span class="app-navbar__user">{{ auth.user?.name }}</span>
+        <RouterLink v-if="auth.isHr && !auth.isPendingHr" to="/hr/candidates">Rekrutmen</RouterLink>
+        <RouterLink
+          v-if="!auth.isPendingGrafolog && !auth.isPendingHr"
+          to="/profil"
+          class="app-navbar__user"
+          title="Profil saya"
+          >{{ auth.user?.name }}</RouterLink
+        >
+        <span v-else class="app-navbar__user">{{ auth.user?.name }}</span>
         <span class="app-navbar__cmdk-hint" title="Buka command palette">Ctrl/&#8984;+K</span>
         <button type="button" class="app-navbar__logout" @click="handleLogout">Keluar</button>
       </template>

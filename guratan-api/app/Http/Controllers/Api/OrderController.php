@@ -22,7 +22,8 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(
-            Order::where('user_id', $request->user()->id)
+            // Pesanan B2B (batch) milik perusahaan, bukan kandidat - tidak ditampilkan/dibayar di sini.
+            Order::where('user_id', $request->user()->id)->whereNull('batch_id')
                 ->with(['product:id,kode,nama,kategori', 'deliveries.component:id,tipe,nama', 'deliveries.assignee:id,name',
                     'sample:id,status', 'sample.reports:id,sample_id,review_status'])
                 ->latest()->get()
@@ -71,7 +72,7 @@ class OrderController extends Controller
 
     public function pay(Request $request, Order $order): JsonResponse
     {
-        abort_unless($order->user_id === $request->user()->id, 403);
+        abort_unless($order->user_id === $request->user()->id && ! $order->batch_id, 403);
 
         try {
             return response()->json($this->orders->startPayment($order, $request->user(), $request->ip()), 201);
@@ -88,7 +89,7 @@ class OrderController extends Controller
 
     public function cancel(Request $request, Order $order): JsonResponse
     {
-        abort_unless($order->user_id === $request->user()->id, 403);
+        abort_unless($order->user_id === $request->user()->id && ! $order->batch_id, 403);
         $this->orders->cancel($order, 'Dibatalkan klien sebelum pembayaran.', $request->user(), $request->ip());
 
         return response()->json($this->present($order->fresh()));

@@ -22,8 +22,7 @@ class ImportCandidatesRequest extends FormRequest
     {
         return [
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
-            'project_name' => ['nullable', 'string', 'max:255'],
-            'tier' => ['sometimes', 'string', 'in:master'],
+            'job_position_id' => ['nullable', 'integer'],
             'consent_confirmed' => ['accepted'],
         ];
     }

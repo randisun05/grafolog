@@ -1531,7 +1531,7 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 
 - `php artisan db:seed --class=DemoDataSeeder` (setelah `migrate:fresh --seed`) — BUKAN
   bagian `DatabaseSeeder`. Ditolak di production, jalan sekali (cek `admin.demo@guratan.test`).
-  13 akun berpassword `DemoGuratan123` (`DemoDataSeeder::PASSWORD`): admin.demo, supervisor,
+  14 akun berpassword `DemoGuratan123` (`DemoDataSeeder::PASSWORD`): admin.demo, supervisor,
   ani.grafolog, bima.grafolog (@guratan.test), hr@majujaya.test, klien budi/citra/dewi/eko/
   fajar/gita (@guratan.test), kandidat hendra/intan (@majujaya.test). 8 sample mencakup tiap
   tahap: disetujui (Budi, Citra+konsultasi Master, Hendra/HR), menunggu review (Fajar),
@@ -1676,6 +1676,38 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   `/admin/products` CRUD, `/admin/products/templates`, komponen `/admin/products/{p}/components`,
   `/admin/product-components/{c}`. Harga tetap lewat `PUT /admin/pricing/{kode}` (validasi kode produk).
 - 457 test (baru `OrderFlowTest`).
+
+## Fase C B2B — 2026-10-17
+
+- **Pendaftaran perusahaan**: `POST /auth/register-company` (publik, throttle 20/menit) → Company
+  `pending` + akun HR pertama (login langsung). `User::isPendingHr()` (HR dengan company belum
+  `verified`) ditolak middleware `role:` — HR tanpa company (akun lama) tidak terkena. Admin:
+  `GET /admin/company-applications?status=`, `POST .../{company}/decision` (catatan wajib bila
+  tolak; `CompanyVerificationMail` ke semua HR perusahaan). Company buatan admin default `verified`.
+  `/auth/login` & `/auth/me` menyertakan `user.company` untuk HR.
+- **Profil**: `GET/PUT /profile` — field per role (`UpdateProfileRequest`, field role lain
+  `prohibited`): grafolog `bio/specializations/experience_years`, klien `birth_date/gender/
+  education/occupation`, HR `company.*`; semua `name/phone/city`. `GET /grafologs` (HR/admin)
+  kini memuat profil + beban (`active_assignments`, `completed_assignments`, `active_services`).
+- **Posisi & kandidat**: `job_positions` (`key_aspek_ids` ≤10 = kolom yang ditonjolkan di
+  analisis, BUKAN skor kecocokan), `candidate_profiles` (unik user+company; `stage` baru →
+  asesmen (batch lunas) → selesai (order selesai) → lanjut/tidak_lanjut oleh HR). Identitas
+  tetap `User` role user (`CandidateRegistrar` dipakai form tunggal & impor). **Impor CSV kini
+  hanya membuat kandidat + profil** (opsional `job_position_id`, kolom `phone`), tidak lagi
+  membuat sampel gratis — asesmen dipesan lewat batch.
+- **Pesanan B2B**: `order_batches` (satu produk × N kandidat, satu `Payment.order_batch_id`), tiap
+  kandidat tetap punya `Order` (`batch_id`, `grafolog_id`). HR memilih grafolog terverifikasi;
+  `OrderService::markPaid` membuat `Assignment` sampel + menugaskan layanan ke grafolog itu.
+  Produk `forCompanies` (target b2b/semua). Tolak pesanan ganda produk sama yang masih aktif.
+  Webhook DOKU → `markBatchPaid`. `HandwritingSample::requiresPayment()` kini juga true untuk
+  sampel yang punya order (`isPaid()` = payment lunas ATAU order lunas).
+- **Privasi B2B**: order batch tidak tampil/tidak bisa dibayar di `/orders` kandidat; laporan
+  layanan (wawancara) batch tidak terlihat oleh kandidat; HR satu perusahaan berbagi akses.
+- **Analisis**: `GET /hr/analysis?position_id=` → 40 aspek (+`is_key`), skor dari laporan
+  **disetujui** terbaru per kandidat, laporan wawancara selesai terbaru, `disclaimer`.
+- Throttle grup auth dinaikkan 60 → 120/menit (halaman HR + pratinjau scan per gambar).
+- 468 test (baru `Hr/B2bFlowTest`). Demo: `hr@sinarabadi.test` (perusahaan pending), posisi
+  "Staf Keuangan", batch Paket Rekrutmen Hendra (selesai + wawancara) & Intan (diproses).
 
 ## Hard constraints (user-stated, still in force)
 

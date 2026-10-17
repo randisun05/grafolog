@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\CompanyController;
+use App\Http\Controllers\Api\Admin\CompanyVerificationController;
 use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
@@ -22,13 +23,18 @@ use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\AssignmentController;
+use App\Http\Controllers\Api\Auth\CompanyRegistrationController;
 use App\Http\Controllers\Api\Auth\GrafologRegistrationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChecklistController;
 use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\Hr\B2bOrderController;
+use App\Http\Controllers\Api\Hr\CandidateAnalysisController;
+use App\Http\Controllers\Api\Hr\CandidateController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
+use App\Http\Controllers\Api\Hr\PositionController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\MeasurementVariableController;
 use App\Http\Controllers\Api\OrderController;
@@ -36,6 +42,7 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ReportReviewController;
 use App\Http\Controllers\Api\SampleController;
@@ -52,6 +59,7 @@ Route::middleware('throttle:20,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/register-grafolog', [GrafologRegistrationController::class, 'store']);
+    Route::post('/auth/register-company', [CompanyRegistrationController::class, 'store']);
 });
 
 Route::middleware('throttle:password-reset')->group(function () {
@@ -69,9 +77,12 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::get('/promos', [ProductController::class, 'promos']);
 Route::get('/content', [ContentController::class, 'index']);
 
-Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+// 120/menit: halaman HR & SampleImages memuat pratinjau per scan (1 GET per gambar).
+Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::post('/pricing/preview', [PricingController::class, 'preview']);
@@ -152,6 +163,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::get('/grafolog-applications', [GrafologVerificationController::class, 'index']);
         Route::get('/grafolog-applications/{user}/certificate', [GrafologVerificationController::class, 'certificate']);
         Route::post('/grafolog-applications/{user}/decision', [GrafologVerificationController::class, 'decide']);
+        Route::get('/company-applications', [CompanyVerificationController::class, 'index']);
+        Route::post('/company-applications/{company}/decision', [CompanyVerificationController::class, 'decide']);
 
         Route::get('/orders', [AdminOrderController::class, 'index']);
         Route::get('/users', [AdminUserController::class, 'index']);
@@ -218,5 +231,20 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {
         Route::post('/candidates/import', [CandidateImportController::class, 'import']);
+
+        // Fase C B2B (2026-10-17): posisi, kandidat, pesanan batch, analisis.
+        Route::get('/positions', [PositionController::class, 'index']);
+        Route::post('/positions', [PositionController::class, 'store']);
+        Route::put('/positions/{position}', [PositionController::class, 'update']);
+        Route::get('/candidates', [CandidateController::class, 'index']);
+        Route::post('/candidates', [CandidateController::class, 'store']);
+        Route::put('/candidates/{candidate}', [CandidateController::class, 'update']);
+        Route::get('/products', [B2bOrderController::class, 'products']);
+        Route::post('/orders/preview', [B2bOrderController::class, 'preview']);
+        Route::get('/orders', [B2bOrderController::class, 'index']);
+        Route::post('/orders', [B2bOrderController::class, 'store']);
+        Route::post('/orders/{batch}/payment', [B2bOrderController::class, 'pay']);
+        Route::post('/orders/{batch}/cancel', [B2bOrderController::class, 'cancel']);
+        Route::get('/analysis', [CandidateAnalysisController::class, 'index']);
     });
 });

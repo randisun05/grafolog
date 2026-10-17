@@ -62,6 +62,12 @@ class Product extends Model
         return $q->where('is_active', true)->whereIn('target', ['b2c', 'semua']);
     }
 
+    /** Produk yang boleh dipesan perusahaan (B2B). */
+    public function scopeForCompanies(Builder $q): Builder
+    {
+        return $q->where('is_active', true)->whereIn('target', ['b2b', 'semua']);
+    }
+
     public function toCatalogArray(): array
     {
         return [

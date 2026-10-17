@@ -32,9 +32,10 @@ class ServiceDeliveryController extends Controller
         } elseif ($user->isGrafolog()) {
             $q->where('assigned_to', $user->id);
         } elseif ($user->isHr()) {
-            $q->whereHas('order', fn ($o) => $o->where('created_by', $user->id));
+            $q->whereHas('order', fn ($o) => $o->where('created_by', $user->id)
+                ->orWhereHas('batch', fn ($b) => $b->where('company_id', $user->company_id)));
         } else {
-            $q->where('user_id', $user->id);
+            $q->where('user_id', $user->id)->whereHas('order', fn ($o) => $o->whereNull('batch_id'));
         }
         if ($status) {
             $q->where('status', $status);
@@ -53,7 +54,10 @@ class ServiceDeliveryController extends Controller
     public function assign(Request $request, ServiceDelivery $delivery): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user->isAdministrator() || ($user->isHr() && $delivery->order->created_by === $user->id), 403);
+        $batch = $delivery->order->batch;
+        abort_unless($user->isAdministrator() || ($user->isHr() && ($batch
+            ? $batch->company_id === $user->company_id
+            : $delivery->order->created_by === $user->id)), 403);
         abort_if(in_array($delivery->status, ['selesai', 'dibatalkan'], true), 422, 'Layanan sudah ditutup.');
         $data = $request->validate(['grafolog_id' => ['required', 'integer', 'exists:users,id']]);
         $grafolog = User::findOrFail($data['grafolog_id']);

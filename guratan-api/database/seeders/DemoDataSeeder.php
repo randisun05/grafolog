@@ -5,11 +5,16 @@ namespace Database\Seeders;
 use App\Models\Announcement;
 use App\Models\Aspek;
 use App\Models\Assignment;
+use App\Models\CandidateProfile;
 use App\Models\Company;
 use App\Models\DiscountCode;
 use App\Models\HandwritingSample;
+use App\Models\JobPosition;
+use App\Models\Order;
+use App\Models\OrderBatch;
 use App\Models\Payment;
 use App\Models\PersonalityReport;
+use App\Models\Product;
 use App\Models\Project;
 use App\Models\ReportAspekScore;
 use App\Models\SampleConsultation;
@@ -29,7 +34,7 @@ use RuntimeException;
  *
  * Skenario mencakup setiap tahap alur: pesanan belum bayar, lunas belum
  * ditugaskan, menunggu review, perlu revisi, disetujui (+ konsultasi Master),
- * dan kandidat HR.
+ * kandidat HR lewat pesanan B2B, dan perusahaan yang menunggu verifikasi.
  */
 class DemoDataSeeder extends Seeder
 {
@@ -67,7 +72,7 @@ class DemoDataSeeder extends Seeder
         $spv = $users['supervisor'];
 
         // 1. Budi - pesan sendiri, lunas, dikerjakan Ani, laporan sudah disetujui.
-        $budi = $this->clientOrder($users['budi'], 'comprehensive', paid: true, daysAgo: 12);
+        $budi = $this->clientOrder($users['budi'], 'master', paid: true, daysAgo: 12);
         $this->assign($budi, $ani, $users['admin']);
         $this->report($engine, $budi, $ani, 'pemimpin', PersonalityReport::REVIEW_APPROVED, $spv, daysAgo: 10);
 
@@ -84,26 +89,29 @@ class DemoDataSeeder extends Seeder
         ]);
 
         // 3. Dewi - lunas, belum ditugaskan (muncul di Pesanan Masuk admin).
-        $this->clientOrder($users['dewi'], 'comprehensive', paid: true, daysAgo: 1);
+        $this->clientOrder($users['dewi'], 'master', paid: true, daysAgo: 1);
 
         // 4. Eko - pesanan belum dibayar.
         $this->clientOrder($users['eko'], 'master', paid: false, daysAgo: 0);
 
         // 5. Fajar - klien walk-in Bima, laporan menunggu review supervisor.
-        $fajar = $this->walkIn($users['fajar'], $bima, 'comprehensive', daysAgo: 3);
+        $fajar = $this->walkIn($users['fajar'], $bima, 'master', daysAgo: 3);
         $this->report($engine, $fajar, $bima, 'analitis', PersonalityReport::REVIEW_PENDING, null, daysAgo: 1);
 
         // 6. Gita - klien walk-in Ani, dikembalikan supervisor untuk revisi.
-        $gita = $this->walkIn($users['gita'], $ani, 'comprehensive', daysAgo: 5);
+        $gita = $this->walkIn($users['gita'], $ani, 'master', daysAgo: 5);
         $report = $this->report($engine, $gita, $ani, 'tertekan', PersonalityReport::REVIEW_REVISION, $spv, daysAgo: 2);
         $report->update(['review_note' => 'Mohon cek ulang skor Stress Vulnerability - catatan pengukuran tekanan tidak konsisten dengan skor 8.']);
 
-        // 7-8. Kandidat HR PT Maju Jaya.
+        // 7-8. Kandidat HR PT Maju Jaya - pesanan B2B "Paket Rekrutmen" (grafologi + wawancara),
+        // HR memilih Bima. Hendra: laporan disetujui + wawancara selesai; Intan: sedang diproses.
         $project = Project::create(['name' => 'Rekrutmen Staf Keuangan Q4', 'source' => 'hr', 'created_by' => $users['hr']->id]);
-        $hendra = $this->sample($project, $users['hendra'], $users['hr'], 'comprehensive', daysAgo: 9);
+        $hendra = $this->sample($project, $users['hendra'], $users['hr'], 'master', daysAgo: 9);
         $this->assign($hendra, $bima, $users['hr']);
         $this->report($engine, $hendra, $bima, 'analitis', PersonalityReport::REVIEW_APPROVED, $spv, daysAgo: 7);
-        $this->sample($project, $users['intan'], $users['hr'], 'comprehensive', daysAgo: 2);
+        $intan = $this->sample($project, $users['intan'], $users['hr'], 'master', daysAgo: 2);
+        $this->assign($intan, $bima, $users['hr']);
+        $this->createB2bData($users, ['hendra' => $hendra, 'intan' => $intan]);
 
         $this->command?->info('Data demo dibuat. Semua akun berpassword: '.self::PASSWORD);
         $this->command?->table(['Role', 'Email'], collect($users)->map(fn (User $u) => [$u->role, $u->email])->values()->all());
@@ -112,7 +120,10 @@ class DemoDataSeeder extends Seeder
     /** @return array<string, User> */
     private function createUsers(): array
     {
-        $company = Company::create(['name' => 'PT Maju Jaya (Demo)']);
+        $company = Company::create([
+            'name' => 'PT Maju Jaya (Demo)', 'industry' => 'Distribusi', 'employee_range' => '201-1000',
+            'phone' => '021-5550101', 'address' => 'Jl. Sudirman 1, Jakarta', 'verified_at' => now(),
+        ]);
         $consent = ['consented_at' => now(), 'consent_version' => User::CONSENT_VERSION];
 
         $make = fn (string $name, string $email, string $role, array $extra = []) => User::create([
@@ -120,8 +131,16 @@ class DemoDataSeeder extends Seeder
         ]);
 
         $web = [...$consent, 'consent_source' => 'self', 'acquisition_source' => 'website'];
-        $ani = $make('Ani Grafolog', 'ani.grafolog@guratan.test', 'grafolog', ['grafolog_status' => 'verified']);
-        $bima = $make('Bima Grafolog', 'bima.grafolog@guratan.test', 'grafolog', ['grafolog_status' => 'verified']);
+        $ani = $make('Ani Grafolog', 'ani.grafolog@guratan.test', 'grafolog', [
+            'grafolog_status' => 'verified', 'city' => 'Jakarta', 'experience_years' => 8,
+            'specializations' => ['Pengembangan diri', 'Konseling remaja'],
+            'bio' => 'Grafolog bersertifikat, fokus pada pengembangan diri dan pendampingan klien individu.',
+        ]);
+        $bima = $make('Bima Grafolog', 'bima.grafolog@guratan.test', 'grafolog', [
+            'grafolog_status' => 'verified', 'city' => 'Bandung', 'experience_years' => 12,
+            'specializations' => ['Rekrutmen', 'Wawancara berbasis perilaku'],
+            'bio' => 'Berpengalaman mendampingi tim HR untuk asesmen kandidat staf hingga manajerial.',
+        ]);
         $bawaan = fn (User $g) => [...$consent, 'consent_source' => 'grafolog', 'acquisition_source' => 'grafolog', 'referred_by' => $g->id];
         $b2b = [...$consent, 'consent_source' => 'hr', 'acquisition_source' => 'b2b', 'company_id' => $company->id];
 
@@ -138,6 +157,11 @@ class DemoDataSeeder extends Seeder
             'fajar' => $make('Fajar Nugroho', 'fajar@guratan.test', 'user', $bawaan($bima)),
             'gita' => $make('Gita Permata', 'gita@guratan.test', 'user', $bawaan($ani)),
             'hendra' => $make('Hendra Wijaya', 'hendra@majujaya.test', 'user', $b2b),
+            // Perusahaan yang mendaftar mandiri dan menunggu verifikasi admin.
+            'hr_pending' => $make('Yoga HR', 'hr@sinarabadi.test', 'hr', ['company_id' => Company::create([
+                'name' => 'PT Sinar Abadi (Demo)', 'status' => Company::STATUS_PENDING, 'industry' => 'Teknologi',
+                'employee_range' => '11-50', 'phone' => '022-777', 'address' => 'Jl. Dago 10, Bandung',
+            ])->id]),
             'intan' => $make('Intan Sari', 'intan@majujaya.test', 'user', $b2b),
         ];
     }
@@ -145,7 +169,8 @@ class DemoDataSeeder extends Seeder
     private function createCommerceData(User $admin): void
     {
         DiscountCode::create([
-            'code' => 'DEMO20', 'type' => 'percentage', 'value' => 20, 'applicable_tiers' => ['comprehensive', 'master'],
+            'code' => 'DEMO20', 'type' => 'percentage', 'value' => 20, 'applicable_tiers' => ['master'],
+            'is_public' => true, 'description' => 'Hemat 20% Master Graphology (demo)',
             'max_uses' => 100, 'used_count' => 1, 'is_active' => true, 'created_by' => $admin->id,
         ]);
         Announcement::create([
@@ -155,12 +180,61 @@ class DemoDataSeeder extends Seeder
         ]);
     }
 
+    /** @param array<string, User> $users @param array<string, HandwritingSample> $samples */
+    private function createB2bData(array $users, array $samples): void
+    {
+        $hr = $users['hr'];
+        $product = Product::where('kode', 'paket-rekrutmen')->with('components')->firstOrFail();
+        $price = $product->currentPrice() ?? 229000;
+        $position = JobPosition::create([
+            'company_id' => $hr->company_id, 'title' => 'Staf Keuangan', 'created_by' => $hr->id,
+            'description' => 'Rekonsiliasi, pelaporan bulanan, koordinasi dengan auditor.',
+            'key_aspek_ids' => Aspek::orderBy('id')->limit(5)->pluck('id')->all(),
+        ]);
+        $batch = OrderBatch::create([
+            'company_id' => $hr->company_id, 'product_id' => $product->id, 'grafolog_id' => $users['bima']->id,
+            'status' => Order::STATUS_PROCESSING, 'base_amount' => $price * 2, 'amount' => $price * 2,
+            'created_by' => $hr->id, 'paid_at' => $this->ago(9),
+        ]);
+        Payment::create([
+            'order_batch_id' => $batch->id, 'invoice_number' => 'INV-DEMO-B'.$batch->id,
+            'base_amount' => $batch->amount, 'amount' => $batch->amount, 'currency' => 'IDR',
+            'status' => 'paid', 'paid_at' => $this->ago(9),
+        ]);
+        $wawancara = $product->components->firstWhere('tipe', 'wawancara');
+
+        foreach (['hendra' => 'selesai', 'intan' => 'asesmen'] as $key => $stage) {
+            $user = $users[$key];
+            CandidateProfile::create([
+                'user_id' => $user->id, 'company_id' => $hr->company_id, 'job_position_id' => $position->id,
+                'education' => 'S1', 'experience_years' => $key === 'hendra' ? 4 : 2, 'stage' => $stage, 'created_by' => $hr->id,
+            ]);
+            $order = Order::create([
+                'batch_id' => $batch->id, 'user_id' => $user->id, 'product_id' => $product->id,
+                'sample_id' => $samples[$key]->id, 'grafolog_id' => $users['bima']->id,
+                'status' => $key === 'hendra' ? Order::STATUS_DONE : Order::STATUS_PROCESSING,
+                'base_amount' => $price, 'amount' => $price, 'source' => 'b2b', 'created_by' => $hr->id,
+                'paid_at' => $this->ago(9), 'completed_at' => $key === 'hendra' ? $this->ago(5) : null,
+            ]);
+            $order->deliveries()->create([
+                'product_component_id' => $wawancara->id, 'user_id' => $user->id, 'assigned_to' => $users['bima']->id,
+            ] + ($key === 'hendra' ? [
+                'status' => 'selesai', 'scheduled_at' => $this->ago(6), 'report_submitted_at' => $this->ago(5),
+                'report' => [
+                    'komunikasi' => 4, 'stabilitas_emosi' => 4, 'motivasi' => 3, 'integritas' => 5, 'kerja_sama' => 4,
+                    'catatan' => 'Teliti dan terstruktur saat menjelaskan proses rekonsiliasi; agak berhati-hati di situasi baru.',
+                    'rekomendasi' => 'Direkomendasikan',
+                ],
+            ] : ['status' => 'ditugaskan']));
+        }
+    }
+
     private function clientOrder(User $client, string $tier, bool $paid, int $daysAgo): HandwritingSample
     {
         $project = Project::create(['source' => 'client', 'created_by' => $client->id]);
         $sample = $this->sample($project, $client, $client, $tier, $daysAgo);
 
-        $base = $tier === 'master' ? 149000 : 49000;
+        $base = 149000;
         Payment::create([
             'sample_id' => $sample->id,
             'invoice_number' => 'INV-DEMO-'.$sample->id,

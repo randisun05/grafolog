@@ -102,10 +102,20 @@ class UserLookupController extends Controller
      * middleware 'role:hr,administrator' di routes/api.php, bukan inline
      * abort_unless seperti byEmail() di atas - pola baru sejak MGA Fase 05.
      */
+    /**
+     * Grafolog terverifikasi + profil & beban kerja - dasar HR memilih grafolog (Fase C,
+     * 2026-10-17). Beban = penugasan sampel belum selesai + layanan pendukung yang masih berjalan.
+     */
     public function grafologs(): JsonResponse
     {
         return response()->json(User::where('role', 'grafolog')
             ->where(fn ($q) => $q->whereNull('grafolog_status')->orWhere('grafolog_status', 'verified'))
-            ->get(['id', 'name', 'email']));
+            ->withCount([
+                'assignments as active_assignments' => fn ($q) => $q->where('status', 'assigned'),
+                'assignments as completed_assignments' => fn ($q) => $q->where('status', 'completed'),
+                'serviceDeliveries as active_services' => fn ($q) => $q->whereIn('status', ['ditugaskan', 'dijadwalkan']),
+            ])
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'city', 'bio', 'specializations', 'experience_years', 'grafolog_verified_at']));
     }
 }

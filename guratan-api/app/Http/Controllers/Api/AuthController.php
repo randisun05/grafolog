@@ -49,7 +49,7 @@ class AuthController extends Controller
         $token = $user->createToken('guratan-web')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user' => $user->company_id ? $user->load('company') : $user,
             'token' => $token,
         ]);
     }
@@ -63,6 +63,9 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return response()->json(['user' => $request->user()]);
+        $user = $request->user();
+
+        // HR butuh status perusahaan (pending/verified) untuk routing frontend.
+        return response()->json(['user' => $user->company_id ? $user->load('company') : $user]);
     }
 }

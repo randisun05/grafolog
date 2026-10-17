@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\Hr;
 
 use App\Models\Company;
+use App\Models\JobPosition;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -38,26 +39,40 @@ class CandidateImportControllerTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_successful_import_creates_project_candidates_and_samples(): void
+    public function test_successful_import_creates_candidates_with_profiles_but_no_samples(): void
     {
         $hr = $this->hrUser();
-        $csv = "name,email\nBudi Kandidat,budi.kandidat@example.com\nSiti Kandidat,siti.kandidat@example.com\n";
+        $position = JobPosition::create(['company_id' => $hr->company_id, 'title' => 'Finance Staff']);
+        $csv = "name,email,phone\nBudi Kandidat,budi.kandidat@example.com,0811\nSiti Kandidat,siti.kandidat@example.com,\n";
 
         $response = $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
             'file' => $this->csv($csv),
-            'project_name' => 'Rekrutmen Finance Q3',
+            'job_position_id' => $position->id,
         ]);
 
-        $response->assertCreated()
-            ->assertJsonPath('project.source', 'hr')
-            ->assertJsonPath('project.name', 'Rekrutmen Finance Q3')
-            ->assertJsonCount(2, 'samples');
+        $response->assertCreated()->assertJsonPath('imported', 2);
 
         $this->assertDatabaseHas('users', [
             'email' => 'budi.kandidat@example.com', 'role' => 'user', 'company_id' => $hr->company_id,
+            'phone' => '0811', 'acquisition_source' => 'b2b',
         ]);
-        $this->assertDatabaseCount('handwriting_samples', 2);
-        $this->assertDatabaseHas('handwriting_samples', ['tier' => 'comprehensive', 'status' => 'pending']);
+        $this->assertDatabaseCount('candidate_profiles', 2);
+        $this->assertDatabaseHas('candidate_profiles', ['job_position_id' => $position->id, 'stage' => 'baru']);
+        // Asesmen dipesan terpisah (berbayar) - impor tidak lagi membuat sampel.
+        $this->assertDatabaseCount('handwriting_samples', 0);
+    }
+
+    public function test_import_rejects_position_of_another_company(): void
+    {
+        $hr = $this->hrUser();
+        $other = Company::create(['name' => 'PT Lain']);
+        $position = JobPosition::create(['company_id' => $other->id, 'title' => 'X']);
+
+        $this->actingAs($hr, 'sanctum')->post('/api/hr/candidates/import', ['consent_confirmed' => true,
+            'file' => $this->csv("name,email\nA,a@example.com\n"),
+            'job_position_id' => $position->id,
+        ], ['Accept' => 'application/json'])->assertUnprocessable();
+        $this->assertDatabaseCount('candidate_profiles', 0);
     }
 
     public function test_invalid_csv_header_rejected(): void

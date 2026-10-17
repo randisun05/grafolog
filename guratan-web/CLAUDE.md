@@ -642,6 +642,18 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   produk, "Jadikan promo". Landing `#harga` dari `/products`. `lib/format.js` (rupiah, tanggal, label).
 - Navbar admin jadi dropdown `<details>` "Admin".
 
+## Fase C B2B — 2026-10-17
+
+- `CompanyRegisterView` (`/daftar-perusahaan`, tautan dari Register), `CompanyStatusView`
+  (`/status-perusahaan`; router mengalihkan HR pending ke sini — `auth.isPendingHr`),
+  `AdminCompaniesView` (`/admin/perusahaan`). `ProfileView` (`/profil`, nama di navbar) — field per role.
+- `HrCandidatesView` (`/hr/candidates?tab=`, menu "Rekrutmen") jadi ruang kerja bertab dengan
+  `components/hr/`: `HrCandidatesPanel` (filter posisi/tahap, tambah/impor, ubah tahap, unggah
+  scan, buka laporan, pilih → "Pesan asesmen"), `HrPositionsPanel` (aspek kunci dari `/sindrom`),
+  `HrOrdersPanel` (produk B2B, kandidat, kartu profil grafolog + beban, promo, bayar/batal,
+  riwayat batch), `HrAnalysisPanel` (tabel aspek kunci/40 aspek + skor wawancara, warna netral =
+  intensitas, bukan baik/buruk, plus disclaimer).
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -16,6 +17,7 @@ use Laravel\Sanctum\HasApiTokens;
     'name', 'email', 'phone', 'password', 'role', 'company_id', 'token_balance', 'consented_at', 'consent_source', 'consent_version',
     'acquisition_source', 'referred_by', 'grafolog_status', 'certificate_number', 'certificate_path',
     'grafolog_verified_at', 'grafolog_verified_by', 'grafolog_review_note',
+    'city', 'bio', 'specializations', 'experience_years', 'birth_date', 'gender', 'education', 'occupation',
 ])]
 #[Hidden(['password', 'remember_token', 'certificate_path'])]
 class User extends Authenticatable
@@ -66,6 +68,29 @@ class User extends Authenticatable
         return $this->role === 'hr';
     }
 
+    /** HR yang perusahaannya belum diverifikasi admin (pendaftaran B2B mandiri, 2026-10-17). */
+    public function isPendingHr(): bool
+    {
+        return $this->role === 'hr' && $this->company && ! $this->company->isVerified();
+    }
+
+    /** Penugasan sampel ke grafolog ini. */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class, 'grafolog_id');
+    }
+
+    /** Layanan pendukung yang ditangani grafolog ini. */
+    public function serviceDeliveries(): HasMany
+    {
+        return $this->hasMany(ServiceDelivery::class, 'assigned_to');
+    }
+
+    public function candidateProfiles(): HasMany
+    {
+        return $this->hasMany(CandidateProfile::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -77,6 +102,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'consented_at' => 'datetime',
             'grafolog_verified_at' => 'datetime',
+            'specializations' => 'array',
+            'birth_date' => 'date:Y-m-d',
             'password' => 'hashed',
         ];
     }

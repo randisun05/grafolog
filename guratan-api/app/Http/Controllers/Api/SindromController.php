@@ -15,10 +15,10 @@ class SindromController extends Controller
     public function index(): JsonResponse
     {
         $sindrom = Sindrom::with(['aspek' => function ($q) {
-            $q->select('id', 'kode', 'nama', 'sindrom_id')->orderBy('kode');
+            $q->select('id', 'kode', 'nama', 'nama_id', 'sindrom_id')->orderBy('kode');
         }])
             ->orderBy('id')
-            ->get(['id', 'kode_romawi', 'nama', 'polaritas_inferred']);
+            ->get(['id', 'kode_romawi', 'nama', 'nama_id', 'polaritas_inferred']);
 
         return response()->json($sindrom);
     }

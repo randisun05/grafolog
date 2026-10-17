@@ -176,6 +176,9 @@ class PaymentController extends Controller
             if ($payment->order) {
                 app(OrderService::class)->markPaid($payment->order);
             }
+            if ($payment->orderBatch) {
+                app(OrderService::class)->markBatchPaid($payment->orderBatch);
+            }
         }
     }
 

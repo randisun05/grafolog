@@ -22,6 +22,7 @@ class EnsureUserHasRole
         $user = $request->user();
         abort_unless(in_array($user?->role, $roles, true), 403);
         abort_if($user->isPendingGrafolog(), 403, 'Akun grafolog Anda belum diverifikasi admin.');
+        abort_if($user->isPendingHr(), 403, 'Perusahaan Anda belum diverifikasi admin.');
 
         return $next($request);
     }

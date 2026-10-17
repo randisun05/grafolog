@@ -10,11 +10,17 @@ export const useAuthStore = defineStore('auth', () => {
   // Grafolog pendaftar mandiri berstatus 'pending' sampai diverifikasi admin - selama itu
   // bukan "grafolog" untuk keperluan menu/akses (cermin User::isGrafolog() di backend).
   const isGrafolog = computed(
-    () => user.value?.role === 'grafolog' && [null, undefined, 'verified'].includes(user.value?.grafolog_status),
+    () =>
+      user.value?.role === 'grafolog' &&
+      [null, undefined, 'verified'].includes(user.value?.grafolog_status),
   )
   const isPendingGrafolog = computed(() => user.value?.role === 'grafolog' && !isGrafolog.value)
   const isAdministrator = computed(() => user.value?.role === 'administrator')
   const isHr = computed(() => user.value?.role === 'hr')
+  // HR perusahaan yang mendaftar mandiri & belum diverifikasi admin (cermin User::isPendingHr()).
+  const isPendingHr = computed(
+    () => isHr.value && !!user.value?.company && user.value.company.status !== 'verified',
+  )
   const isSupervisor = computed(() => user.value?.role === 'supervisor')
   const isClient = computed(() => user.value?.role === 'user')
 
@@ -35,6 +41,17 @@ export const useAuthStore = defineStore('auth', () => {
     const { data } = await api.post('/auth/register-grafolog', formData)
     persist(data.user, data.token)
     return data
+  }
+
+  async function registerCompany(payload) {
+    const { data } = await api.post('/auth/register-company', payload)
+    persist(data.user, data.token)
+    return data
+  }
+
+  function setUser(newUser) {
+    user.value = newUser
+    localStorage.setItem('guratan_user', JSON.stringify(newUser))
   }
 
   async function login(payload) {
@@ -69,10 +86,13 @@ export const useAuthStore = defineStore('auth', () => {
     isPendingGrafolog,
     isAdministrator,
     isHr,
+    isPendingHr,
     isSupervisor,
     isClient,
     register,
     registerGrafolog,
+    registerCompany,
+    setUser,
     login,
     logout,
     fetchMe,

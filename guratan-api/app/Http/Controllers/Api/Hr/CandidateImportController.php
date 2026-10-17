@@ -4,26 +4,34 @@ namespace App\Http\Controllers\Api\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Hr\ImportCandidatesRequest;
-use App\Models\HandwritingSample;
-use App\Models\Project;
+use App\Models\AuditLog;
+use App\Models\JobPosition;
 use App\Models\User;
+use App\Services\B2b\CandidateRegistrar;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 
 /**
- * Gated by 'role:hr' on its route (routes/api.php). "Candidate" is deliberately
- * not a new table - it's a regular User (role: user) with company_id set, so
- * everything downstream (Project, HandwritingSample.user_id, ReportController,
- * ReportView) works completely unchanged. See guratan-api/CLAUDE.md.
+ * Gated by 'role:hr'. Sejak Fase C (2026-10-17) impor HANYA membuat kandidat + profil (opsional
+ * ke satu posisi) - asesmen dipesan terpisah lewat B2bOrderController supaya ada pembayaran dan
+ * HR memilih grafolog. Satu baris tidak valid menggagalkan seluruh impor.
  */
 class CandidateImportController extends Controller
 {
+    public function __construct(private CandidateRegistrar $registrar) {}
+
     public function import(ImportCandidatesRequest $request): JsonResponse
     {
         $user = $request->user();
         abort_unless($user->company_id, 422, 'Akun HR ini belum terhubung ke company.');
+
+        $positionId = $request->validated('job_position_id');
+        abort_if(
+            $positionId && ! JobPosition::where('id', $positionId)->where('company_id', $user->company_id)->exists(),
+            422,
+            'Posisi tidak ditemukan di perusahaan Anda.'
+        );
 
         $rows = $this->parseCsv($request->file('file')->getRealPath());
         abort_if(
@@ -42,65 +50,19 @@ class CandidateImportController extends Controller
             return response()->json(['message' => 'CSV tidak berisi kandidat yang valid.'], 422);
         }
 
-        $tier = $request->validated('tier') ?? 'comprehensive';
+        $profiles = DB::transaction(fn () => collect($candidates)
+            ->map(fn (array $row) => $this->registrar->register($row + ['job_position_id' => $positionId], $user)));
 
-        $result = DB::transaction(function () use ($user, $candidates, $request, $tier) {
-            $project = Project::create([
-                'name' => $request->validated('project_name'),
-                'source' => 'hr',
-                'created_by' => $user->id,
-            ]);
-
-            $samples = collect($candidates)->map(function (array $row) use ($project, $user, $tier) {
-                $candidate = $this->findOrCreateCandidate($row, $user);
-
-                return HandwritingSample::create([
-                    'project_id' => $project->id,
-                    'user_id' => $candidate->id,
-                    'created_by' => $user->id,
-                    'tier' => $tier,
-                    'status' => 'pending',
-                ]);
-            });
-
-            return ['project' => $project, 'samples' => $samples];
-        });
+        AuditLog::record('impor_kandidat', JobPosition::class, $positionId, $user->id, $request->ip());
 
         return response()->json([
-            'project' => $result['project'],
-            'samples' => $result['samples']->map->only(['id', 'user_id', 'tier', 'status']),
+            'imported' => $profiles->count(),
+            'candidates' => $profiles->map(fn ($p) => ['id' => $p->id, 'user_id' => $p->user_id, 'stage' => $p->stage]),
         ], 201);
     }
 
-    private function findOrCreateCandidate(array $row, User $hr): User
-    {
-        $candidate = User::where('email', $row['email'])->first();
-
-        if (! $candidate) {
-            return User::create([
-                'name' => $row['name'],
-                'email' => $row['email'],
-                'password' => Str::random(32),
-                'role' => 'user',
-                'acquisition_source' => 'b2b',
-                'company_id' => $hr->company_id,
-                'consented_at' => now(),
-                'consent_source' => 'hr',
-                'consent_version' => User::CONSENT_VERSION,
-            ]);
-        }
-
-        // Existing self-registered client not yet tied to a company - attach
-        // them. Never touch name/password of an existing account here.
-        if ($candidate->company_id === null) {
-            $candidate->update(['company_id' => $hr->company_id]);
-        }
-
-        return $candidate;
-    }
-
     /**
-     * @return array{0: array<int, array{name: string, email: string}>, 1: array<int, array{line: int, errors: array<string>}>}
+     * @return array{0: array<int, array{name: string, email: string, phone: ?string}>, 1: array<int, array{line: int, errors: array<string>}>}
      */
     private function validateRows(array $rows, User $hr): array
     {
@@ -113,6 +75,7 @@ class CandidateImportController extends Controller
             $validator = Validator::make($row, [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email', 'max:255'],
+                'phone' => ['nullable', 'string', 'max:30'],
             ]);
 
             if ($validator->fails()) {
@@ -121,16 +84,8 @@ class CandidateImportController extends Controller
                 continue;
             }
 
-            $existing = User::where('email', $row['email'])->first();
-
-            if ($existing && $existing->role !== 'user') {
-                $errors[] = ['line' => $line, 'errors' => ["Email {$row['email']} sudah dipakai akun staf, tidak bisa jadi kandidat."]];
-
-                continue;
-            }
-
-            if ($existing && $existing->company_id !== null && (int) $existing->company_id !== (int) $hr->company_id) {
-                $errors[] = ['line' => $line, 'errors' => ["Email {$row['email']} sudah terdaftar sebagai kandidat company lain."]];
+            if ($rejection = $this->registrar->rejectionFor($row['email'], $hr)) {
+                $errors[] = ['line' => $line, 'errors' => [$rejection]];
 
                 continue;
             }
@@ -142,7 +97,9 @@ class CandidateImportController extends Controller
     }
 
     /**
-     * @return array<int, array{name: string, email: string}>|null
+     * Kolom wajib `name`,`email`; `phone` opsional.
+     *
+     * @return array<int, array{name: string, email: string, phone: ?string}>|null
      */
     private function parseCsv(string $path): ?array
     {
@@ -161,6 +118,7 @@ class CandidateImportController extends Controller
         $header = array_map(fn ($h) => strtolower(trim((string) $h)), $header);
         $nameIdx = array_search('name', $header, true);
         $emailIdx = array_search('email', $header, true);
+        $phoneIdx = array_search('phone', $header, true);
 
         if ($nameIdx === false || $emailIdx === false) {
             fclose($handle);
@@ -177,6 +135,7 @@ class CandidateImportController extends Controller
             $rows[] = [
                 'name' => trim((string) ($line[$nameIdx] ?? '')),
                 'email' => trim((string) ($line[$emailIdx] ?? '')),
+                'phone' => $phoneIdx === false ? null : (trim((string) ($line[$phoneIdx] ?? '')) ?: null),
             ];
         }
         fclose($handle);

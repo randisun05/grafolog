@@ -52,9 +52,12 @@ class ServiceDelivery extends Model
 
     public function isViewableBy(User $user): bool
     {
-        return $user->id === $this->user_id
+        $batch = $this->order?->batch;
+
+        // Layanan B2B (wawancara kandidat) adalah laporan untuk perusahaan, bukan untuk kandidat.
+        return ($user->id === $this->user_id && ! $batch)
             || $user->id === $this->assigned_to
             || $user->isAdministrator() || $user->isSupervisor()
-            || ($user->isHr() && $this->order?->created_by === $user->id);
+            || ($user->isHr() && ($batch ? $batch->company_id === $user->company_id : $this->order?->created_by === $user->id));
     }
 }

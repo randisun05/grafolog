@@ -117,11 +117,14 @@ class HandwritingSample extends Model
      */
     public function requiresPayment(): bool
     {
-        return $this->project?->source === 'client';
+        // Fase C (2026-10-17): sample yang lahir dari pesanan produk (termasuk batch B2B)
+        // juga harus lunas dulu.
+        return $this->project?->source === 'client' || $this->order()->exists();
     }
 
     public function isPaid(): bool
     {
-        return $this->payments()->where('status', 'paid')->exists();
+        return $this->payments()->where('status', 'paid')->exists()
+            || $this->order()->whereNotNull('paid_at')->exists();
     }
 }

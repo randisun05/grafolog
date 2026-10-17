@@ -34,6 +34,24 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/daftar-perusahaan',
+      name: 'register-company',
+      component: () => import('../views/CompanyRegisterView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/status-perusahaan',
+      name: 'company-status',
+      component: () => import('../views/CompanyStatusView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/profil',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/lupa-password',
       name: 'forgot-password',
       component: () => import('../views/ForgotPasswordView.vue'),
@@ -139,6 +157,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/perusahaan',
+      name: 'admin-companies',
+      component: () => import('../views/AdminCompaniesView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/knowledge',
       name: 'admin-knowledge',
       component: () => import('../views/AdminKnowledgeView.vue'),
@@ -190,6 +214,11 @@ router.beforeEach((to) => {
   // Grafolog yang belum diverifikasi hanya boleh melihat halaman statusnya.
   if (to.meta.requiresAuth && auth.isPendingGrafolog && to.name !== 'grafolog-status') {
     return { name: 'grafolog-status' }
+  }
+
+  // HR perusahaan yang belum diverifikasi hanya boleh melihat status perusahaannya.
+  if (to.meta.requiresAuth && auth.isPendingHr && to.name !== 'company-status') {
+    return { name: 'company-status' }
   }
 
   const allowedRoles = [to.meta.role].flat().filter(Boolean)

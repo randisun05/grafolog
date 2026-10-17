@@ -22,7 +22,7 @@ class Order extends Model
     public const STATUS_CANCELLED = 'dibatalkan';
 
     protected $fillable = [
-        'user_id', 'product_id', 'sample_id', 'status', 'base_amount', 'amount', 'discount_code_id',
+        'batch_id', 'user_id', 'product_id', 'sample_id', 'grafolog_id', 'status', 'base_amount', 'amount', 'discount_code_id',
         'source', 'created_by', 'paid_at', 'completed_at', 'cancelled_at', 'cancel_reason',
     ];
 
@@ -50,6 +50,17 @@ class Order extends Model
     public function sample(): BelongsTo
     {
         return $this->belongsTo(HandwritingSample::class, 'sample_id');
+    }
+
+    public function batch(): BelongsTo
+    {
+        return $this->belongsTo(OrderBatch::class, 'batch_id');
+    }
+
+    /** Grafolog pilihan pemesan (HR) - ditugaskan otomatis saat lunas. */
+    public function grafolog(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'grafolog_id');
     }
 
     public function discountCode(): BelongsTo
