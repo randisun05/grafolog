@@ -22,6 +22,18 @@ const router = createRouter({
       meta: { guestOnly: true },
     },
     {
+      path: '/lupa-password',
+      name: 'forgot-password',
+      component: () => import('../views/ForgotPasswordView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
@@ -63,6 +75,12 @@ const router = createRouter({
       name: 'assigned-to-me',
       component: () => import('../views/AssignedToMeView.vue'),
       meta: { requiresAuth: true, role: 'grafolog' },
+    },
+    {
+      path: '/admin/orders',
+      name: 'admin-orders',
+      component: () => import('../views/AdminOrdersView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
     },
     {
       path: '/admin/users',
@@ -107,10 +125,28 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/supervisor/reviews',
+      name: 'supervisor-reviews',
+      component: () => import('../views/SupervisorReviewView.vue'),
+      meta: { requiresAuth: true, role: ['supervisor', 'administrator'] },
+    },
+    {
       path: '/hr/candidates',
       name: 'hr-candidates',
       component: () => import('../views/HrCandidatesView.vue'),
       meta: { requiresAuth: true, role: 'hr' },
+    },
+    {
+      path: '/privasi',
+      name: 'privacy',
+      component: () => import('../views/LegalView.vue'),
+      props: { doc: 'privasi' },
+    },
+    {
+      path: '/syarat',
+      name: 'terms',
+      component: () => import('../views/LegalView.vue'),
+      props: { doc: 'syarat' },
     },
     {
       path: '/:pathMatch(.*)*',
@@ -131,7 +167,8 @@ router.beforeEach((to) => {
     return { name: 'dashboard' }
   }
 
-  if (to.meta.role && auth.user?.role !== to.meta.role) {
+  const allowedRoles = [to.meta.role].flat().filter(Boolean)
+  if (allowedRoles.length && !allowedRoles.includes(auth.user?.role)) {
     return { name: 'dashboard' }
   }
 

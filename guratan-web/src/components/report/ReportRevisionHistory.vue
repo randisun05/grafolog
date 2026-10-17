@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import api from '@/lib/api'
 import ReportDocument from './ReportDocument.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const props = defineProps({
   reportId: { type: [Number, String], required: true },
@@ -50,7 +51,7 @@ async function viewRevision(revision) {
     </button>
 
     <div v-if="open" class="revision-history__body">
-      <p v-if="loading">Memuat riwayat...</p>
+      <SkeletonLoader v-if="loading" variant="list" :rows="3" label="Memuat riwayat..." />
       <p v-else-if="revisions.length === 0" class="revision-history__empty">
         Belum ada perubahan - laporan ini masih versi asli.
       </p>
@@ -67,7 +68,7 @@ async function viewRevision(revision) {
           <div v-if="openRevisionId === r.id" class="revision-history__snapshot">
             <p class="revision-history__snapshot-label">Isi laporan pada versi ini (sebelum diubah):</p>
             <ReportDocument v-if="revisionData[r.id]" :data="revisionData[r.id]" />
-            <p v-else>Memuat...</p>
+            <SkeletonLoader v-else variant="report" :rows="2" label="Memuat..." />
           </div>
         </li>
       </ul>

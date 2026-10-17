@@ -7,6 +7,8 @@ import ProgressTracker from '@/components/shared/ProgressTracker.vue'
 import AutoCalculationPanel from '@/components/scoring/AutoCalculationPanel.vue'
 import MeasurementWorksheet from '@/components/scoring/MeasurementWorksheet.vue'
 import IndikatorChecklist from '@/components/scoring/IndikatorChecklist.vue'
+import SampleImages from '@/components/shared/SampleImages.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -46,6 +48,7 @@ const creatingSample = ref(false)
 const showRegisterForm = ref(false)
 const newClientName = ref('')
 const newClientPassword = ref('')
+const newClientConsent = ref(false)
 const registering = ref(false)
 const registerError = ref('')
 const generatedPassword = ref('')
@@ -162,6 +165,7 @@ function openRegisterForm() {
   registerError.value = ''
   newClientName.value = ''
   newClientPassword.value = ''
+  newClientConsent.value = false
 }
 
 // Klien walk-in yang belum pernah /register sendiri - grafolog daftarkan
@@ -176,6 +180,7 @@ async function registerClient() {
       name: newClientName.value,
       email: clientEmail.value,
       password: newClientPassword.value || undefined,
+      consent_confirmed: newClientConsent.value,
     })
     client.value = { id: data.id, name: data.name, email: data.email }
     lookupError.value = ''
@@ -228,7 +233,7 @@ function viewReport() {
     <h1>Portal Grafolog</h1>
     <ProgressTracker :steps="steps" :current="currentStep" />
 
-    <p v-if="resuming" class="portal-grafolog__note">Memuat sample yang ditugaskan...</p>
+    <SkeletonLoader v-if="resuming" variant="form" :rows="3" label="Memuat sample yang ditugaskan..." />
     <p v-else-if="resumeError" class="error">{{ resumeError }}</p>
 
     <section v-else-if="!sample" class="portal-grafolog__step">
@@ -257,12 +262,16 @@ function viewReport() {
             Kata Sandi Awal (opsional)
             <input v-model="newClientPassword" type="text" placeholder="Kosongkan untuk dibuatkan otomatis" />
           </label>
+          <label class="portal-grafolog__consent">
+            <input v-model="newClientConsent" type="checkbox" />
+            Klien sudah menyetujui pemrosesan data tulisan tangan &amp; hasil analisisnya (Kebijakan Privasi).
+          </label>
           <p v-if="registerError" class="error">{{ registerError }}</p>
           <div class="portal-grafolog__register-actions">
             <button
               type="button"
               class="btn btn--primary"
-              :disabled="!newClientName || registering"
+              :disabled="!newClientName || !newClientConsent || registering"
               @click="registerClient"
             >
               {{ registering ? 'Mendaftarkan...' : 'Daftarkan Klien' }}
@@ -325,6 +334,10 @@ function viewReport() {
             <h3>Sample</h3>
             <p class="assessment-workspace__meta">Tier: {{ tier }}</p>
             <p class="assessment-workspace__meta">Progress: {{ scoredCount }} / {{ totalAspek }} aspek</p>
+          </div>
+          <div class="assessment-workspace__card">
+            <h3>Foto Tulisan Tangan</h3>
+            <SampleImages :sample-id="sample.id" can-upload />
           </div>
         </aside>
 
@@ -414,6 +427,15 @@ function viewReport() {
   display: flex;
   gap: 8px;
   margin-top: 4px;
+}
+.portal-grafolog__consent {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+}
+.portal-grafolog__consent input {
+  width: auto;
 }
 .portal-grafolog__generated-password {
   margin-top: 12px;

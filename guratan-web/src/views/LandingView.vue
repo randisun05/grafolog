@@ -302,10 +302,23 @@ onMounted(async () => {
       <p>{{ content.landing_cta_band_subtext }}</p>
       <RouterLink to="/register" class="btn btn--primary">{{ content.landing_cta_label }}</RouterLink>
     </section>
+    <footer class="landing-footer">
+      <RouterLink to="/privasi">Kebijakan Privasi</RouterLink>
+      <span aria-hidden="true">·</span>
+      <RouterLink to="/syarat">Syarat Layanan</RouterLink>
+    </footer>
   </div>
 </template>
 
 <style scoped>
+.landing-footer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 16px 32px;
+  font-size: 0.875rem;
+  color: var(--color-text-soft);
+}
 .landing {
   margin: 0 calc(50% - 50vw);
   max-width: 100vw;

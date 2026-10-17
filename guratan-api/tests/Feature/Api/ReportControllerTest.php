@@ -29,6 +29,7 @@ class ReportControllerTest extends TestCase
             'sample_id' => $sample->id,
             'tier' => 'comprehensive',
             'status' => 'completed',
+            'review_status' => PersonalityReport::REVIEW_APPROVED,
             'generated_at' => now(),
             'data' => [
                 'sindrom' => [[
@@ -108,7 +109,8 @@ class ReportControllerTest extends TestCase
         $response = $this->actingAs($owner, 'sanctum')->get("/api/reports/{$report->id}/pdf");
 
         $response->assertOk();
-        Storage::disk('local')->assertExists("reports/laporan-{$report->id}.pdf");
+        Storage::disk('local')->assertExists($report->fresh()->pdf_path);
+        $this->assertStringStartsWith("reports/laporan-{$report->id}-", $report->fresh()->pdf_path);
     }
 
     public function test_pdf_download_rejected_when_report_not_completed(): void
@@ -133,5 +135,37 @@ class ReportControllerTest extends TestCase
         $response = $this->actingAs($stranger, 'sanctum')->get("/api/reports/{$report->id}/pdf");
 
         $response->assertForbidden();
+    }
+
+    public function test_owner_cannot_see_report_before_supervisor_approval(): void
+    {
+        $owner = User::factory()->create();
+        $report = $this->completedReportFor($owner);
+        $report->update(['review_status' => PersonalityReport::REVIEW_PENDING]);
+
+        $this->actingAs($owner, 'sanctum')->getJson("/api/reports/{$report->id}")->assertForbidden();
+        $this->actingAs($owner, 'sanctum')->get("/api/reports/{$report->id}/pdf")->assertForbidden();
+        $this->actingAs($owner, 'sanctum')->getJson('/api/reports')->assertJsonCount(0, 'data');
+    }
+
+    public function test_pdf_is_regenerated_after_report_content_changes(): void
+    {
+        Storage::fake('local');
+        $owner = User::factory()->create();
+        $report = $this->completedReportFor($owner);
+
+        $this->actingAs($owner, 'sanctum')->get("/api/reports/{$report->id}/pdf")->assertOk();
+        $firstPath = $report->fresh()->pdf_path;
+
+        $data = $report->data;
+        $data['sindrom'][0]['aspek'][0]['narasi'] = 'Narasi sesudah koreksi.';
+        $report->update(['data' => $data]);
+
+        $this->actingAs($owner, 'sanctum')->get("/api/reports/{$report->id}/pdf")->assertOk();
+        $secondPath = $report->fresh()->pdf_path;
+
+        $this->assertNotSame($firstPath, $secondPath);
+        Storage::disk('local')->assertMissing($firstPath);
+        Storage::disk('local')->assertExists($secondPath);
     }
 }

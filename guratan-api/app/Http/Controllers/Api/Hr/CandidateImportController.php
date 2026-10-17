@@ -83,6 +83,9 @@ class CandidateImportController extends Controller
                 'password' => Str::random(32),
                 'role' => 'user',
                 'company_id' => $hr->company_id,
+                'consented_at' => now(),
+                'consent_source' => 'hr',
+                'consent_version' => User::CONSENT_VERSION,
             ]);
         }
 

@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const reports = ref([])
 const loading = ref(true)
@@ -29,7 +29,7 @@ onMounted(async () => {
 <template>
   <div class="riwayat">
     <h1>Riwayat Laporan</h1>
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="list" label="Memuat..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <p v-else-if="reports.length === 0">Belum ada laporan.</p>
     <ul v-else class="riwayat__list">

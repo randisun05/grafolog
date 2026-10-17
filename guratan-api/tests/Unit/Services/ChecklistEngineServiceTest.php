@@ -54,7 +54,7 @@ class ChecklistEngineServiceTest extends TestCase
 
         return Indikator::create([
             'kode' => $kode, 'posisi' => $posisi, 'varian' => $varian,
-            'aspek_id' => $aspek->id, 'nama' => "Indikator posisi $posisi",
+            'aspek_id' => $aspek->id, 'nama' => "Indikator {$aspek->kode} posisi $posisi",
         ]);
     }
 
@@ -612,5 +612,137 @@ class ChecklistEngineServiceTest extends TestCase
         $this->assertSame(1, $view['sindrom'][0]['aspek'][0]['skor']);
         $this->assertTrue($view['sindrom'][0]['aspek'][0]['indikator'][0]['checked']);
         $this->assertSame('manual', $view['sindrom'][0]['aspek'][0]['indikator'][0]['sumber']);
+    }
+
+    private function namedIndikator(Aspek $aspek, int $posisi, string $nama): Indikator
+    {
+        return Indikator::create([
+            'kode' => "{$aspek->kode}-{$posisi}", 'posisi' => $posisi,
+            'aspek_id' => $aspek->id, 'nama' => $nama,
+        ]);
+    }
+
+    public function test_cascade_target_unwinds_when_source_measurement_is_corrected(): void
+    {
+        // Regresi 2026-10-16: dulu B tetap tercentang setelah A batal karena
+        // rule indikator_checked hanya true/null dan loop mulai dari state lama.
+        $sindrom = $this->seedMinimalAspek(2);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $source = $this->indikator($aspek[0], 1);
+        $target = $this->indikator($aspek[1], 1);
+        $variable = $this->variableWithCategories();
+        IndikatorRule::create(['indikator_id' => $source->id, 'rule_type' => 'category', 'variable_a_id' => $variable->id, 'category_label' => 'large']);
+        IndikatorRule::create(['indikator_id' => $target->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $source->id]);
+
+        $sample = $this->sample();
+        $reading = $sample->measurementReadings()->create(['variable_id' => $variable->id, 'nilai' => 7]);
+        $this->engine->evaluateSample($sample);
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $target->id, 'checked' => 1, 'sumber' => 'cascade']);
+
+        $reading->update(['nilai' => 1]);
+        $this->engine->evaluateSample($sample);
+
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $source->id, 'checked' => 0]);
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $target->id, 'checked' => 0]);
+    }
+
+    public function test_mutual_cascade_does_not_latch_after_its_origin_is_gone(): void
+    {
+        $sindrom = $this->seedMinimalAspek(3);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $origin = $this->indikator($aspek[0], 1);
+        $a = $this->indikator($aspek[1], 1);
+        $b = $this->indikator($aspek[2], 1);
+        IndikatorRule::create(['indikator_id' => $a->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $origin->id]);
+        IndikatorRule::create(['indikator_id' => $a->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $b->id]);
+        IndikatorRule::create(['indikator_id' => $b->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $a->id]);
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $origin->id, true);
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $b->id, 'checked' => 1]);
+
+        // Langsung tulis "origin batal" tanpa prompt, lalu evaluasi ulang.
+        SampleIndikatorCheck::where('indikator_id', $origin->id)->update(['checked' => false]);
+        $this->engine->evaluateSample($sample);
+
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $a->id, 'checked' => 0]);
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $b->id, 'checked' => 0]);
+    }
+
+    public function test_ciri_bersama_checks_same_named_indikator_in_other_aspek(): void
+    {
+        $sindrom = $this->seedMinimalAspek(2);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $a = $this->namedIndikator($aspek[0], 1, 'Pressure heavy');
+        $b = $this->namedIndikator($aspek[1], 6, 'Pressure  Heavy.');
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $a->id, true);
+
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $b->id, 'checked' => 1, 'sumber' => 'ciri_bersama']);
+        $this->assertStringContainsString($a->kode, SampleIndikatorCheck::where('indikator_id', $b->id)->value('keterangan_pemicu'));
+
+        // Sumber asli batal -> kembaran ikut batal (tanpa prompt: ciri yang sama).
+        $this->engine->toggle($sample, $a->id, false, [], true);
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $b->id, 'checked' => 0]);
+    }
+
+    public function test_ciri_bersama_respects_manual_uncheck_of_a_twin(): void
+    {
+        $sindrom = $this->seedMinimalAspek(2);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $a = $this->namedIndikator($aspek[0], 1, 'Regularity');
+        $b = $this->namedIndikator($aspek[1], 1, 'Regularity');
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $b->id, false, [], true);
+        $this->engine->toggle($sample, $a->id, true);
+
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $b->id, 'checked' => 0, 'sumber' => 'manual']);
+    }
+
+    public function test_ciri_bersama_twin_triggers_its_own_cascade(): void
+    {
+        $sindrom = $this->seedMinimalAspek(3);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $a = $this->namedIndikator($aspek[0], 1, 'Legibility');
+        $b = $this->namedIndikator($aspek[1], 1, 'Legibility');
+        $c = $this->indikator($aspek[2], 2);
+        IndikatorRule::create(['indikator_id' => $c->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $b->id]);
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $a->id, true);
+
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $c->id, 'checked' => 1, 'sumber' => 'cascade']);
+    }
+
+    public function test_ciri_bersama_can_be_disabled_by_config(): void
+    {
+        config(['checklist.ciri_bersama' => false]);
+        $sindrom = $this->seedMinimalAspek(2);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $a = $this->namedIndikator($aspek[0], 1, 'Pressure heavy');
+        $b = $this->namedIndikator($aspek[1], 1, 'Pressure heavy');
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $a->id, true);
+
+        $this->assertDatabaseMissing('sample_indikator_checks', ['indikator_id' => $b->id, 'checked' => 1]);
+    }
+
+    public function test_kept_cascade_target_is_frozen_as_manual(): void
+    {
+        $sindrom = $this->seedMinimalAspek(2);
+        $aspek = Aspek::where('sindrom_id', $sindrom->id)->orderBy('id')->get();
+        $source = $this->indikator($aspek[0], 1);
+        $target = $this->indikator($aspek[1], 1);
+        IndikatorRule::create(['indikator_id' => $target->id, 'rule_type' => 'indikator_checked', 'depends_on_indikator_id' => $source->id]);
+
+        $sample = $this->sample();
+        $this->engine->toggle($sample, $source->id, true);
+        $this->engine->toggle($sample, $source->id, false, [], true);
+        $this->engine->evaluateSample($sample);
+
+        $this->assertDatabaseHas('sample_indikator_checks', ['indikator_id' => $target->id, 'checked' => 1, 'sumber' => 'manual']);
     }
 }

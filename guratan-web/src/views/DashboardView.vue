@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const dashboard = ref(null)
 const loading = ref(true)
@@ -22,11 +22,13 @@ const statusLabel = {
   completed: 'Selesai',
   generating: 'Diproses',
   failed: 'Gagal',
+  menunggu_review: 'Menunggu Review',
 }
 
 function formatValue(kpi) {
   if (kpi.value === null) return '–'
   if (kpi.key === 'avg_turnaround_days') return `${kpi.value} hari`
+  if (kpi.key === 'revenue_this_month') return new Intl.NumberFormat('id-ID').format(kpi.value)
   return kpi.value
 }
 
@@ -73,7 +75,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <LoadingSpinner v-if="loading" label="Memuat dashboard..." />
+    <SkeletonLoader v-if="loading" variant="dashboard" label="Memuat dashboard..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
       <div class="dashboard__kpi">

@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
+import SampleImages from '@/components/shared/SampleImages.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -13,10 +14,12 @@ const loadError = ref('')
 const grafologs = ref([])
 const assigning = ref({}) // { [sampleId]: boolean }
 const selectedGrafolog = ref({}) // { [sampleId]: grafologId }
+const photosOpenFor = ref(null)
 
 const file = ref(null)
 const projectName = ref('')
 const tier = ref('comprehensive')
+const consentConfirmed = ref(false)
 const importing = ref(false)
 const importErrors = ref([])
 
@@ -76,11 +79,15 @@ async function submitImport() {
     formData.append('file', file.value)
     if (projectName.value) formData.append('project_name', projectName.value)
     formData.append('tier', tier.value)
+    formData.append('consent_confirmed', consentConfirmed.value ? '1' : '0')
 
     const { data } = await api.post('/hr/candidates/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    toast.push(`${data.samples.length} kandidat berhasil diimpor ke project "${data.project.name}".`, 'success')
+    toast.push(
+      `${data.samples.length} kandidat berhasil diimpor ke project "${data.project.name}".`,
+      'success',
+    )
     file.value = null
     projectName.value = ''
     await loadSamples()
@@ -125,17 +132,29 @@ onMounted(() => {
         </select>
       </label>
 
+      <label class="hr-candidates__consent">
+        <input v-model="consentConfirmed" type="checkbox" />
+        Semua kandidat di file ini sudah memberi persetujuan tertulis atas pemrosesan data tulisan
+        tangan &amp; hasil analisisnya.
+      </label>
+
       <ul v-if="importErrors.length" class="hr-candidates__errors">
-        <li v-for="err in importErrors" :key="err.line">Baris {{ err.line }}: {{ err.errors.join(', ') }}</li>
+        <li v-for="err in importErrors" :key="err.line">
+          Baris {{ err.line }}: {{ err.errors.join(', ') }}
+        </li>
       </ul>
 
-      <button type="submit" class="btn btn--primary" :disabled="!file || importing">
+      <button
+        type="submit"
+        class="btn btn--primary"
+        :disabled="!file || !consentConfirmed || importing"
+      >
         {{ importing ? 'Mengimpor...' : 'Impor Kandidat' }}
       </button>
     </form>
 
     <h2 class="hr-candidates__list-title">Semua Kandidat</h2>
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="table" :columns="5" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <p v-else-if="samples.length === 0" class="hr-candidates__empty">Belum ada kandidat diimpor.</p>
     <table v-else class="hr-candidates__table">
@@ -145,41 +164,71 @@ onMounted(() => {
           <th>Tier</th>
           <th>Status</th>
           <th>Grafolog</th>
+          <th>Foto</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="s in samples" :key="s.id">
-          <td>
-            <span class="hr-candidates__name">{{ s.user?.name }}</span>
-            <span class="hr-candidates__email">{{ s.user?.email }}</span>
-          </td>
-          <td>{{ s.tier }}</td>
-          <td>{{ statusLabel[s.status] ?? s.status }}</td>
-          <td>
-            <span v-if="s.assignment?.grafolog">{{ s.assignment.grafolog.name }}</span>
-            <div v-else-if="s.status !== 'completed'" class="hr-candidates__assign">
-              <select v-model="selectedGrafolog[s.id]">
-                <option :value="undefined" disabled>Pilih grafolog</option>
-                <option v-for="g in grafologs" :key="g.id" :value="g.id">{{ g.name }}</option>
-              </select>
+        <template v-for="s in samples" :key="s.id">
+          <tr>
+            <td>
+              <span class="hr-candidates__name">{{ s.user?.name }}</span>
+              <span class="hr-candidates__email">{{ s.user?.email }}</span>
+            </td>
+            <td>{{ s.tier }}</td>
+            <td>{{ statusLabel[s.status] ?? s.status }}</td>
+            <td>
+              <span v-if="s.assignment?.grafolog">{{ s.assignment.grafolog.name }}</span>
+              <div v-else-if="s.status !== 'completed'" class="hr-candidates__assign">
+                <select v-model="selectedGrafolog[s.id]">
+                  <option :value="undefined" disabled>Pilih grafolog</option>
+                  <option v-for="g in grafologs" :key="g.id" :value="g.id">{{ g.name }}</option>
+                </select>
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="!selectedGrafolog[s.id] || assigning[s.id]"
+                  @click="assignGrafolog(s)"
+                >
+                  {{ assigning[s.id] ? '...' : 'Tugaskan' }}
+                </button>
+              </div>
+              <span v-else>–</span>
+            </td>
+            <td>
               <button
                 type="button"
                 class="btn"
-                :disabled="!selectedGrafolog[s.id] || assigning[s.id]"
-                @click="assignGrafolog(s)"
+                @click="photosOpenFor = photosOpenFor === s.id ? null : s.id"
               >
-                {{ assigning[s.id] ? '...' : 'Tugaskan' }}
+                {{ s.images_count ?? 0 }} foto
               </button>
-            </div>
-            <span v-else>–</span>
-          </td>
-        </tr>
+            </td>
+          </tr>
+          <tr v-if="photosOpenFor === s.id">
+            <td colspan="5">
+              <SampleImages
+                :sample-id="s.id"
+                :can-upload="s.status !== 'completed'"
+                @changed="loadSamples"
+              />
+            </td>
+          </tr>
+        </template>
       </tbody>
     </table>
   </div>
 </template>
 
 <style scoped>
+.hr-candidates__consent {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.875rem;
+}
+.hr-candidates__consent input {
+  width: auto;
+}
 .hr-candidates {
   max-width: 760px;
 }

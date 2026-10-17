@@ -13,6 +13,8 @@ class Aspek extends Model
     protected $fillable = [
         'kode', 'sindrom_id', 'nama', 'keterangan_umum',
         'narasi_very_high', 'narasi_high', 'narasi_medium', 'narasi_low',
+        'nama_id', 'keterangan_umum_id',
+        'narasi_very_high_id', 'narasi_high_id', 'narasi_medium_id', 'narasi_low_id',
     ];
 
     public function sindrom(): BelongsTo
@@ -35,9 +37,20 @@ class Aspek extends Model
     {
         return [
             'very_high' => $this->narasi_very_high,
-            'high'      => $this->narasi_high,
-            'medium'    => $this->narasi_medium,
-            'low'       => $this->narasi_low,
+            'high' => $this->narasi_high,
+            'medium' => $this->narasi_medium,
+            'low' => $this->narasi_low,
+        ];
+    }
+
+    /** Narasi Bahasa Indonesia (draf terjemahan, lihat TerjemahanIdSeeder). */
+    public function getNarasiIdAttribute(): array
+    {
+        return [
+            'very_high' => $this->narasi_very_high_id,
+            'high' => $this->narasi_high_id,
+            'medium' => $this->narasi_medium_id,
+            'low' => $this->narasi_low_id,
         ];
     }
 }

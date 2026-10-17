@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const props = defineProps({
   sampleId: { type: [Number, String], required: true },
@@ -75,7 +76,7 @@ async function save() {
       bervariasi di tulisan (dipakai rule "irregular", dihitung dari selisih maks-min).
     </p>
 
-    <p v-if="loading" class="measurement-worksheet__note">Memuat variabel ukur...</p>
+    <SkeletonLoader v-if="loading" variant="form" :rows="6" label="Memuat variabel ukur..." />
     <template v-else>
       <div class="measurement-worksheet__grid">
         <div v-for="v in variables" :key="v.id" class="measurement-worksheet__field">

@@ -10,6 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             GrafologiKnowledgeSeeder::class,
+            TerjemahanIdSeeder::class,
             IrregularityRuleSeeder::class,
             CategoryMatchRuleSeeder::class,
             VariableEqualityRuleSeeder::class,

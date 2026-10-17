@@ -34,12 +34,14 @@ class ScoringEngineService
             $polaritas = $sindrom->polaritas_inferred;
             $bandLabel = ScoringRuleBand::labelUntukSkor($skor, $polaritas);
             $narasiLevel = self::narasiLevelUntukSkor($skor);
-            $narasi = $this->narasiCache->ambil($aspek, $narasiLevel);
+            $narasiEn = $this->narasiCache->teksInggris($aspek, $narasiLevel);
+            $narasiId = $this->narasiCache->teksIndonesia($aspek, $narasiLevel);
 
             $sindromResults[$sindrom->id]['sindrom'] ??= [
                 'id' => $sindrom->id,
                 'kode_romawi' => $sindrom->kode_romawi,
                 'nama' => $sindrom->nama,
+                'nama_id' => $sindrom->nama_id,
                 'polaritas' => $polaritas,
                 'catatan_polaritas' => $sindrom->catatan_polaritas,
             ];
@@ -47,10 +49,13 @@ class ScoringEngineService
             $sindromResults[$sindrom->id]['aspek'][] = [
                 'kode' => $aspek->kode,
                 'nama' => $aspek->nama,
+                'nama_id' => $aspek->nama_id,
                 'skor' => $skor,
                 'band_label' => $bandLabel,
                 'narasi_level' => $narasiLevel,
-                'narasi' => $narasi,
+                'narasi' => $narasiId ?? $narasiEn,
+                'narasi_en' => $narasiEn,
+                'narasi_id' => $narasiId,
             ];
         }
 

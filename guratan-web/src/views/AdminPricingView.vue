@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -79,7 +79,7 @@ onMounted(loadPlans)
       log audit.
     </p>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="cards" :rows="2" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <div v-else class="admin-pricing__grid">
       <div v-for="tier in ['comprehensive', 'master']" :key="tier" class="admin-pricing__card">

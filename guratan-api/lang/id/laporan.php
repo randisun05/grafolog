@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'judul' => 'Laporan Kepribadian Grafologi',
+    'header' => 'Guratan · Laporan Kepribadian Grafologi · Rahasia — hanya untuk :nama',
+    'footer' => 'Laporan #:id · Halaman',
+    'nama' => 'Nama',
+    'tier' => 'Tier',
+    'grafolog' => 'Grafolog',
+    'tanggal' => 'Tanggal laporan',
+    'nomor' => 'No. laporan',
+    'ditinjau' => 'Ditinjau',
+    'belum_ditinjau' => 'Belum ditinjau',
+    'disclaimer' => 'Laporan ini adalah alat insight reflektif berbasis grafologi, bukan diagnosis psikologis atau klinis. Grafologi tidak memiliki dasar ilmiah sekuat psikometri standar - jangan jadikan laporan ini satu-satunya dasar keputusan penting (rekrutmen, medis, hukum, finansial).',
+    'konsultasi' => 'Sesi konsultasi',
+    'status_konsultasi' => ['dijadwalkan' => 'dijadwalkan', 'selesai' => 'selesai', 'dibatalkan' => 'dibatalkan'],
+    'sindrom' => 'Sindrom',
+    'polaritas' => 'Polaritas',
+    'rata_rata' => 'Rata-rata skor',
+    'kategori' => 'Kategori',
+    'skor' => 'Skor',
+    'belum_diterjemahkan' => 'Terjemahan belum tersedia - ditampilkan dalam bahasa Inggris.',
+    'catatan_terjemahan' => 'Narasi Bahasa Indonesia merupakan terjemahan dari referensi grafologi berbahasa Inggris.',
+    'zona_waktu' => 'WIB',
+];

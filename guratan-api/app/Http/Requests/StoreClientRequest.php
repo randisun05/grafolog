@@ -28,6 +28,7 @@ class StoreClientRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['nullable', 'string', Password::min(8)->letters()->numbers()],
+            'consent_confirmed' => ['accepted'],
         ];
     }
 }

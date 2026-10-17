@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
+const router = useRouter()
 
 const tierLabel = {
   comprehensive: 'Comprehensive',
@@ -28,7 +30,24 @@ const previewError = ref('')
 const paying = ref(false)
 const payError = ref('')
 
-const basePrice = computed(() => pricing.value.find((p) => p.tier === selectedTier.value)?.price ?? null)
+const MAX_PHOTOS = 5
+const photos = ref([])
+const createdSample = ref(null)
+const photosUploaded = ref(false)
+
+function onPhotos(event) {
+  const picked = Array.from(event.target.files ?? [])
+  event.target.value = ''
+  photos.value = [...photos.value, ...picked].slice(0, MAX_PHOTOS)
+}
+
+function removePhoto(index) {
+  photos.value = photos.value.filter((_, i) => i !== index)
+}
+
+const basePrice = computed(
+  () => pricing.value.find((p) => p.tier === selectedTier.value)?.price ?? null,
+)
 const finalPrice = computed(() => {
   if (previewResult.value?.code_valid) return previewResult.value.final_price
   return basePrice.value
@@ -36,7 +55,11 @@ const finalPrice = computed(() => {
 
 function formatRupiah(value) {
   if (value === null || value === undefined) return '–'
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(value)
 }
 
 async function loadPricing() {
@@ -53,6 +76,10 @@ async function loadPricing() {
 }
 
 function selectTier(tier) {
+  if (createdSample.value && createdSample.value.tier !== tier) {
+    createdSample.value = null
+    photosUploaded.value = false
+  }
   selectedTier.value = tier
   previewResult.value = null
   previewError.value = ''
@@ -76,17 +103,40 @@ async function applyCode() {
   }
 }
 
+// Sample & foto dibuat sekali saja per sesi halaman - kalau pembayaran gagal
+// lalu dicoba lagi, tidak membuat pesanan/foto duplikat.
 async function pay() {
-  if (!selectedTier.value) return
+  if (!selectedTier.value || !photos.value.length) return
   paying.value = true
   payError.value = ''
   try {
-    const { data: sample } = await api.post('/samples', { tier: selectedTier.value })
+    if (!createdSample.value) {
+      const { data } = await api.post('/samples', { tier: selectedTier.value })
+      createdSample.value = data
+    }
+    if (!photosUploaded.value) {
+      const formData = new FormData()
+      photos.value.forEach((f) => formData.append('images[]', f))
+      await api.post(`/samples/${createdSample.value.id}/images`, formData)
+      photosUploaded.value = true
+    }
     const paymentBody = previewResult.value?.code_valid ? { discount_code: discountCode.value } : {}
-    const { data: payment } = await api.post(`/samples/${sample.id}/payment`, paymentBody)
+    const { data: payment } = await api.post(
+      `/samples/${createdSample.value.id}/payment`,
+      paymentBody,
+    )
+    // Mode uji (akun DOKU belum ada): backend langsung menandai lunas.
+    if (payment.paid) {
+      toast.push('Mode uji: pembayaran dinonaktifkan, pesanan langsung dianggap lunas.')
+      router.push({ name: 'dashboard' })
+      return
+    }
     window.location.href = payment.payment_url
   } catch (e) {
-    payError.value = e.response?.data?.message ?? 'Gagal memulai pembayaran.'
+    const errors = e.response?.data?.errors
+    payError.value = errors
+      ? Object.values(errors).flat()[0]
+      : (e.response?.data?.message ?? 'Gagal memulai pembayaran.')
     toast.push(payError.value)
     paying.value = false
   }
@@ -98,9 +148,11 @@ onMounted(loadPricing)
 <template>
   <div class="order">
     <h1>Pesan Laporan</h1>
-    <p class="order__note">Pilih tier, bayar online, grafolog kami akan segera menangani laporan Anda.</p>
+    <p class="order__note">
+      Pilih tier, bayar online, grafolog kami akan segera menangani laporan Anda.
+    </p>
 
-    <LoadingSpinner v-if="loading" label="Memuat harga..." />
+    <SkeletonLoader v-if="loading" variant="cards" :rows="2" label="Memuat harga..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
       <div class="order__tiers">
@@ -123,7 +175,12 @@ onMounted(loadPricing)
           Kode Diskon (opsional)
           <div class="order__code-row">
             <input v-model="discountCode" type="text" placeholder="mis. HEMAT10" />
-            <button type="button" class="btn" :disabled="!discountCode || previewLoading" @click="applyCode">
+            <button
+              type="button"
+              class="btn"
+              :disabled="!discountCode || previewLoading"
+              @click="applyCode"
+            >
               {{ previewLoading ? '...' : 'Terapkan' }}
             </button>
           </div>
@@ -133,13 +190,52 @@ onMounted(loadPricing)
           Kode diterapkan — hemat {{ formatRupiah(previewResult.discount_amount) }}.
         </p>
 
+        <div class="order__photos">
+          <span class="order__photos-title"
+            >Foto Tulisan Tangan ({{ photos.length }}/{{ MAX_PHOTOS }})</span
+          >
+          <p class="order__photos-hint">
+            Tulis minimal satu halaman tangan di kertas polos tanpa garis, tanda tangani di
+            bawahnya, lalu foto tegak lurus dengan cahaya cukup. JPG/PNG/WEBP/HEIC, maks. 10 MB per
+            foto.
+          </p>
+          <ul v-if="photos.length" class="order__photos-list">
+            <li v-for="(f, i) in photos" :key="i">
+              <span>{{ f.name }}</span>
+              <button
+                type="button"
+                class="order__photos-remove"
+                :disabled="photosUploaded"
+                @click="removePhoto(i)"
+              >
+                Hapus
+              </button>
+            </li>
+          </ul>
+          <label v-if="photos.length < MAX_PHOTOS && !photosUploaded" class="btn order__photos-add">
+            Pilih Foto
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              multiple
+              hidden
+              @change="onPhotos"
+            />
+          </label>
+        </div>
+
         <div class="order__summary">
           <span>Total Bayar</span>
           <strong>{{ formatRupiah(finalPrice) }}</strong>
         </div>
 
         <p v-if="payError" class="error">{{ payError }}</p>
-        <button type="button" class="btn btn--primary order__pay-btn" :disabled="paying" @click="pay">
+        <button
+          type="button"
+          class="btn btn--primary order__pay-btn"
+          :disabled="paying || !photos.length"
+          @click="pay"
+        >
           {{ paying ? 'Menyiapkan pembayaran...' : 'Bayar Sekarang' }}
         </button>
       </div>
@@ -196,6 +292,46 @@ onMounted(loadPricing)
 .order__tier-desc {
   font-size: 12.5px;
   color: var(--color-text-soft);
+}
+.order__photos {
+  margin: 4px 0 18px;
+}
+.order__photos-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.order__photos-hint {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+  margin: 4px 0 10px;
+}
+.order__photos-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.order__photos-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--color-border);
+  overflow-wrap: anywhere;
+}
+.order__photos-remove {
+  background: none;
+  border: none;
+  color: var(--color-error);
+  cursor: pointer;
+  font-size: 12px;
+}
+.order__photos-add {
+  display: inline-block;
+  cursor: pointer;
+}
+.order__photos-add input {
+  display: none;
 }
 .order__checkout {
   padding: 20px;

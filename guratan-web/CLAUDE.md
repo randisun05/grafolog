@@ -371,7 +371,7 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
     upload flow).
   - `components/upload/UploadDropzone.vue` — **deleted 2026-08-01** along
     with `UploadView`, its only consumer.
-  - `components/shared/LoadingSpinner.vue` — wired into `RiwayatView`,
+  - `components/shared/LoadingSpinner.vue` (**dihapus 2026-10-15**, diganti `SkeletonLoader`) — wired into `RiwayatView`,
     `ReportView`, `DashboardView` (replacing plain "Memuat..." text).
     (Was also wired into `HasilRapidView` until that view was deleted
     2026-08-01 with the rest of the retired Rapid tier.)
@@ -556,6 +556,65 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   **not** search entities (Projects, candidates, reports) by name/content
   — that would need a search endpoint that doesn't exist; deliberately
   scoped to page navigation only, per the original Fase 07 ask.
+
+## Kesiapan publik — 2026-10-03
+
+- Register: opsi role dihapus (selalu klien) + checkbox persetujuan → `/privasi`, `/syarat`.
+- `LegalView.vue` merender `../legal/*.md` (`?raw` + `marked`, komentar HTML dibuang,
+  banner "Draf" selama masih ada `[KURUNG SIKU]`). `vite.config.js` `server.fs.allow: ['..']`
+  supaya dev server boleh membaca folder `legal/` di root monorepo. Footer beranda menautkan keduanya.
+- `ForgotPasswordView` (`/lupa-password`), `ResetPasswordView` (`/reset-password?token&email`),
+  style bersama `views/auth-form.css`. `lib/api.js`: 401 di halaman non-publik → redirect `/login`
+  (token kini kedaluwarsa 30 hari).
+- `components/shared/SampleImages.vue`: galeri foto tulisan (fetch blob ber-token →
+  object URL, lightbox, unggah/hapus). Dipakai Portal Grafolog (kartu "Foto Tulisan Tangan"),
+  `AdminOrdersView`, `HrCandidatesView` (kolom Foto).
+- `OrderView`: wajib 1–5 foto sebelum bayar; sample & foto dibuat sekali per sesi halaman
+  (retry bayar tidak menduplikasi pesanan).
+- `AdminOrdersView` (`/admin/orders`, "Pesanan Masuk"): filter + tugaskan grafolog (hanya lunas).
+- QA: `SupervisorReviewView` (`/supervisor/reviews`, role supervisor/administrator — router
+  `meta.role` kini boleh array), `ReportReviewPanel` (status QA, catatan, Setujui/Minta Revisi),
+  `AssignedToMeView` menampilkan "Perlu Revisi dari Supervisor". `auth.isSupervisor`.
+- `ConsultationPanel` di `ReportView` untuk tier master (grafolog: jadwal + link https).
+- `ReportView`: disclaimer insight-reflektif di atas laporan.
+- `package.json`: `oxlint` dipin `~1.73.0` agar cocok peer `eslint-plugin-oxlint@~1.73.0`
+  (dulu `npm ci` gagal ERESOLVE di clone bersih).
+
+## Laporan dua bahasa — 2026-10-15
+
+- `ReportView`: pilihan "Bahasa Indonesia | English" (memuat ulang `GET /reports/{id}?lang=`),
+  dua tombol unduh (`/pdf?lang=id|en`), disclaimer mengikuti bahasa. Setelah koreksi skor,
+  laporan dimuat ulang (respons koreksi berisi data mentah, bukan per bahasa).
+- `ReportDocument` prop `bahasa`: dikirim saat edit narasi (hanya bahasa yang sedang dilihat
+  yang berubah), label meta per bahasa, catatan "Terjemahan belum tersedia" bila
+  `aspek.narasi_bahasa === 'en'` di tampilan Indonesia.
+- Admin KB tab Aspek: field EN dan ID berdampingan (`.admin-km__bilingual`) untuk meninjau draf
+  terjemahan.
+
+## Skeleton loading — 2026-10-15
+
+- `components/shared/SkeletonLoader.vue` menggantikan `LoadingSpinner` (dihapus) dan teks
+  "Memuat..." di semua view/panel. Prop `variant`: `list` | `table` (+`columns`) | `cards` |
+  `dashboard` | `report` | `form` | `text`, `rows`, `label` (dibaca screen reader, `role=status`).
+  Hanya token warna → ikut dark mode; shimmer mati di `prefers-reduced-motion`.
+- Pilih variant yang paling mirip layout aslinya. Tombol "Menyimpan..." dsb. tetap teks.
+- Dicek Playwright dengan API ditahan (terang, gelap, 390px).
+
+## Tab Matriks Admin KB — 2026-10-16
+
+- `components/admin/KnowledgeMatrixExplorer.vue`, tab ke-7 "Matriks" di `AdminKnowledgeView`.
+  Sub-tampilan: Ringkasan & Celah, Variabel × Aspek (heatmap), Aspek → Aspek (per sindrom/aspek),
+  Ciri Bersama (cari), Korelasi Empiris (ambang min_n, peringatan < 30). Klik sel → panel detail;
+  klik kode indikator → emit `open-indikator` → tab Indikator dengan pencarian kode itu.
+- Warna sel: `color-mix` dari `--color-seal-dark` ke `--color-surface`, 5 tingkat — ikut dark mode.
+- `IndikatorChecklist`: badge `ciri_bersama` = "Ciri sama".
+- Browser-verified (terang, gelap). Catatan: halaman Admin KB sudah melebar ~600px di 390px
+  (tabel tab Sindrom) sebelum perubahan ini — belum diperbaiki.
+
+## Mode uji pembayaran — 2026-10-17
+
+- `OrderView`/`TokenWalletView`: bila respons pembayaran `paid: true` (backend `PAYMENT_BYPASS`),
+  tidak redirect ke DOKU — order → toast + `/dashboard`, token → toast + muat ulang saldo.
 
 ## Stack
 

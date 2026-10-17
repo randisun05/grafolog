@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -82,6 +82,13 @@ async function buy() {
     const body = { quantity: quantity.value }
     if (previewResult.value?.code_valid) body.discount_code = discountCode.value
     const { data } = await api.post('/tokens/purchase', body)
+    // Mode uji (akun DOKU belum ada): token langsung masuk saldo.
+    if (data.paid) {
+      toast.push(`Mode uji: ${quantity.value} token langsung ditambahkan tanpa pembayaran.`)
+      buying.value = false
+      await loadWallet()
+      return
+    }
     window.location.href = data.payment_url
   } catch (e) {
     buyError.value = e.response?.data?.message ?? 'Gagal memulai pembayaran.'
@@ -101,7 +108,7 @@ onMounted(loadWallet)
       diatur admin). Beli token di sini untuk menambah saldo.
     </p>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="form" :rows="2" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <template v-else>
       <div class="token-wallet__balance">

@@ -7,6 +7,7 @@ use App\Http\Requests\Reporting\UpdateNarasiOverrideRequest;
 use App\Models\AuditLog;
 use App\Models\PersonalityReport;
 use App\Models\ReportRevision;
+use App\Services\Reporting\ReportLocalizer;
 use App\Services\Reporting\ReportPdfService;
 use App\Services\Reporting\ReportRevisionService;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ReportController extends Controller
 {
     public function __construct(
+        private ReportLocalizer $localizer,
         private ReportPdfService $pdfService,
         private ReportRevisionService $reportRevisions,
     ) {}
@@ -32,7 +34,9 @@ class ReportController extends Controller
                     ->orWhere('created_by', $user->id)
                     ->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $user->id));
             })
-            ->with('sample:id,user_id,created_by,tier')
+            ->when(! $user->isGrafolog(), fn ($q) => $q->where('review_status', PersonalityReport::REVIEW_APPROVED))
+            ->when($request->query('review_status'), fn ($q, $status) => $q->where('review_status', $status))
+            ->with('sample:id,user_id,created_by,tier', 'sample.user:id,name,email')
             ->latest()
             ->paginate(20);
 
@@ -43,7 +47,19 @@ class ReportController extends Controller
     {
         $this->authorizeAccess($request, $report);
 
-        return response()->json($report->load('sample', 'aspekScores.aspek'));
+        $bahasa = $this->bahasa($request);
+        $payload = $report->load('sample.consultation', 'aspekScores.aspek', 'reviewer:id,name')->toArray();
+        $payload['data'] = $report->data ? $this->localizer->localize($report->data, $bahasa) : null;
+
+        return response()->json($payload);
+    }
+
+    private function bahasa(Request $request): string
+    {
+        $bahasa = $request->query('lang', 'id');
+        abort_unless(in_array($bahasa, ReportLocalizer::BAHASA, true), 422, 'Bahasa tidak didukung (id|en).');
+
+        return $bahasa;
     }
 
     public function pdf(Request $request, PersonalityReport $report): StreamedResponse
@@ -51,9 +67,11 @@ class ReportController extends Controller
         $this->authorizeAccess($request, $report);
         abort_unless($report->status === 'completed', 422, 'Laporan belum selesai dibuat.');
 
-        $path = $this->pdfService->generate($report);
+        $bahasa = $this->bahasa($request);
+        $path = $this->pdfService->generate($report, $bahasa);
+        $nama = $bahasa === 'en' ? "graphology-report-{$report->id}-en.pdf" : "laporan-grafologi-{$report->id}-id.pdf";
 
-        return Storage::disk('local')->download($path, "laporan-{$report->id}.pdf");
+        return Storage::disk('local')->download($path, $nama);
     }
 
     /**
@@ -78,28 +96,42 @@ class ReportController extends Controller
             $this->reportRevisions->snapshotBeforeChange($report, 'edit_manual', $user, $request->input('catatan'));
 
             $data = $report->data;
-            $found = $this->applyNarasiOverride($data, $kode, $request->validated('narasi'));
+            $bahasa = $request->validated('bahasa', 'id');
+            $found = $this->applyNarasiOverride($data, $kode, $request->validated('narasi'), $bahasa);
             abort_unless($found, 404, "Aspek dengan kode '{$kode}' tidak ditemukan di laporan ini.");
 
             $report->update(['data' => $data]);
+            $report->sendBackToReview();
 
             AuditLog::record('edit_narasi_laporan', PersonalityReport::class, $report->id, $user->id, $request->ip());
 
             return $report;
         });
 
-        return response()->json($report->fresh());
+        $fresh = $report->fresh();
+        $payload = $fresh->toArray();
+        $payload['data'] = $this->localizer->localize($fresh->data, $request->validated('bahasa', 'id'));
+
+        return response()->json($payload);
     }
 
     /**
      * @return bool true kalau Aspek dengan $kode ditemukan & diubah
      */
-    private function applyNarasiOverride(array &$data, string $kode, string $narasi): bool
+    private function applyNarasiOverride(array &$data, string $kode, string $narasi, string $bahasa): bool
     {
         foreach ($data['sindrom'] as &$sindrom) {
             foreach ($sindrom['aspek'] as &$aspek) {
                 if ($aspek['kode'] === $kode) {
-                    $aspek['narasi'] = $narasi;
+                    // Laporan lama (tanpa narasi_en): `narasi` di sana berbahasa Inggris.
+                    if (! array_key_exists('narasi_en', $aspek)) {
+                        $aspek['narasi_en'] = $aspek['narasi'];
+                        $aspek['narasi_id'] = null;
+                    }
+
+                    $aspek["narasi_{$bahasa}"] = $narasi;
+                    $aspek["narasi_diedit_manual_{$bahasa}"] = true;
+                    $aspek['narasi'] = $aspek['narasi_id'] ?? $aspek['narasi_en'];
                     $aspek['narasi_diedit_manual'] = true;
 
                     return true;
@@ -129,6 +161,6 @@ class ReportController extends Controller
 
     private function authorizeAccess(Request $request, PersonalityReport $report): void
     {
-        abort_unless($report->sample->isViewableBy($request->user()), 403);
+        abort_unless($report->isVisibleTo($request->user()), 403);
     }
 }

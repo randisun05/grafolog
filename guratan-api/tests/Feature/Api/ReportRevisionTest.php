@@ -151,6 +151,7 @@ class ReportRevisionTest extends TestCase
         ]);
         $report = PersonalityReport::create([
             'sample_id' => $sample->id, 'tier' => 'comprehensive', 'status' => 'completed', 'generated_at' => now(),
+            'review_status' => PersonalityReport::REVIEW_APPROVED,
             'data' => ['sindrom' => [['id' => $sindrom->id, 'kode_romawi' => $sindrom->kode_romawi, 'nama' => $sindrom->nama, 'polaritas' => 'HIJAU', 'catatan_polaritas' => null, 'rata_rata_skor' => 7.0, 'band_label_rata_rata' => 'Nilai Tinggi', 'aspek' => [['kode' => '01', 'nama' => 'Aspek 1', 'skor' => 7, 'band_label' => 'Nilai Tinggi', 'narasi_level' => 'high', 'narasi' => 'x']]]]],
         ]);
 

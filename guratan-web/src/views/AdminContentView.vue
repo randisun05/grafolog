@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -105,7 +105,7 @@ onMounted(loadContent)
       dibatasi (bukan editor bebas) - setiap section punya jumlah item tetap.
     </p>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="form" :rows="5" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <div v-else class="admin-content__fields">
       <div v-for="field in fields" :key="field.key" class="admin-content__field">

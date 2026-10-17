@@ -37,6 +37,8 @@ class DashboardControllerTest extends TestCase
             'tier' => $sample->tier,
             'status' => 'completed',
             'generated_at' => $generatedAt,
+            'review_status' => PersonalityReport::REVIEW_APPROVED,
+            'reviewed_at' => $generatedAt,
             'data' => ['sindrom' => []],
         ]);
     }
@@ -113,5 +115,48 @@ class DashboardControllerTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(1, 'activity')
             ->assertJsonPath('activity.0.status', 'completed');
+    }
+
+    public function test_client_does_not_count_report_still_in_review_as_completed(): void
+    {
+        $client = User::factory()->create();
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = $this->makeSample($this->makeProject($grafolog, 'grafolog'), $client, $grafolog, 'completed');
+        $this->completeReport($sample, now())->update(['review_status' => PersonalityReport::REVIEW_PENDING]);
+
+        $kpi = collect($this->actingAs($client, 'sanctum')->getJson('/api/dashboard')->json('kpi'))->keyBy('key');
+
+        $this->assertSame(0, $kpi['completed']['value']);
+        $this->assertSame(1, $kpi['in_progress']['value']);
+    }
+
+    public function test_grafolog_dashboard_counts_assigned_samples(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $hr = User::factory()->create(['role' => 'hr']);
+        $sample = $this->makeSample($this->makeProject($hr, 'hr'), User::factory()->create(), $hr, 'pending');
+        $sample->assignment()->create(['grafolog_id' => $grafolog->id, 'assigned_by' => $hr->id, 'status' => 'assigned']);
+
+        $kpi = collect($this->actingAs($grafolog, 'sanctum')->getJson('/api/dashboard')->json('kpi'))->keyBy('key');
+
+        $this->assertSame(1, $kpi['pending_review']['value']);
+    }
+
+    public function test_admin_supervisor_and_hr_get_their_own_dashboards(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = $this->makeSample($this->makeProject($grafolog, 'grafolog'), User::factory()->create(), $grafolog, 'completed');
+        $this->completeReport($sample, now())->update(['review_status' => PersonalityReport::REVIEW_PENDING]);
+
+        $admin = collect($this->actingAs(User::factory()->create(['role' => 'administrator']), 'sanctum')
+            ->getJson('/api/dashboard')->assertJsonPath('role', 'administrator')->json('kpi'))->keyBy('key');
+        $this->assertSame(1, $admin['reviews_pending']['value']);
+
+        $this->actingAs(User::factory()->create(['role' => 'supervisor']), 'sanctum')
+            ->getJson('/api/dashboard')->assertJsonPath('role', 'supervisor')
+            ->assertJsonPath('kpi.0.value', 1)->assertJsonCount(1, 'activity');
+
+        $this->actingAs(User::factory()->create(['role' => 'hr']), 'sanctum')
+            ->getJson('/api/dashboard')->assertJsonPath('role', 'hr')->assertJsonPath('kpi.0.value', 0);
     }
 }

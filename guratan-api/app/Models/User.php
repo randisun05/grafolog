@@ -12,12 +12,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role', 'company_id', 'token_balance'])]
+#[Fillable(['name', 'email', 'password', 'role', 'company_id', 'token_balance', 'consented_at', 'consent_source', 'consent_version'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    public const CONSENT_VERSION = '2026-10';
 
     public function company(): BelongsTo
     {
@@ -53,6 +55,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'consented_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

@@ -28,7 +28,11 @@ const commands = computed(() => {
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
     items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
   }
+  if (auth.isSupervisor || auth.isAdministrator) {
+    items.push({ label: 'Review Laporan', to: { name: 'supervisor-reviews' } })
+  }
   if (auth.isAdministrator) {
+    items.push({ label: 'Pesanan Masuk', to: { name: 'admin-orders' } })
     items.push({ label: 'Kelola Staf', to: { name: 'admin-users' } })
     items.push({ label: 'Kelola Harga', to: { name: 'admin-pricing' } })
     items.push({ label: 'Kelola Diskon', to: { name: 'admin-discounts' } })

@@ -24,6 +24,7 @@ class ImportCandidatesRequest extends FormRequest
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
             'project_name' => ['nullable', 'string', 'max:255'],
             'tier' => ['sometimes', 'string', 'in:comprehensive,master'],
+            'consent_confirmed' => ['accepted'],
         ];
     }
 }

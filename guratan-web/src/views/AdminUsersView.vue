@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -107,7 +107,7 @@ onMounted(loadUsers)
     </form>
 
     <h2 class="admin-users__list-title">Semua User</h2>
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="table" :columns="3" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <table v-else class="admin-users__table">
       <thead>

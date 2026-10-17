@@ -21,6 +21,7 @@ class UpdateSindromRequest extends FormRequest
         return [
             'kode_romawi' => ['sometimes', 'required', 'string', 'max:5', Rule::unique('sindrom', 'kode_romawi')->ignore($this->route('sindrom'))],
             'nama' => ['sometimes', 'required', 'string', 'max:100'],
+            'nama_id' => ['nullable', 'string', 'max:100'],
             'polaritas_inferred' => ['sometimes', 'required', 'string', 'in:HIJAU,MERAH'],
             'catatan_polaritas' => ['nullable', 'string'],
         ];

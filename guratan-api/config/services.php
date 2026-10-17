@@ -36,13 +36,37 @@ return [
     ],
 
     'llm' => [
-    'provider' => env('LLM_PROVIDER', 'none'),
-    'api_key' => env('LLM_API_KEY'),
-    'endpoint' => env('LLM_API_ENDPOINT'),
-    'model' => env('LLM_MODEL'),
-    'selfhosted_url' => env('LLM_SELFHOSTED_URL', 'http://localhost:11434'),
-    'selfhosted_model' => env('LLM_SELFHOSTED_MODEL', 'qwen2.5:14b'),
-],
+        'provider' => env('LLM_PROVIDER', 'none'),
+        'api_key' => env('LLM_API_KEY'),
+        'endpoint' => env('LLM_API_ENDPOINT'),
+        'model' => env('LLM_MODEL'),
+        'selfhosted_url' => env('LLM_SELFHOSTED_URL', 'http://localhost:11434'),
+        'selfhosted_model' => env('LLM_SELFHOSTED_MODEL', 'qwen2.5:14b'),
+    ],
+
+    // LLM_PROVIDER=gemini: sampai 10 key, dirotasi otomatis saat limit
+    // (GeminiKeyPool). Cooldown dalam detik.
+    'gemini' => [
+        'keys' => [
+            1 => env('GEMINI_API_KEY_1'),
+            2 => env('GEMINI_API_KEY_2'),
+            3 => env('GEMINI_API_KEY_3'),
+            4 => env('GEMINI_API_KEY_4'),
+            5 => env('GEMINI_API_KEY_5'),
+            6 => env('GEMINI_API_KEY_6'),
+            7 => env('GEMINI_API_KEY_7'),
+            8 => env('GEMINI_API_KEY_8'),
+            9 => env('GEMINI_API_KEY_9'),
+            10 => env('GEMINI_API_KEY_10'),
+        ],
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
+        'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+        'max_output_tokens' => env('GEMINI_MAX_OUTPUT_TOKENS', 2048),
+        'timeout' => env('GEMINI_TIMEOUT', 60),
+        'cooldown' => env('GEMINI_COOLDOWN_SECONDS', 60),
+        'daily_cooldown' => env('GEMINI_DAILY_COOLDOWN_SECONDS', 3600),
+        'invalid_cooldown' => env('GEMINI_INVALID_COOLDOWN_SECONDS', 86400),
+    ],
 
     /*
     |--------------------------------------------------------------------------

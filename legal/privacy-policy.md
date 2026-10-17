@@ -1,6 +1,9 @@
 <!--
-STATUS: DRAFT — belum ditinjau tim legal/bisnis, JANGAN publikasikan atau
-tautkan dari aplikasi sebelum disetujui. Ditulis 2026-07-27 berdasarkan
+STATUS: DRAFT — belum ditinjau tim legal/bisnis. Sejak 2026-10-03 file ini
+DITAMPILKAN di guratan-web (/privasi, ditautkan dari checkbox persetujuan
+register) dengan banner "Draf" selama masih ada [kurung siku] - wajib
+ditinjau penasihat hukum sebelum go-live. Ditulis 2026-07-27, diperbarui
+2026-10-03 (Rapid dihapus, foto privat, HR, supervisor, konsultasi) berdasarkan
 CLAUDE.md root (prinsip produk) dan kondisi teknis nyata di guratan-api/web
 CLAUDE.md. Semua [DALAM KURUNG SIKU] wajib diisi/dikonfirmasi sebelum rilis.
 Rujukan hukum: UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (PDP) -
@@ -16,11 +19,15 @@ kepatuhan hukum final.
 ## 1. Data Apa yang Kami Kumpulkan
 
 - **Data akun**: nama, email, kata sandi (di-hash, tidak pernah disimpan
-  dalam bentuk asli), peran (individu atau grafolog bersertifikat).
-- **Foto tulisan tangan** (tier Rapid): diunggah oleh Anda untuk dianalisis.
-- **Skor grafologi** (tier Comprehensive/Master): 40 aspek yang diinput
-  grafolog bersertifikat berdasarkan pengukuran manual tulisan tangan fisik
-  Anda.
+  dalam bentuk asli), peran, serta waktu Anda memberikan persetujuan
+  pemrosesan data.
+- **Foto tulisan tangan**: diunggah oleh Anda (atau oleh grafolog/perusahaan
+  yang menangani Anda) untuk diukur oleh grafolog. Disimpan di penyimpanan
+  privat, tidak bisa diakses lewat tautan publik.
+- **Skor grafologi**: 40 aspek yang diinput grafolog bersertifikat
+  berdasarkan pengukuran manual tulisan tangan Anda, beserta catatan
+  pengukuran.
+- **Jadwal konsultasi** (tier Master): waktu dan tautan pertemuan daring.
 - **Data pembayaran** (tier Comprehensive/Master): nomor invoice, jumlah,
   status transaksi. Detail kartu/rekening/e-wallet Anda **tidak pernah**
   disimpan atau diproses oleh server kami — diproses langsung oleh mitra
@@ -42,7 +49,10 @@ sensitifnya, kami menerapkan kontrol keamanan tambahan (lihat bagian 4).
 
 - Menghasilkan dan menampilkan laporan kepribadian Anda.
 - Memproses pembayaran untuk tier berbayar (Comprehensive/Master).
-- Mengirim notifikasi email saat laporan Anda selesai dibuat.
+- Mengirim notifikasi email saat laporan Anda selesai dan disetujui, saat
+  jadwal konsultasi ditetapkan, dan untuk pemulihan kata sandi.
+- Peninjauan mutu (quality review) laporan oleh supervisor internal
+  sebelum laporan dirilis kepada Anda.
 - Audit keamanan internal (mendeteksi akses tidak sah ke laporan sensitif).
 - **Tidak digunakan** untuk melatih model AI/LLM pihak ketiga — narasi
   laporan berasal dari basis pengetahuan grafologi yang sudah ada, LLM (jika
@@ -58,12 +68,11 @@ sensitifnya, kami menerapkan kontrol keamanan tambahan (lihat bagian 4).
 - Autentikasi berbasis token (Sanctum), dikirim lewat HTTPS di production.
 - Setiap pembacaan laporan kepribadian tercatat di log audit internal,
   terlepas dari apakah akses tersebut berhasil atau ditolak.
-- Sample tulisan tangan (foto, tier Rapid) dan laporan hanya bisa diakses
-  oleh pemilik akun terkait dan grafolog yang menangani kasus tersebut.
-- [KEPUTUSAN TERTUNDA - lihat guratan-api/CLAUDE.md "Open security findings":
-  foto tulisan tangan tier Rapid saat ini disimpan di disk publik dengan nama
-  file acak (tidak bisa ditebak, tapi tidak ada pengecekan kepemilikan
-  eksplisit). Perbarui bagian ini begitu keputusan diambil.]
+- Foto tulisan tangan dan laporan hanya bisa diakses oleh pemilik akun,
+  grafolog yang menangani, supervisor peninjau mutu, administrator, dan -
+  untuk kandidat rekrutmen - HR perusahaan yang mendaftarkan Anda. Setiap
+  akses foto dan laporan dicatat di log audit.
+- Sesi login otomatis kedaluwarsa setelah [30] hari.
 
 ## 5. Berapa Lama Data Disimpan
 
@@ -80,9 +89,12 @@ prinsip minimisasi data UU PDP.]
 - **Penyedia email** [isi nama provider SMTP production]: menerima alamat
   email untuk mengirim notifikasi laporan selesai.
 - Kami **tidak menjual** data pribadi Anda ke pihak mana pun.
-- Untuk B2B/rekrutmen (fase pasca-MVP, belum aktif): [BELUM ADA KEBIJAKAN -
-  wajib ditulis sebelum fitur B2B diluncurkan, termasuk consent eksplisit
-  dari kandidat sebelum laporan dibagikan ke perusahaan perekrut].
+- **Perusahaan perekrut (B2B)**: jika Anda didaftarkan sebagai kandidat
+  oleh HR sebuah perusahaan, laporan Anda dapat dilihat oleh HR perusahaan
+  tersebut. Perusahaan wajib memperoleh persetujuan tertulis Anda sebelum
+  mendaftarkan Anda (dikonfirmasi HR di sistem saat impor kandidat).
+  [Tinjau penasihat hukum: apakah perlu perjanjian pemrosesan data
+  terpisah dengan perusahaan klien.]
 
 ## 7. Hak Anda
 

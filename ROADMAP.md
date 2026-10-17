@@ -891,3 +891,53 @@ menampilkan 3 referensi keluar dengan benar. Detail teknis lengkap di
 2026-08-19): "if A checked -> B TIDAK checked" dibahas 2026-08-08, user
 eksplisit konfirmasi tidak diperlukan ("tidak perlu ada reverse seperti
 itu"). `indikator_checked` tetap inclusion-only sesuai desain.
+
+## Inisiatif — Kesiapan Publik (2026-10-03)
+
+Simulasi end-to-end semua role (tamu, klien, grafolog, HR, supervisor, admin) + uji
+penyalahgunaan menemukan blocker go-live. Keputusan user (AskUserQuestion): pesanan B2C
+ditugaskan admin; konsultasi Master = jadwal + link dari grafolog; Supervisor = QA review
+sebelum laporan dirilis; terjemahan narasi ditunda.
+
+- [x] Registrasi publik grafolog ditutup (celah: grafolog palsu menempelkan laporan ke akun klien).
+- [x] Upload foto tulisan tangan (privat + audit) di pesanan klien, Portal Grafolog, HR.
+- [x] Halaman admin "Pesanan Masuk" + assign (dulu pesanan lunas menggantung tanpa grafolog).
+- [x] QA Supervisor: antrean review, setujui/minta revisi, laporan tersembunyi dari klien/HR
+  sampai disetujui, email dikirim saat disetujui.
+- [x] Konsultasi tier Master (jadwal + link + email).
+- [x] Lupa/reset password (kandidat HR & walk-in kini bisa mengakses akun).
+- [x] Persetujuan data UU PDP (register, walk-in, impor HR), halaman /privasi & /syarat (draf),
+  disclaimer di laporan web & PDF.
+- [x] Bug DOKU: kredit token ganda via notifikasi FAILED→SUCCESS, lunas bisa dibatalkan,
+  500+stack trace saat DOKU error, Client-Id webhook tidak dicek.
+- [x] Dashboard per role (admin/HR/supervisor dulu menampilkan KPI klien kosong).
+- [x] Token login kedaluwarsa 30 hari; `npm ci` clean-install diperbaiki.
+- [ ] **Masih terbuka (butuh user):** kredensial DOKU (Fase C); review hukum Privacy
+  Policy/ToS + isi semua [KURUNG SIKU]; terjemahan narasi KB ke Bahasa Indonesia + kata ganti
+  netral (narasi masih "He/his"); deployment production (`APP_DEBUG=false`, SMTP nyata,
+  scheduler cron untuk `sanctum:prune-expired`, queue worker); kebijakan retensi data &
+  refund; foto rapid-tier lama masih di disk publik (historis).
+
+## Inisiatif — Laporan Dua Bahasa (2026-10-15)
+
+- [x] Draf terjemahan Bahasa Indonesia untuk 40 aspek (nama, keterangan umum, 4 level narasi)
+  dan 8 sindrom — dibuat AI, kata ganti netral.
+- [x] Laporan disimpan dalam dua bahasa; web bisa berganti ID/EN; PDF dapat diunduh dalam
+  kedua bahasa; edit narasi manual per bahasa.
+- [ ] **Tinjauan grafolog atas draf terjemahan** (admin KB → Aspek) sebelum dipakai klien.
+- [ ] Terjemahan 704 keterangan Indikator (bisa via Gemini `narasi`-style pipeline, perlu
+  dirancang terpisah).
+- [ ] Perbaiki celah/keanehan di sumber Excel: aspek 09 medium/low kosong, 08 Motivation
+  tampak bergeser satu level, 21 low duplikat, 37 high terpotong.
+
+## Inisiatif — Matriks Keterkaitan & Ciri Bersama (2026-10-16)
+
+Riset: artifact "Matriks Keterkaitan Guratan". Dikerjakan semua 4 usulan:
+- [x] Tab Matriks (baca) di Admin KB: variabel×aspek, aspek→aspek, ciri bersama, drilldown ke tab Indikator.
+- [x] Laporan celah: 18 variabel tanpa aturan, 13 aspek tanpa indikator terukur, 396 indikator manual-only.
+- [x] Ciri bersama: indikator bernama sama tersinkron dua arah (config `CHECKLIST_CIRI_BERSAMA`).
+      Sekaligus memperbaiki latch kaskade (evaluasi titik-tetap terkecil).
+- [x] Korelasi empiris (Pearson, ambang min_n) — bermakna setelah ±100 sampel terukur.
+- [ ] Grafolog memastikan ciri bernama sama memang identik; bila tidak, matikan flag atau
+      (nanti) pengecualian per grup.
+- [ ] Menutup celah: aturan untuk 18 variabel tak terpakai (butuh ambang dari grafolog).

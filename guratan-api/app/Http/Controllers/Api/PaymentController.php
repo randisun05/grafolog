@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreatePaymentRequest;
+use App\Models\AuditLog;
 use App\Models\DiscountCode;
 use App\Models\HandwritingSample;
 use App\Models\Payment;
 use App\Models\PricingPlan;
 use App\Models\TokenPurchase;
 use App\Services\Payment\DokuService;
+use App\Services\Payment\PaymentMode;
 use App\Services\TokenWalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,6 +58,18 @@ class PaymentController extends Controller
             'currency' => 'IDR',
             'status' => 'pending',
         ]);
+
+        if (PaymentMode::bypassed()) {
+            $payment->update(['status' => 'paid', 'paid_at' => now(), 'notification_payload' => ['bypass' => true]]);
+            $payment->discountCode?->incrementUsage();
+            AuditLog::record('pembayaran_mode_uji', 'payment', $payment->id, $user->id, $request->ip());
+
+            return response()->json([
+                'paid' => true,
+                'bypass' => true,
+                'invoice_number' => $payment->invoice_number,
+            ], 201);
+        }
 
         // DokuService melempar RuntimeException kalau kredensial belum diisi
         // atau DOKU menolak request - jangan biarkan itu bocor jadi 500 mentah
@@ -138,6 +152,14 @@ class PaymentController extends Controller
     {
         $wasAlreadyPaid = $payment->isPaid();
 
+        // Status lunas bersifat final: notifikasi susulan (FAILED/EXPIRED atau
+        // SUCCESS dobel) tidak boleh menurunkan status atau mengkredit ulang.
+        if ($wasAlreadyPaid) {
+            Log::info('DOKU notification diabaikan, invoice sudah lunas', ['invoice_number' => $payment->invoice_number, 'status' => $status]);
+
+            return;
+        }
+
         $payment->update([
             'notification_payload' => $request->all(),
             'status' => $status === 'SUCCESS' ? 'paid' : 'failed',
@@ -155,6 +177,14 @@ class PaymentController extends Controller
     private function handleTokenPurchaseNotification(TokenPurchase $purchase, string $status, Request $request): void
     {
         $wasAlreadyPaid = $purchase->isPaid();
+
+        // Status lunas bersifat final: notifikasi susulan (FAILED/EXPIRED atau
+        // SUCCESS dobel) tidak boleh menurunkan status atau mengkredit ulang.
+        if ($wasAlreadyPaid) {
+            Log::info('DOKU notification diabaikan, invoice sudah lunas', ['invoice_number' => $purchase->invoice_number, 'status' => $status]);
+
+            return;
+        }
 
         $purchase->update([
             'notification_payload' => $request->all(),

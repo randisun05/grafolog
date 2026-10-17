@@ -13,3 +13,8 @@
 - [Range-mode scoring](project_range_mode_scoring.md) — 2026-08-17: irregularity rules use max-min range not point value, worksheet reopens on completed samples for correction, per-Indikator keterangan now in reports
 - [KB content gaps](project_kb_content_gaps.md) — 2026-08-17: 30 empty Indikator.keterangan rows (Aspek 35 "Fears" degree-variants) deferred pending user-supplied text, don't fill without asking
 - [Cross-reference unification](project_cross_reference_unification.md) — 2026-08-19: KM-F cascade merged into indikator_rules as 3rd rule_type, old table dropped, multi-hop chains, admin tab removed
+- [Launch readiness](project_launch_readiness.md) — 2026-10-03: role simulation, fixed grafolog self-register hole, photo upload, admin orders, supervisor QA gate, Master consultation, reset password, PDP consent, DOKU bugs; remaining blockers are DOKU creds/legal/translation/deploy
+- [Gemini multi-key](project_gemini_multikey.md) — 2026-10-14: LLM_PROVIDER=gemini, up to 10 keys GEMINI_API_KEY_1..10 with cooldown failover; all-fail never pollutes narasi_cache
+- [Bilingual reports](project_bilingual_reports.md) — 2026-10-15: ID/EN reports + PDFs; Indonesian narasi is an AI draft translation needing grafolog review
+- [Matrix & ciri bersama](project_matrix_ciri_bersama.md) — 2026-10-16: admin KB Matriks tab, same-name indikator sync (changes new scores, needs grafolog confirmation), cascade latch fix, empirical correlation
+- [Payment bypass](project_payment_bypass.md) — 2026-10-17: PAYMENT_BYPASS test mode, orders/tokens instantly paid without DOKU; never in production
