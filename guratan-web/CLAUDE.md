@@ -717,6 +717,10 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 `ConsentGate` (App.vue) menghalangi UI sampai `user.needs_consent` disetujui (`POST /me/accept-terms`); App memanggil `fetchMe()` saat dibuka. `PrivacyPanel` di `/profil`: unduh data (blob), hapus akun (password + ketik HAPUS). Profil: centang email notifikasi. `PaymentMethodPicker` di OrderView/HrOrdersPanel/TokenWalletView. `AdminBroadcastView`: opsi "penting/insiden". CvForm mendukung tipe foto/berkas.
 
+## Responsif — 2026-10-19
+
+Tabel lebar dibungkus `.table-scroll` (main.css) agar gulir di dalam kartu; cek 390px untuk semua halaman admin lewat Playwright tanpa overflow horizontal.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
@@ -734,7 +738,7 @@ Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
 
 ## Not built yet
 
-- No test setup found (no test runner in `package.json` scripts).
+- Tes FE: `npm test` (vitest + jsdom + @vue/test-utils, `src/__tests__/`: format, useInbox, CvForm, ConsentGate, PaymentMethodPicker). Cakupan masih tipis - view besar belum dites otomatis.
 - `components/upload/` is intentionally absent (deleted 2026-08-01, Rapid
   tier retired) — don't recreate it without an explicit new user decision
   reversing that.

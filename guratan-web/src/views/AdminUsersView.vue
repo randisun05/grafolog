@@ -107,24 +107,26 @@ onMounted(loadUsers)
     <h2 class="admin-users__list-title">Semua User</h2>
     <SkeletonLoader v-if="loading" variant="table" :columns="3" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
-    <table v-else class="admin-users__table">
-      <thead>
-        <tr>
-          <th>Nama</th>
-          <th>Email</th>
-          <th>Role</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="u in users" :key="u.id">
-          <td>{{ u.name }}</td>
-          <td>{{ u.email }}</td>
-          <td>
-            <span class="admin-users__role-badge">{{ roleLabel[u.role] ?? u.role }}</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else class="table-scroll">
+      <table class="admin-users__table">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Email</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="u in users" :key="u.id">
+            <td>{{ u.name }}</td>
+            <td>{{ u.email }}</td>
+            <td>
+              <span class="admin-users__role-badge">{{ roleLabel[u.role] ?? u.role }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 

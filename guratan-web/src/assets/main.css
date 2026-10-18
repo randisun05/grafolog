@@ -72,3 +72,9 @@ textarea:focus {
   outline: 2px solid var(--color-seal);
   outline-offset: 1px;
 }
+
+/* Tabel lebar: gulir horizontal di dalam kartu, bukan melebarkan halaman (ponsel). */
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}

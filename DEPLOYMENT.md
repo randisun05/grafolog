@@ -74,3 +74,35 @@ jangan asumsikan akun Gmail dev ini siap dipakai untuk trafik nyata.
 - [ ] Verifikasi role "grafolog" masih self-declared saat registrasi (lihat
   Ketentuan Layanan pasal 4) — putuskan apakah ini cukup untuk MVP atau perlu
   proses verifikasi manual sebelum publik.
+
+## Operasional (ditambahkan 2026-10-19)
+
+### Periksa kesiapan
+`php artisan app:preflight` (tambahkan `--strict` agar peringatan ikut menggagalkan; cocok dipakai di CI/deploy script). Memeriksa APP_DEBUG/URL https/CORS, koneksi DB, storage, MAIL_MAILER (bukan `log`), mode uji pembayaran mati, kredensial DOKU produksi, antrean (bukan sync + tidak ada job macet >10 menit), detak scheduler, administrator ada, tidak ada akun demo `@guratan.test`, LLM.
+
+### Proses latar yang wajib hidup
+1. **Scheduler** - cron: `* * * * * cd /path/guratan-api && php artisan schedule:run >> /dev/null 2>&1`. Menjalankan sweep supervisi (jam), `activity:prune` (harian, retensi log 90 hari), `sanctum:prune-expired`, `db:backup` (02:30), dan detak yang dibaca preflight.
+2. **Worker antrean** (email, notifikasi) - contoh supervisor:
+   ```
+   [program:guratan-queue]
+   command=php /path/guratan-api/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+   autostart=true
+   autorestart=true
+   user=www-data
+   stopwaitsecs=3600
+   ```
+3. Set `upload_max_filesize`/`post_max_size` (scan PDF sampai 30 MB; PHP default 2 MB) + `client_max_body_size` nginx.
+
+### Cadangan
+- `php artisan db:backup` (otomatis harian, simpan 14 terakhir di `storage/app/private/backups`). Ini **bukan** cadangan lepas-server: salin folder itu **dan** `storage/app/private` (scan PDF, CV, sertifikat) ke penyimpanan terpisah (mis. rsync/rclone terjadwal ke object storage terenkripsi). Uji pemulihan minimal sekali.
+- Perlu `mysqldump` terpasang di server untuk MySQL/MariaDB.
+
+### Insiden data pribadi (UU PDP: beri tahu subjek data dan lembaga dalam 3x24 jam)
+1. Tangani/hentikan sumber kebocoran, catat apa/kapan/siapa terdampak (lihat `audit_logs`, `activity_logs`).
+2. Admin → **Broadcast** → centang *Pemberitahuan penting / insiden data*, pilih peran terdampak: terkirim ke kotak masuk **dan email** walau pengguna mematikan email notifikasi.
+3. Pemberitahuan tertulis ke lembaga berwenang di luar aplikasi.
+
+### Sekali jalan setelah deploy pertama
+- `php artisan samples:privatize-legacy-images --dry-run` lalu tanpa `--dry-run`: memindahkan gambar Rapid lama dari disk publik ke privat.
+- Hapus data demo bila terbawa (`@guratan.test`); `DemoDataSeeder` menolak jalan di production.
+- DOKU Back Office: isi Notification URL `https://<api>/api/payments/notification`; cek ulang nama channel di `config/payment_methods.php` terhadap dokumentasi DOKU terbaru.

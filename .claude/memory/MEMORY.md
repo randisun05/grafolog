@@ -26,3 +26,4 @@
 - [CV revisi] — 2026-10-19: applies_to (client|grafolog|all) + is_hidden (hanya pemilik+admin); CV saling terlihat klien/HR ↔ grafolog pemeriksa
 - [Promo metode bayar] — 2026-10-19: discount_codes.payment_methods + PaymentMethods::resolve → payment_method_types DOKU; picker di checkout
 - [Hak data] — 2026-10-19: export/hapus(anonimisasi)/re-consent/opt-out email/broadcast kritis; limiter bernama
+- [Ops] — 2026-10-19: app:preflight, db:backup, privatize-legacy-images, vitest FE, DEPLOYMENT.md operasional

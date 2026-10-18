@@ -146,80 +146,82 @@ onMounted(load)
         >
         <button type="button" class="btn" @click="removeGroup(g)">Hapus</button>
       </header>
-      <table v-if="g.fields.length" class="acv__table">
-        <thead>
-          <tr>
-            <th>Variabel</th>
-            <th>Tipe</th>
-            <th>Muncul di CV</th>
-            <th>Sembunyikan</th>
-            <th>Wajib</th>
-            <th>Aktif</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(f, fi) in g.fields" :key="f.id" :class="{ acv__off: !f.is_active }">
-            <td>
-              {{ f.label }}
-              <small v-if="f.options" class="acv__hint">({{ f.options.join(', ') }})</small>
-            </td>
-            <td>{{ TYPES[f.type] }}</td>
-            <td>
-              <select
-                :value="f.applies_to"
-                :aria-label="`Tag ${f.label}`"
-                @change="patchField(f, { applies_to: $event.target.value })"
-              >
-                <option v-for="(l, k) in TAGS" :key="k" :value="k">{{ l }}</option>
-              </select>
-            </td>
-            <td>
-              <input
-                type="checkbox"
-                :checked="f.is_hidden"
-                :aria-label="`Sembunyikan ${f.label}`"
-                @change="patchField(f, { is_hidden: $event.target.checked })"
-              />
-            </td>
-            <td>
-              <input
-                type="checkbox"
-                :checked="f.required"
-                :aria-label="`Wajib ${f.label}`"
-                @change="patchField(f, { required: $event.target.checked })"
-              />
-            </td>
-            <td>
-              <input
-                type="checkbox"
-                :checked="f.is_active"
-                :aria-label="`Aktif ${f.label}`"
-                @change="patchField(f, { is_active: $event.target.checked })"
-              />
-            </td>
-            <td class="acv__ops">
-              <button
-                type="button"
-                class="btn"
-                :disabled="fi === 0"
-                @click="move(g.fields, fi, -1, 'field')"
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                class="btn"
-                :disabled="fi === g.fields.length - 1"
-                @click="move(g.fields, fi, 1, 'field')"
-              >
-                ↓
-              </button>
-              <button type="button" class="btn" @click="removeField(f)">Hapus</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-if="g.fields.length" class="table-scroll">
+        <table class="acv__table">
+          <thead>
+            <tr>
+              <th>Variabel</th>
+              <th>Tipe</th>
+              <th>Muncul di CV</th>
+              <th>Sembunyikan</th>
+              <th>Wajib</th>
+              <th>Aktif</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(f, fi) in g.fields" :key="f.id" :class="{ acv__off: !f.is_active }">
+              <td>
+                {{ f.label }}
+                <small v-if="f.options" class="acv__hint">({{ f.options.join(', ') }})</small>
+              </td>
+              <td>{{ TYPES[f.type] }}</td>
+              <td>
+                <select
+                  :value="f.applies_to"
+                  :aria-label="`Tag ${f.label}`"
+                  @change="patchField(f, { applies_to: $event.target.value })"
+                >
+                  <option v-for="(l, k) in TAGS" :key="k" :value="k">{{ l }}</option>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="checkbox"
+                  :checked="f.is_hidden"
+                  :aria-label="`Sembunyikan ${f.label}`"
+                  @change="patchField(f, { is_hidden: $event.target.checked })"
+                />
+              </td>
+              <td>
+                <input
+                  type="checkbox"
+                  :checked="f.required"
+                  :aria-label="`Wajib ${f.label}`"
+                  @change="patchField(f, { required: $event.target.checked })"
+                />
+              </td>
+              <td>
+                <input
+                  type="checkbox"
+                  :checked="f.is_active"
+                  :aria-label="`Aktif ${f.label}`"
+                  @change="patchField(f, { is_active: $event.target.checked })"
+                />
+              </td>
+              <td class="acv__ops">
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="fi === 0"
+                  @click="move(g.fields, fi, -1, 'field')"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="fi === g.fields.length - 1"
+                  @click="move(g.fields, fi, 1, 'field')"
+                >
+                  ↓
+                </button>
+                <button type="button" class="btn" @click="removeField(f)">Hapus</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <form v-if="drafts[g.id]" class="acv__add" @submit.prevent="addField(g)">
         <input v-model="drafts[g.id].label" placeholder="Nama variabel" required />
         <select v-model="drafts[g.id].type" aria-label="Tipe data">

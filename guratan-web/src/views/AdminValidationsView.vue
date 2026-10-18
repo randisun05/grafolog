@@ -36,30 +36,32 @@ onMounted(load)
     </select>
     <SkeletonLoader v-if="loading" variant="table" :columns="6" label="Memuat..." />
     <p v-else-if="!rows.length" class="av__hint">Belum ada penugasan.</p>
-    <table v-else class="av__table">
-      <thead>
-        <tr>
-          <th>Laporan</th>
-          <th>Pembuat</th>
-          <th>Validator</th>
-          <th>Token</th>
-          <th>Tenggat</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="v in rows" :key="v.id">
-          <td>
-            <RouterLink :to="`/reports/${v.report_id}`">#{{ v.report_id }}</RouterLink>
-          </td>
-          <td>{{ v.requester.name }}</td>
-          <td>{{ v.validator.name }}</td>
-          <td>{{ v.fee }}</td>
-          <td>{{ formatTanggal(v.due_at) }}</td>
-          <td>{{ STATUS_VALIDASI[v.status] }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-else class="table-scroll">
+      <table class="av__table">
+        <thead>
+          <tr>
+            <th>Laporan</th>
+            <th>Pembuat</th>
+            <th>Validator</th>
+            <th>Token</th>
+            <th>Tenggat</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="v in rows" :key="v.id">
+            <td>
+              <RouterLink :to="`/reports/${v.report_id}`">#{{ v.report_id }}</RouterLink>
+            </td>
+            <td>{{ v.requester.name }}</td>
+            <td>{{ v.validator.name }}</td>
+            <td>{{ v.fee }}</td>
+            <td>{{ formatTanggal(v.due_at) }}</td>
+            <td>{{ STATUS_VALIDASI[v.status] }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 

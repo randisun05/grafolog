@@ -274,74 +274,76 @@ onMounted(loadCodes)
     <SkeletonLoader v-if="loading" variant="table" :columns="6" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <p v-else-if="codes.length === 0" class="admin-discounts__empty">Belum ada kode diskon.</p>
-    <table v-else class="admin-discounts__table">
-      <thead>
-        <tr>
-          <th>Kode</th>
-          <th>Nilai</th>
-          <th>Produk</th>
-          <th>Saluran</th>
-          <th>Metode bayar</th>
-          <th>Pemakaian</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="d in codes" :key="d.id">
-          <td class="admin-discounts__code">{{ d.code }}</td>
-          <td>{{ formatValue(d) }}</td>
-          <td>{{ productNames(d.applicable_tiers) }}</td>
-          <td class="admin-discounts__channels">
-            <label v-for="a in SALURAN" :key="a.key"
-              ><input
-                type="checkbox"
-                :checked="aktif(d, a.key)"
+    <div v-else class="table-scroll">
+      <table class="admin-discounts__table">
+        <thead>
+          <tr>
+            <th>Kode</th>
+            <th>Nilai</th>
+            <th>Produk</th>
+            <th>Saluran</th>
+            <th>Metode bayar</th>
+            <th>Pemakaian</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="d in codes" :key="d.id">
+            <td class="admin-discounts__code">{{ d.code }}</td>
+            <td>{{ formatValue(d) }}</td>
+            <td>{{ productNames(d.applicable_tiers) }}</td>
+            <td class="admin-discounts__channels">
+              <label v-for="a in SALURAN" :key="a.key"
+                ><input
+                  type="checkbox"
+                  :checked="aktif(d, a.key)"
+                  :disabled="togglingId === d.id"
+                  @change="toggleAudience(d, a.key)"
+                />
+                {{ a.label }}</label
+              >
+            </td>
+            <td class="admin-discounts__channels">
+              <label v-for="m in METODE" :key="m.key"
+                ><input
+                  type="checkbox"
+                  :checked="metodeAktif(d, m.key)"
+                  :disabled="togglingId === d.id"
+                  @change="toggleMetode(d, m.key)"
+                />
+                {{ m.label }}</label
+              >
+            </td>
+            <td>{{ d.used_count }}{{ d.max_uses ? ` / ${d.max_uses}` : '' }}</td>
+            <td>
+              <span class="badge" :class="d.is_active ? 'badge--active' : 'badge--inactive'">
+                {{ d.is_active ? 'Aktif' : 'Nonaktif' }}
+              </span>
+              <span v-if="d.is_public" class="badge badge--active">Promo publik</span>
+            </td>
+            <td>
+              <button
+                type="button"
+                class="btn"
                 :disabled="togglingId === d.id"
-                @change="toggleAudience(d, a.key)"
-              />
-              {{ a.label }}</label
-            >
-          </td>
-          <td class="admin-discounts__channels">
-            <label v-for="m in METODE" :key="m.key"
-              ><input
-                type="checkbox"
-                :checked="metodeAktif(d, m.key)"
+                @click="toggleActive(d)"
+              >
+                {{ d.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+              </button>
+              <button
+                type="button"
+                class="btn"
                 :disabled="togglingId === d.id"
-                @change="toggleMetode(d, m.key)"
-              />
-              {{ m.label }}</label
-            >
-          </td>
-          <td>{{ d.used_count }}{{ d.max_uses ? ` / ${d.max_uses}` : '' }}</td>
-          <td>
-            <span class="badge" :class="d.is_active ? 'badge--active' : 'badge--inactive'">
-              {{ d.is_active ? 'Aktif' : 'Nonaktif' }}
-            </span>
-            <span v-if="d.is_public" class="badge badge--active">Promo publik</span>
-          </td>
-          <td>
-            <button
-              type="button"
-              class="btn"
-              :disabled="togglingId === d.id"
-              @click="toggleActive(d)"
-            >
-              {{ d.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
-            </button>
-            <button
-              type="button"
-              class="btn"
-              :disabled="togglingId === d.id"
-              @click="togglePublic(d)"
-            >
-              {{ d.is_public ? 'Sembunyikan promo' : 'Jadikan promo' }}
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+                @click="togglePublic(d)"
+              >
+                {{ d.is_public ? 'Sembunyikan promo' : 'Jadikan promo' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -383,7 +385,8 @@ onMounted(loadCodes)
 }
 .admin-discounts__checkboxes span {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   margin-top: 6px;
   font-size: 13px;
 }

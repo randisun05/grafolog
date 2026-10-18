@@ -1862,6 +1862,10 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Rate limiter bernama (`data-export`, `account-delete`, `cv-upload`) di AppServiceProvider - `throttle:N,M` angka berbagi kunci dengan grup auth.
 - `PdfScan::inspect` kini mengembalikan `unsafe` (JavaScript/Launch/EmbeddedFile/OpenAction/AA/XFA/RichMedia) -> unggah PDF ditolak. CV bertipe `photo`/`file` (`CvController::fileStore/Show/Destroy`, disk privat `cv/{user}`), `CvDemoSeeder` (variabel contoh + isian demo, dipanggil DemoDataSeeder).
 
+## Operasional & kesiapan produksi — 2026-10-19
+
+`app:preflight [--strict]` (cek env/DB/email/DOKU/antrean/scheduler/akun demo; exit 1 bila ada GAGAL), `db:backup [--keep=14] [--connection=]` (mysqldump gz / salin SQLite; terjadwal 02:30), `samples:privatize-legacy-images [--dry-run]` (gambar Rapid lama public→privat; menutup temuan keamanan 2026-07-27). Scheduler menulis `scheduler_heartbeat` tiap menit. Runbook: `DEPLOYMENT.md` "Operasional". 526 tes backend; FE punya 13 tes vitest (`npm test`).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.
@@ -1875,7 +1879,7 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 
 ## Open security findings (2026-07-27 review — not fixed, need a product decision)
 
-- **Uploaded rapid-tier images are served from the public disk with no
+- **[FIXED 2026-10-19: perintah `samples:privatize-legacy-images`, jalankan sekali saat deploy]** **Uploaded rapid-tier images are served from the public disk with no
   ownership check**, unlike PDFs/reports which go through
   `ReportController`'s authorization + audit log. Filenames are Laravel's
   default non-guessable hash, so this isn't a practical IDOR today, but it's
