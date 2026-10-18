@@ -11,6 +11,8 @@ const blank = () => ({
   mitra: '',
   ringkasan: '',
   url: '',
+  image_url: '',
+  harga: '',
   kategori: 'lainnya',
   target: 'semua',
 })
@@ -39,6 +41,9 @@ async function save(p, patch = {}) {
       mitra: p.mitra,
       ringkasan: p.ringkasan,
       url: p.url,
+      image_url: p.image_url || null,
+      harga: p.harga || null,
+      kategori: p.kategori,
       target: p.target,
       ...patch,
     })
@@ -67,6 +72,9 @@ onMounted(load)
         <option value="b2c">Klien individu</option>
         <option value="b2b">Perusahaan (HR)</option>
       </select>
+      <input v-model="form.image_url" type="text" placeholder="URL gambar https (opsional)" />
+      <input v-model="form.harga" type="text" placeholder="Harga tampilan, mis. Rp 89.000" />
+      <input v-model="form.kategori" type="text" placeholder="Kategori" />
       <input
         v-model="form.ringkasan"
         type="text"
@@ -79,6 +87,14 @@ onMounted(load)
       <input v-model="p.nama" type="text" :aria-label="`Nama ${p.id}`" />
       <input v-model="p.mitra" type="text" :aria-label="`Mitra ${p.id}`" />
       <input v-model="p.url" type="text" :aria-label="`URL ${p.id}`" />
+      <input
+        v-model="p.image_url"
+        type="text"
+        placeholder="URL gambar"
+        :aria-label="`Gambar ${p.id}`"
+      />
+      <input v-model="p.harga" type="text" placeholder="Harga" :aria-label="`Harga ${p.id}`" />
+      <input v-model="p.kategori" type="text" :aria-label="`Kategori ${p.id}`" />
       <select v-model="p.target" :aria-label="`Target ${p.id}`">
         <option value="semua">Semua</option>
         <option value="b2c">Klien</option>

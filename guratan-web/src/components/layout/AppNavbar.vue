@@ -1,11 +1,31 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
+
+// Lencana "Verifikasi": pendaftar grafolog + perusahaan yang menunggu keputusan admin.
+const pendingVerification = ref(0)
+watch(
+  () => [auth.isAdministrator, route.fullPath],
+  async ([isAdmin]) => {
+    if (!isAdmin) {
+      pendingVerification.value = 0
+      return
+    }
+    try {
+      pendingVerification.value = (await api.get('/admin/verification-counts')).data.total
+    } catch {
+      pendingVerification.value = 0
+    }
+  },
+  { immediate: true },
+)
 const { theme, toggle: toggleTheme } = useTheme()
 
 const isDark = computed(() => {
@@ -48,14 +68,20 @@ async function handleLogout() {
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/supervisi">Supervisi</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/token-saya">Token Saya</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/orders">Pesanan Masuk</RouterLink>
+        <RouterLink v-if="auth.isAdministrator" to="/admin/verifikasi" class="app-navbar__verif">
+          Verifikasi
+          <span v-if="pendingVerification" class="app-navbar__badge">{{
+            pendingVerification
+          }}</span>
+        </RouterLink>
         <details v-if="auth.isAdministrator" ref="adminMenu" class="app-navbar__menu">
           <summary>Admin</summary>
           <div class="app-navbar__menu-list" @click="closeAdminMenu">
             <RouterLink to="/admin/products">Kelola Produk</RouterLink>
             <RouterLink to="/admin/discounts">Kelola Promo &amp; Diskon</RouterLink>
             <RouterLink to="/admin/users">Kelola Staf</RouterLink>
-            <RouterLink to="/admin/grafolog">Verifikasi Grafolog</RouterLink>
-            <RouterLink to="/admin/perusahaan">Verifikasi Perusahaan</RouterLink>
+            <RouterLink to="/admin/verifikasi?tab=grafolog">Verifikasi Grafolog</RouterLink>
+            <RouterLink to="/admin/verifikasi?tab=perusahaan">Verifikasi Perusahaan</RouterLink>
             <RouterLink to="/admin/validasi">Penugasan Supervisi</RouterLink>
             <RouterLink to="/admin/tokens">Kelola Token</RouterLink>
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
@@ -78,6 +104,7 @@ async function handleLogout() {
       </template>
       <template v-else>
         <RouterLink to="/cek-tulisan">Cek Tulisan Gratis</RouterLink>
+        <RouterLink to="/produk-mitra">Produk Mitra</RouterLink>
         <RouterLink to="/artikel">Artikel</RouterLink>
         <RouterLink to="/login">Masuk</RouterLink>
         <RouterLink to="/register">Daftar</RouterLink>
@@ -247,5 +274,18 @@ async function handleLogout() {
     gap: 8px 14px;
     font-size: 13px;
   }
+}
+.app-navbar__badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--color-seal);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 18px;
 }
 </style>

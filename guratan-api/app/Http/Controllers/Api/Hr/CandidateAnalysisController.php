@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Api\Hr;
 
 use App\Http\Controllers\Controller;
 use App\Models\Aspek;
+use App\Models\AuditLog;
+use App\Models\CandidateAnalysis;
 use App\Models\CandidateProfile;
 use App\Models\JobPosition;
 use App\Models\Order;
 use App\Models\PersonalityReport;
 use App\Models\ServiceDelivery;
+use App\Services\B2b\CandidateAiAnalysisService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,6 +25,33 @@ class CandidateAnalysisController extends Controller
 {
     public const DISCLAIMER = 'Analisis ini adalah bahan diskusi reflektif untuk tim rekrutmen, bukan alat keputusan '
         .'tunggal. Gunakan bersama wawancara, rekam jejak, dan penilaian kompetensi lain.';
+
+    public function __construct(private CandidateAiAnalysisService $ai) {}
+
+    /** Analisis AI tersimpan untuk satu kandidat (terbaru), atau null. */
+    public function showAi(Request $request, CandidateProfile $candidate): JsonResponse
+    {
+        abort_unless($candidate->company_id === $request->user()->company_id, 404);
+
+        return response()->json(CandidateAnalysis::where('candidate_profile_id', $candidate->id)->latest('id')->first());
+    }
+
+    /**
+     * Buat analisis gabungan AI (sekali per data berbeda - hasil sama dipakai ulang). Hanya HR
+     * perusahaan pemilik kandidat; butuh laporan grafologi yang sudah disetujui.
+     */
+    public function runAi(Request $request, CandidateProfile $candidate): JsonResponse
+    {
+        abort_unless($candidate->company_id === $request->user()->company_id, 404);
+        $result = $this->ai->analyze($candidate->load('position'), $request->user());
+        abort_if($result === null, 422, 'Belum ada laporan grafologi yang disetujui untuk kandidat ini.');
+        AuditLog::record('analisis_ai_kandidat', CandidateProfile::class, $candidate->id, $request->user()->id, $request->ip());
+
+        return response()->json(
+            $result['analysis']->toArray() + ['cached' => $result['cached'], 'disclaimer' => self::DISCLAIMER],
+            $result['cached'] ? 200 : 201,
+        );
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -60,13 +90,16 @@ class CandidateAnalysisController extends Controller
         $interviewFields = $interviews->flatMap(fn ($d) => $d->component->report_fields ?? [])
             ->unique('key')->values();
 
+        $analyses = CandidateAnalysis::whereIn('candidate_profile_id', $profiles->pluck('id'))
+            ->latest('id')->get()->unique('candidate_profile_id')->keyBy('candidate_profile_id');
+
         return response()->json([
             'position' => $position,
             'aspek' => Aspek::with('sindrom:id,kode_romawi,nama,nama_id')->orderBy('id')
                 ->get(['id', 'kode', 'sindrom_id', 'nama', 'nama_id'])
                 ->map(fn (Aspek $a) => $a->toArray() + ['is_key' => $keyIds->contains($a->id)]),
             'interview_fields' => $interviewFields,
-            'candidates' => $profiles->map(function (CandidateProfile $p) use ($reports, $interviews) {
+            'candidates' => $profiles->map(function (CandidateProfile $p) use ($reports, $interviews, $analyses) {
                 $report = $reports[$p->user_id] ?? null;
                 $interview = $interviews[$p->user_id] ?? null;
 
@@ -81,6 +114,9 @@ class CandidateAnalysisController extends Controller
                     'report_id' => $report?->id,
                     'scores' => $report?->aspekScores->pluck('skor', 'aspek_id') ?? (object) [],
                     'interview' => $interview?->report,
+                    'ai' => ($a = $analyses[$p->id] ?? null) ? [
+                        'summary' => $a->summary, 'source' => $a->source, 'created_at' => $a->created_at,
+                    ] : null,
                 ];
             })->values(),
             'disclaimer' => self::DISCLAIMER,

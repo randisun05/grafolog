@@ -15,6 +15,7 @@ use App\Models\ServiceDelivery;
 use App\Models\User;
 use App\Services\Commerce\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\Concerns\SeedsGrafologiKb;
@@ -298,5 +299,86 @@ class B2bFlowTest extends TestCase
         $this->actingAs($hr, 'sanctum')->putJson('/api/profile', ['company' => ['industry' => 'Retail', 'employee_range' => '11-50']])
             ->assertOk()->assertJsonPath('user.company.industry', 'Retail');
         $this->actingAs($hr, 'sanctum')->putJson('/api/profile', ['gender' => 'L'])->assertUnprocessable();
+    }
+
+    /** Kandidat dengan laporan disetujui + wawancara selesai, siap dianalisis. */
+    private function analyzableCandidate(): array
+    {
+        $this->seedMinimalAspek(3);
+        $aspek = Aspek::orderBy('id')->get();
+        $hr = $this->hr();
+        $grafolog = $this->grafolog();
+        $position = JobPosition::create(['company_id' => $hr->company_id, 'title' => 'Sales', 'key_aspek_ids' => [$aspek[0]->id]]);
+        $profile = $this->candidate($hr, $position, 'ai@example.com');
+        $batch = $this->actingAs($hr, 'sanctum')->postJson('/api/hr/orders', [
+            'product' => 'paket-rekrutmen', 'candidate_ids' => [$profile->id], 'grafolog_id' => $grafolog->id,
+        ])->json();
+        $this->actingAs($hr, 'sanctum')->postJson("/api/hr/orders/{$batch['id']}/payment")->assertCreated();
+        $order = Order::where('user_id', $profile->user_id)->first();
+        $report = PersonalityReport::create(['sample_id' => $order->sample_id, 'tier' => 'master', 'status' => 'completed',
+            'review_status' => PersonalityReport::REVIEW_APPROVED, 'data' => []]);
+        foreach ($aspek as $i => $a) {
+            $report->aspekScores()->create(['aspek_id' => $a->id, 'skor' => 4 + $i * 2]);
+        }
+        $delivery = ServiceDelivery::where('user_id', $profile->user_id)->first();
+        $this->actingAs($grafolog, 'sanctum')->postJson("/api/service-deliveries/{$delivery->id}/report", ['report' => [
+            'komunikasi' => 4, 'stabilitas_emosi' => 3, 'motivasi' => 5, 'integritas' => 4, 'kerja_sama' => 4,
+            'catatan' => 'Lancar dan terstruktur', 'rekomendasi' => 'Direkomendasikan',
+        ]])->assertOk();
+
+        return [$hr, $profile];
+    }
+
+    public function test_ai_analysis_sends_anonymous_grounded_input_and_caches_by_data_fingerprint(): void
+    {
+        config(['services.llm.provider' => 'gemini', 'services.gemini.keys' => [1 => 'k-test'], 'services.gemini.model' => 'gemini-test']);
+        Http::swap(new HttpFactory); // lepas catch-all dari setUp agar stub Gemini dipakai
+        Http::fake(['*generativelanguage*' => Http::response(['candidates' => [['content' => ['parts' => [['text' => '## Ringkasan Kandidat teliti.']]]]]])]);
+        [$hr, $profile] = $this->analyzableCandidate();
+
+        $res = $this->actingAs($hr, 'sanctum')->postJson("/api/hr/analysis/{$profile->id}/ai")->assertCreated()
+            ->assertJsonPath('source', 'ai')->assertJsonPath('cached', false)->assertJsonPath('summary', '## Ringkasan Kandidat teliti.');
+        $this->assertNotEmpty($res->json('disclaimer'));
+
+        // Data yang dikirim ke AI: tanpa identitas, berisi skor aspek, teks KB, dan hasil wawancara.
+        Http::assertSent(function ($request) {
+            $body = json_encode($request->data(), JSON_UNESCAPED_UNICODE);
+
+            return str_contains($body, 'Sales') && str_contains($body, 'Lancar dan terstruktur')
+                && ! str_contains($body, 'ai@example.com') && ! str_contains($body, 'Kandidat Uji') && ! str_contains($body, 'Kandidat"');
+        });
+
+        // Data sama -> hasil tersimpan dipakai, AI tidak dipanggil lagi.
+        Http::assertSentCount(1);
+        $this->actingAs($hr, 'sanctum')->postJson("/api/hr/analysis/{$profile->id}/ai")->assertOk()->assertJsonPath('cached', true);
+        Http::assertSentCount(1);
+
+        $this->actingAs($hr, 'sanctum')->getJson("/api/hr/analysis/{$profile->id}/ai")->assertOk()->assertJsonPath('source', 'ai');
+        $list = $this->actingAs($hr, 'sanctum')->getJson('/api/hr/analysis')->json('candidates.0.ai');
+        $this->assertSame('ai', $list['source']);
+    }
+
+    public function test_ai_analysis_falls_back_to_rule_summary_without_provider_or_when_ai_fails(): void
+    {
+        [$hr, $profile] = $this->analyzableCandidate(); // provider none (default test)
+        $this->actingAs($hr, 'sanctum')->postJson("/api/hr/analysis/{$profile->id}/ai")->assertCreated()
+            ->assertJsonPath('source', 'aturan')->assertSee('bukan AI');
+
+        config(['services.llm.provider' => 'gemini', 'services.gemini.keys' => [1 => 'k-test']]);
+        Http::swap(new HttpFactory);
+        Http::fake(['*generativelanguage*' => Http::response(['error' => ['status' => 'INTERNAL']], 500)]);
+        $profile->update(['education' => 'S2']); // masukan berubah -> analisis baru
+        $this->actingAs($hr, 'sanctum')->postJson("/api/hr/analysis/{$profile->id}/ai")->assertCreated()->assertJsonPath('source', 'aturan');
+    }
+
+    public function test_ai_analysis_needs_approved_report_and_company_ownership(): void
+    {
+        $hr = $this->hr();
+        $profile = $this->candidate($hr);
+        $this->actingAs($hr, 'sanctum')->postJson("/api/hr/analysis/{$profile->id}/ai")->assertUnprocessable();
+
+        $other = $this->hr(Company::create(['name' => 'PT Lain']));
+        $this->actingAs($other, 'sanctum')->postJson("/api/hr/analysis/{$profile->id}/ai")->assertNotFound();
+        $this->actingAs($other, 'sanctum')->getJson("/api/hr/analysis/{$profile->id}/ai")->assertNotFound();
     }
 }

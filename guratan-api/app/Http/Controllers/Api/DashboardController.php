@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
 use App\Models\HandwritingSample;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PersonalityReport;
 use App\Models\Project;
+use App\Models\ReportValidation;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,6 +33,9 @@ class DashboardController extends Controller
     {
         $paid = fn ($q) => $q->where('status', 'paid');
         $monthRange = [now()->startOfMonth(), now()->endOfMonth()];
+        $unassigned = HandwritingSample::whereHas('project', fn ($q) => $q->where('source', 'client'))
+            ->whereHas('payments', $paid)->doesntHave('assignment')
+            ->where('status', '!=', 'completed')->count();
 
         return [
             'role' => 'administrator',
@@ -37,15 +43,12 @@ class DashboardController extends Controller
                 [
                     'key' => 'orders_unassigned',
                     'label' => 'Pesanan Perlu Ditugaskan',
-                    'value' => HandwritingSample::whereHas('project', fn ($q) => $q->where('source', 'client'))
-                        ->whereHas('payments', $paid)->doesntHave('assignment')
-                        ->where('status', '!=', 'completed')->count(),
+                    'value' => $unassigned,
                 ],
                 [
                     'key' => 'reviews_pending',
-                    'label' => 'Menunggu Review',
-                    'value' => PersonalityReport::where('status', 'completed')
-                        ->where('review_status', PersonalityReport::REVIEW_PENDING)->count(),
+                    'label' => 'Supervisi Berjalan',
+                    'value' => ReportValidation::whereIn('status', ReportValidation::ACTIVE)->count(),
                 ],
                 [
                     'key' => 'reports_this_month',
@@ -63,6 +66,14 @@ class DashboardController extends Controller
                     'label' => 'Grafolog Terdaftar',
                     'value' => User::where('role', 'grafolog')->count(),
                 ],
+            ],
+            // Antrean yang butuh tindakan admin - tampil sebagai tautan langsung di dashboard.
+            'actions' => [
+                ['label' => 'Pendaftar grafolog menunggu verifikasi', 'count' => User::where('role', 'grafolog')->where('grafolog_status', 'pending')->count(), 'to' => '/admin/verifikasi?tab=grafolog'],
+                ['label' => 'Perusahaan menunggu verifikasi', 'count' => Company::where('status', 'pending')->count(), 'to' => '/admin/verifikasi?tab=perusahaan'],
+                ['label' => 'Pesanan lunas perlu ditugaskan', 'count' => $unassigned, 'to' => '/admin/orders'],
+                ['label' => 'Pesanan > 90 hari belum selesai (kandidat refund)', 'count' => Order::where('status', Order::STATUS_PROCESSING)->where('paid_at', '<', now()->subDays(Order::REFUND_OVERDUE_DAYS))->count(), 'to' => '/admin/orders'],
+                ['label' => 'Penugasan supervisi melewati tenggat', 'count' => ReportValidation::where('status', ReportValidation::WAITING)->where('due_at', '<', now())->count(), 'to' => '/admin/validasi'],
             ],
             'activity' => $this->recentActivity(HandwritingSample::pluck('id')),
         ];

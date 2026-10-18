@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\AffiliateProduct;
 use App\Models\Article;
 use App\Models\Aspek;
+use App\Models\Company;
 use App\Models\Indikator;
 use App\Models\SelfCheckOption;
 use App\Models\SelfCheckQuestion;
@@ -155,5 +156,29 @@ class EngagementFeaturesTest extends TestCase
             $this->assertContains($q['answer_id'], array_column($q['options'], 'id'));
             $this->assertSame($q['answer_id'], Indikator::find($q['id'])->aspek_id);
         }
+    }
+
+    public function test_affiliate_storefront_fields_and_admin_action_queue(): void
+    {
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $this->actingAs($admin, 'sanctum')->postJson('/api/admin/affiliate-products', [
+            'nama' => 'Buku Jurnal', 'mitra' => 'Toko Mitra', 'url' => 'https://mitra.test/jurnal',
+            'image_url' => 'https://mitra.test/jurnal.jpg', 'harga' => 'Rp 89.000', 'target' => 'semua',
+        ])->assertCreated();
+        $this->actingAs($admin, 'sanctum')->postJson('/api/admin/affiliate-products', [
+            'nama' => 'X', 'mitra' => 'Y', 'url' => 'https://mitra.test/x', 'image_url' => 'http://tidak-aman.test/x.jpg',
+        ])->assertUnprocessable();
+
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/affiliate-products')->assertOk()
+            ->assertJsonPath('0.harga', 'Rp 89.000')->assertJsonPath('0.image_url', 'https://mitra.test/jurnal.jpg');
+
+        User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'pending']);
+        Company::create(['name' => 'PT Menunggu', 'status' => 'pending']);
+        $this->actingAs($admin, 'sanctum')->getJson('/api/admin/verification-counts')
+            ->assertOk()->assertJsonPath('grafolog', 1)->assertJsonPath('perusahaan', 1)->assertJsonPath('total', 2);
+        $actions = collect($this->actingAs($admin, 'sanctum')->getJson('/api/dashboard')->json('actions'));
+        $this->assertSame(1, $actions->firstWhere('to', '/admin/verifikasi?tab=grafolog')['count']);
+        $this->assertSame(1, $actions->firstWhere('to', '/admin/verifikasi?tab=perusahaan')['count']);
     }
 }

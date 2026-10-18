@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
 use App\Http\Controllers\Api\Admin\ValidationIndexController;
+use App\Http\Controllers\Api\Admin\VerificationCountsController;
 use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\ArticleController;
@@ -197,6 +198,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/grafolog-applications', [GrafologVerificationController::class, 'index']);
         Route::get('/grafolog-applications/{user}/certificate', [GrafologVerificationController::class, 'certificate']);
         Route::post('/grafolog-applications/{user}/decision', [GrafologVerificationController::class, 'decide']);
+        Route::get('/verification-counts', VerificationCountsController::class);
         Route::get('/company-applications', [CompanyVerificationController::class, 'index']);
         Route::get('/validations', [ValidationIndexController::class, 'index']);
         Route::get('/refunds', [RefundController::class, 'index']);
@@ -295,5 +297,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::post('/orders/{batch}/payment', [B2bOrderController::class, 'pay']);
         Route::post('/orders/{batch}/cancel', [B2bOrderController::class, 'cancel']);
         Route::get('/analysis', [CandidateAnalysisController::class, 'index']);
+        Route::get('/analysis/{candidate}/ai', [CandidateAnalysisController::class, 'showAi']);
+        Route::middleware('throttle:10,1')->post('/analysis/{candidate}/ai', [CandidateAnalysisController::class, 'runAi']);
     });
 });

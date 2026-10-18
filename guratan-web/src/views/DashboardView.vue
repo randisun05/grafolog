@@ -87,6 +87,17 @@ onMounted(async () => {
     <SkeletonLoader v-if="loading" variant="dashboard" label="Memuat dashboard..." />
     <p v-else-if="error" class="error">{{ error }}</p>
     <template v-else>
+      <section v-if="dashboard.actions?.some((a) => a.count)" class="dashboard__actions">
+        <h2>Perlu tindakan</h2>
+        <ul>
+          <li v-for="a in dashboard.actions.filter((x) => x.count)" :key="a.label">
+            <RouterLink :to="a.to"
+              ><strong>{{ a.count }}</strong> {{ a.label }}</RouterLink
+            >
+          </li>
+        </ul>
+      </section>
+
       <div class="dashboard__kpi">
         <div v-for="kpi in dashboard.kpi" :key="kpi.key" class="dashboard__kpi-card">
           <span class="dashboard__kpi-label">{{ kpi.label }}</span>
@@ -237,5 +248,25 @@ onMounted(async () => {
 .badge--failed {
   background: var(--color-seal-soft);
   color: var(--color-seal-dark);
+}
+.dashboard__actions {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-gold);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--color-gold-soft);
+}
+.dashboard__actions h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.dashboard__actions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 </style>

@@ -23,7 +23,7 @@ class AffiliateController extends Controller
         return response()->json(
             AffiliateProduct::where('is_active', true)->whereIn('target', $targets)
                 ->orderBy('sort')->orderBy('id')
-                ->get(['id', 'nama', 'mitra', 'ringkasan', 'kategori', 'target'])
+                ->get(['id', 'nama', 'mitra', 'ringkasan', 'image_url', 'harga', 'kategori', 'target'])
         );
     }
 

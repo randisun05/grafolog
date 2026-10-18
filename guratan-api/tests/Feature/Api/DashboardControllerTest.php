@@ -150,7 +150,8 @@ class DashboardControllerTest extends TestCase
 
         $admin = collect($this->actingAs(User::factory()->create(['role' => 'administrator']), 'sanctum')
             ->getJson('/api/dashboard')->assertJsonPath('role', 'administrator')->json('kpi'))->keyBy('key');
-        $this->assertSame(1, $admin['reviews_pending']['value']);
+        // KPI supervisi berjalan menghitung penugasan aktif (bukan laporan draf/pending lama).
+        $this->assertSame(0, $admin['reviews_pending']['value']);
 
         $this->actingAs(User::factory()->create(['role' => 'hr']), 'sanctum')
             ->getJson('/api/dashboard')->assertJsonPath('role', 'hr')->assertJsonPath('kpi.0.value', 0);

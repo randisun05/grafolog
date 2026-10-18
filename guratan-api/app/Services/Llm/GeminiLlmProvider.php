@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  * return $teksAsli, karena NarasiCacheService akan menyimpannya permanen
  * berlabel bahasa='id' (bug 2026-07-28).
  */
-class GeminiLlmProvider implements LlmProviderInterface
+class GeminiLlmProvider implements LlmProviderInterface, TextGenerator
 {
     private const SYSTEM_PROMPT = <<<'PROMPT'
     Kamu membantu menerjemahkan & merapikan satu paragraf narasi grafologi
@@ -35,16 +35,7 @@ class GeminiLlmProvider implements LlmProviderInterface
 
     public function rangkaiSatuAspek(string $teksAsli, array $context = []): string
     {
-        if ($this->pool->isEmpty()) {
-            throw new LlmUnavailableException('Belum ada GEMINI_API_KEY_1..10 yang diisi.');
-        }
-
-        $available = $this->pool->available();
-        if ($available === []) {
-            throw new LlmUnavailableException('Semua API key Gemini sedang limit/istirahat.');
-        }
-
-        $payload = [
+        return $this->complete([
             'systemInstruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
             'contents' => [[
                 'role' => 'user',
@@ -54,7 +45,33 @@ class GeminiLlmProvider implements LlmProviderInterface
                 'temperature' => 0.3,
                 'maxOutputTokens' => (int) config('services.gemini.max_output_tokens', 2048),
             ],
-        ];
+        ]);
+    }
+
+    /** Teks bebas dengan instruksi sistem sendiri (analisis kandidat HR) - lihat CandidateAiAnalysisService. */
+    public function generateText(string $system, string $prompt): string
+    {
+        return $this->complete([
+            'systemInstruction' => ['parts' => [['text' => $system]]],
+            'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
+            'generationConfig' => [
+                'temperature' => 0.3,
+                'maxOutputTokens' => (int) config('services.gemini.max_output_tokens', 2048),
+            ],
+        ]);
+    }
+
+    /** Kirim payload memutar API key (cooldown/limit ditangani pool); kegagalan = LlmUnavailableException. */
+    private function complete(array $payload): string
+    {
+        if ($this->pool->isEmpty()) {
+            throw new LlmUnavailableException('Belum ada GEMINI_API_KEY_1..10 yang diisi.');
+        }
+
+        $available = $this->pool->available();
+        if ($available === []) {
+            throw new LlmUnavailableException('Semua API key Gemini sedang limit/istirahat.');
+        }
 
         foreach ($available as $slot => $key) {
             try {

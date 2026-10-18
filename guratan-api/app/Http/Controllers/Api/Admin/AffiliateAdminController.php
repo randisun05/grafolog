@@ -41,6 +41,8 @@ class AffiliateAdminController extends Controller
             'mitra' => [$req, 'string', 'max:255'],
             'ringkasan' => ['sometimes', 'nullable', 'string', 'max:500'],
             'url' => [$req, 'url:https', 'max:255'],
+            'image_url' => ['sometimes', 'nullable', 'url:https', 'max:255'],
+            'harga' => ['sometimes', 'nullable', 'string', 'max:60'],
             'kategori' => ['sometimes', 'string', 'max:50'],
             'target' => ['sometimes', 'in:semua,b2c,b2b'],
             'is_active' => ['sometimes', 'boolean'],

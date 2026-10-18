@@ -1817,6 +1817,23 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   bisa mengunggah. Kandidat tidak melihat pesanan/laporan. CV tidak ada (belum diminta jelas).
 - 493 test (baru `Hr/CandidateAccessTest`).
 
+## Analisis AI kandidat, etalase mitra, antrean admin — 2026-10-18
+
+- **Analisis gabungan AI** (`CandidateAiAnalysisService`, `POST/GET /hr/analysis/{candidate}/ai`,
+  throttle 10/mnt): keputusan pemilik produk — AI merangkum skor aspek (laporan DISETUJUI) + hasil
+  wawancara terhadap posisi. Ini pengecualian sadar atas prinsip "LLM tidak per-user": dibatasi
+  (a) masukan TANPA identitas (tanpa nama/email/telepon; hanya skor, teks KB ≤600 char untuk aspek
+  kunci posisi + 3 tertinggi + 3 terendah, skor/catatan wawancara, posisi, pendidikan/pengalaman),
+  (b) prompt melarang klaim baru/diagnosis/keputusan lolos-tidak, (c) hasil disimpan per sidik jari
+  masukan (`candidate_analyses`, data sama = tanpa panggilan AI), (d) provider tanpa `TextGenerator`
+  (hanya Gemini yang mengimplementasikan; `LLM_PROVIDER=none` di dev) atau AI gagal → ringkasan
+  berbasis aturan (`source=aturan`, ditandai "bukan AI"). Data dikirim ke penyedia AI → wajib
+  tercantum di Kebijakan Privasi. `GET /hr/analysis` memuat `ai` per kandidat.
+- **Etalase mitra**: `affiliate_products` + `image_url`, `harga` (teks); halaman publik `/produk-mitra`.
+- **Menu verifikasi**: `GET /admin/verification-counts`, dashboard admin `actions[]` (antrean yang
+  butuh tindakan: grafolog/perusahaan pending, pesanan perlu ditugaskan, >90 hari, supervisi lewat tenggat).
+- 497 test.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

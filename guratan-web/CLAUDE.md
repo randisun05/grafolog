@@ -697,6 +697,13 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   → `ChangePasswordView` (`/ganti-password`, `PasswordChangeForm` juga di Profil). `HrCandidatesPanel`:
   banner kredensial sekali-tampil (+ unduh CSV), "Reset sandi", "Belum login pertama".
 
+## Analisis AI, etalase mitra, verifikasi — 2026-10-18
+
+- `HrAnalysisPanel`: bagian "Analisis gabungan (AI)" per kandidat (buat/perbarui/lihat, label
+  AI vs otomatis). `PartnerProductsView` (`/produk-mitra`, publik, filter kategori, klik dicatat).
+  `AdminVerificationView` (`/admin/verifikasi?tab=grafolog|perusahaan`) + menu navbar "Verifikasi"
+  berlencana jumlah pending (top-level, bukan hanya dropdown) + kartu "Perlu tindakan" di Dashboard admin.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

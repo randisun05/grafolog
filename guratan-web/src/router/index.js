@@ -240,6 +240,17 @@ const router = createRouter({
       props: true,
     },
     {
+      path: '/produk-mitra',
+      name: 'partner-products',
+      component: () => import('../views/PartnerProductsView.vue'),
+    },
+    {
+      path: '/admin/verifikasi',
+      name: 'admin-verification',
+      component: () => import('../views/AdminVerificationView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/kuis',
       name: 'quiz',
       component: () => import('../views/QuizView.vue'),

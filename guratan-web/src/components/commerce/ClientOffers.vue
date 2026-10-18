@@ -92,7 +92,7 @@ const main = computed(() => products.value.find((p) => p.kategori === 'utama'))
     </div>
 
     <template v-if="partners.length">
-      <h2>Rekomendasi mitra</h2>
+      <h2>Rekomendasi mitra · <RouterLink to="/produk-mitra">lihat semua</RouterLink></h2>
       <p class="offers__disclosure">
         Produk pihak ketiga. Guratan dapat menerima komisi dari pembelian melalui tautan ini.
       </p>

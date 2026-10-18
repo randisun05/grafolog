@@ -13,6 +13,26 @@ const data = ref(null)
 const loading = ref(false)
 const showAll = ref(false)
 
+// Analisis gabungan AI per kandidat - hanya untuk yang laporannya sudah disetujui.
+const aiBusy = ref(null)
+const aiOpen = ref(null)
+async function runAi(c) {
+  aiBusy.value = c.id
+  try {
+    const { data: res } = await api.post(`/hr/analysis/${c.id}/ai`)
+    c.ai = { summary: res.summary, source: res.source, created_at: res.created_at }
+    aiOpen.value = c.id
+    toast.push(
+      res.cached ? 'Data belum berubah - memakai analisis tersimpan.' : 'Analisis selesai.',
+      'success',
+    )
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal membuat analisis.')
+  } finally {
+    aiBusy.value = null
+  }
+}
+
 async function load() {
   loading.value = true
   try {
@@ -129,9 +149,44 @@ onMounted(load)
         </tbody>
       </table>
     </div>
+    <section v-if="data?.candidates.some((c) => c.report_id)" class="hra__ai">
+      <h3>Analisis gabungan (AI)</h3>
+      <p class="hra__hint">
+        Merangkum skor grafologi + hasil wawancara terhadap posisi. Data dikirim ke penyedia AI
+        <strong>tanpa nama, email, atau telepon</strong>; AI hanya merangkum data tersebut dan tidak
+        memutuskan lolos/tidaknya kandidat. Hasil disimpan - data yang sama tidak memanggil AI lagi.
+      </p>
+      <ul>
+        <li v-for="c in data.candidates.filter((x) => x.report_id)" :key="c.id">
+          <div class="hra__ai-head">
+            <strong>{{ c.name }}</strong>
+            <span v-if="c.ai" class="hra__sub">{{
+              c.ai.source === 'ai' ? 'ringkasan AI' : 'ringkasan otomatis (bukan AI)'
+            }}</span>
+            <button
+              v-if="c.ai"
+              type="button"
+              class="btn"
+              @click="aiOpen = aiOpen === c.id ? null : c.id"
+            >
+              {{ aiOpen === c.id ? 'Tutup' : 'Lihat' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn--primary"
+              :disabled="aiBusy === c.id"
+              @click="runAi(c)"
+            >
+              {{ aiBusy === c.id ? 'Menganalisis...' : c.ai ? 'Perbarui' : 'Buat analisis' }}
+            </button>
+          </div>
+          <pre v-if="aiOpen === c.id && c.ai" class="hra__ai-text">{{ c.ai.summary }}</pre>
+        </li>
+      </ul>
+    </section>
     <p v-if="data" class="hra__hint">
-      Skor aspek 1–10 dari laporan grafologi yang sudah disetujui supervisor; skor wawancara 1–5.
-      Warna menunjukkan intensitas, bukan baik/buruk - beberapa sindrom (mis. Stress Vulnerability,
+      Skor aspek 1–10 dari laporan grafologi yang sudah terbit/disetujui; skor wawancara 1–5. Warna
+      menunjukkan intensitas, bukan baik/buruk - beberapa sindrom (mis. Stress Vulnerability,
       Problem Areas) justru bermakna sebaliknya. Baca narasi di laporan sebelum menyimpulkan.
     </p>
   </div>
@@ -229,5 +284,45 @@ onMounted(load)
 .hra__choice {
   font-size: 12px;
   white-space: nowrap;
+}
+.hra__ai {
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hra__ai h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.hra__ai ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hra__ai-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hra__ai-head .btn:first-of-type {
+  margin-left: auto;
+}
+.hra__ai-text {
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+  background: var(--color-paper);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  margin: 6px 0 0;
 }
 </style>
