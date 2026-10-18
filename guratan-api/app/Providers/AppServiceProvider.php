@@ -35,6 +35,11 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(5)->by('pwreset-email|'.strtolower((string) $request->input('email'))),
         ]);
 
+        // Kunci terpisah per jenis aksi (throttle:N,M bernama-angka berbagi kunci dengan grup auth).
+        RateLimiter::for('data-export', fn (Request $request) => Limit::perHour(3)->by('export|'.$request->user()?->id));
+        RateLimiter::for('account-delete', fn (Request $request) => Limit::perHour(10)->by('delete|'.$request->user()?->id));
+        RateLimiter::for('cv-upload', fn (Request $request) => Limit::perMinute(20)->by('cvup|'.$request->user()?->id));
+
         ResetPassword::createUrlUsing(fn ($user, string $token) => rtrim(config('app.frontend_url'), '/')
             .'/reset-password?token='.$token.'&email='.urlencode($user->email));
 

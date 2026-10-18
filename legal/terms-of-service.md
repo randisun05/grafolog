@@ -10,7 +10,7 @@ ditinjau penasihat hukum.
 
 # Ketentuan Layanan Guratan
 
-*Berlaku sejak: [TANGGAL RILIS] · Versi 1.0*
+*Berlaku sejak: [TANGGAL RILIS] · Versi 1.1 (19 Oktober 2026)*
 
 Dengan membuat akun atau memakai Guratan, Anda menyetujui ketentuan ini dan
 [Kebijakan Privasi](/privasi). Bila tidak setuju, mohon tidak menggunakan layanan.
@@ -70,6 +70,10 @@ pertimbangan, bersama metode seleksi lain yang sah.
   tulisan (untuk perusahaan: persetujuan kandidat).
 - Dilarang mengunggah konten melanggar hukum atau tidak berkaitan dengan layanan.
 
+## 5a. CV dan Profil
+
+Isian CV (termasuk foto dan dokumen) harus benar dan milik Anda. CV saling terlihat sesuai tujuan layanan: klien dan perusahaan melihat profil grafolog yang memeriksa mereka, dan grafolog melihat CV subjek yang ia periksa. Isian yang ditandai tersembunyi hanya terlihat oleh Anda dan administrator. Dilarang mengunggah foto atau dokumen milik orang lain, atau berkas yang berisi skrip/malware.
+
 ## 6. Pemesanan, Pembayaran, dan Pembatalan
 
 - Harga yang berlaku adalah harga saat pesanan dibuat, termasuk promo yang sah saat itu.
@@ -127,7 +131,7 @@ secara massal.
 
 Kami mengirim notifikasi lewat email dan kotak masuk di aplikasi (status pesanan,
 penugasan, laporan selesai, verifikasi, pengumuman). Akun kandidat perusahaan hanya
-menerima notifikasi di kotak masuk. Pesan layanan penting tidak dapat dimatikan.
+menerima notifikasi di kotak masuk. Anda dapat mematikan email notifikasi di Profil; pesan layanan penting (pembayaran, refund, verifikasi, insiden data) tetap dikirim. Anda dapat mengunduh data atau menghapus akun kapan saja lewat Profil → Data & Privasi (lihat Kebijakan Privasi).
 
 ## 13. Batasan Tanggung Jawab
 

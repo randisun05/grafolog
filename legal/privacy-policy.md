@@ -9,7 +9,7 @@ Isi mengikuti kondisi sistem nyata (lihat guratan-api/CLAUDE.md). Kurung siku
 
 # Kebijakan Privasi Guratan
 
-*Berlaku sejak: [TANGGAL RILIS] · Versi 1.0*
+*Berlaku sejak: [TANGGAL RILIS] · Versi 1.1 (19 Oktober 2026)*
 
 [NAMA PERUSAHAAN] ("kami") adalah **Pengendali Data Pribadi** atas data yang diproses
 lewat Guratan menurut UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP).
@@ -22,7 +22,8 @@ lewat Guratan menurut UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU 
 | Tulisan tangan | **Scan PDF** tulisan tangan, disimpan privat (tanpa tautan publik). |
 | Hasil analisis | Skor 40 aspek, catatan pengukuran, laporan kepribadian, analisis gabungan kandidat. |
 | Kandidat (B2B) | Nama, identitas akun yang dibuat HR, posisi/jabatan yang dinilai, status penugasan. |
-| Grafolog | Profil, sertifikat, ketersediaan bulanan, saldo dan riwayat token, riwayat supervisi. |
+| CV / profil | Isian CV yang diatur administrator (mis. profil, pendidikan, keluarga, kontak), termasuk **foto profil dan dokumen CV** (PDF/DOCX). Variabel bertanda tersembunyi hanya terlihat oleh Anda dan administrator. |
+| Grafolog | Profil, sertifikat, CV profesional, ketersediaan bulanan, saldo dan riwayat token, riwayat supervisi. |
 | Transaksi | Nomor pesanan/invoice, jumlah, status; detail kartu/rekening **tidak** kami simpan (diproses DOKU). |
 | Komunikasi | Pesan kotak masuk, riwayat email notifikasi, jadwal konsultasi. |
 | Log aktivitas | Waktu, akun, jenis kejadian (permintaan/login/login gagal/logout), alamat endpoint, kode status, alamat IP, user agent. **Tanpa isi permintaan** dan tanpa isi tulisan/laporan. |
@@ -62,6 +63,7 @@ sesuai UU PDP.
 - **Kandidat B2B**: HR perusahaan yang mendaftarkan Anda melihat laporan dan analisis
   Anda. Perusahaan wajib mendapat persetujuan Anda sebelum mendaftarkan; akun Anda dibuat
   perusahaan tanpa email, dan kata sandi sementara wajib Anda ganti.
+- **CV**: klien dan perusahaan dapat melihat CV (non-tersembunyi) grafolog yang memeriksa mereka; grafolog yang menangani dapat melihat CV (non-tersembunyi) klien/kandidatnya; dua grafolog yang terhubung lewat supervisi saling melihat CV non-tersembunyi. Setiap akses oleh pihak lain tercatat di log audit.
 - Perusahaan lain tidak dapat melihat data Anda.
 - Kami **tidak menjual** data pribadi.
 
@@ -94,14 +96,22 @@ pelindungan data pribadi**, kami memberitahu Anda dan lembaga berwenang secara t
 paling lambat **3 x 24 jam** sesuai UU PDP, memuat data yang terungkap, kapan dan
 bagaimana terjadinya, serta langkah penanganan.
 
-## 9. Hak Anda
+## 9. Hak Anda (dan cara menggunakannya)
+
+**Swalayan di aplikasi** (menu Profil → *Data & Privasi*): (a) **unduh salinan data pribadi** (JSON) dan (b) **hapus akun**. Penghapusan = anonimisasi: nama, email, telepon, profil, CV (termasuk foto/dokumen), kotak masuk, sertifikat, dan scan tulisan Anda dihapus; akun tidak dapat dipakai lagi. Data transaksi dan laporan yang wajib kami simpan (pembukuan, riwayat pekerjaan grafolog) tetap ada **tanpa identitas pribadi**. Penghapusan ditunda bila masih ada pesanan diproses, atau (grafolog) penugasan/supervisi berjalan; saldo token yang tersisa hangus dan tidak dapat diuangkan. Akun kandidat dikelola perusahaan yang mendaftarkan Anda, dan akun perusahaan/administrator dihapus lewat administrator.
+
+**Notifikasi email** dapat dimatikan di Profil (pesan penting seperti pembayaran, refund, verifikasi, dan pemberitahuan insiden data tetap dikirim). Kotak masuk di aplikasi selalu aktif.
+
+**Persetujuan ulang**: setiap perubahan material pada Ketentuan/Kebijakan ini meminta persetujuan Anda kembali saat Anda masuk.
+
+Hak lengkap menurut UU PDP
 
 Sesuai UU PDP Anda berhak: mendapat informasi tentang pemrosesan; mengakses dan
 memperoleh salinan data; melengkapi/memperbarui/memperbaiki data; mengakhiri
 pemrosesan, menghapus, atau memusnahkan data; menarik persetujuan; mengajukan keberatan
 atas keputusan yang semata-mata berdasarkan pemrosesan otomatis; menunda atau membatasi
 pemrosesan; menggugat dan menerima ganti rugi atas pelanggaran; serta memperoleh data
-dalam format yang lazim. Kirim permintaan ke [EMAIL PRIVASI]; kami menanggapi paling
+dalam format yang lazim. Untuk hak yang tidak tersedia swalayan, kirim permintaan ke [EMAIL PRIVASI]; kami menanggapi paling
 lambat 3 x 24 jam (konfirmasi) dan menyelesaikan dalam batas waktu yang wajar menurut
 hukum. Penarikan persetujuan dapat membuat layanan tidak dapat dilanjutkan.
 

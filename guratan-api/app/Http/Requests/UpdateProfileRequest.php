@@ -31,6 +31,7 @@ class UpdateProfileRequest extends FormRequest
             'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'city' => ['sometimes', 'nullable', 'string', 'max:100'],
 
+            'email_notifications' => ['sometimes', 'boolean'],
             'bio' => [...$only('grafolog'), 'sometimes', 'nullable', 'string', 'max:2000'],
             'specializations' => [...$only('grafolog'), 'sometimes', 'nullable', 'array', 'max:8'],
             'specializations.*' => ['string', 'max:60'],

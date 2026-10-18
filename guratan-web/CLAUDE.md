@@ -713,6 +713,10 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 `components/cv/CvForm.vue` (prop `userId` kosong = CV sendiri; mode baca/edit dari server). Dipakai di `/cv-saya` (klien & kandidat), tombol "CV" di `HrCandidatesPanel`, `<details>` di `ReportView` (grafolog: CV subjek; klien/HR: "Profil grafolog pemeriksa"), tombol "Profil grafolog" di HrCandidatesPanel. Grafolog mengisi CV-nya sendiri di `/cv-saya`. Admin: `/admin/cv` (`AdminCvView`).
 
+## Hak data & persetujuan — 2026-10-19
+
+`ConsentGate` (App.vue) menghalangi UI sampai `user.needs_consent` disetujui (`POST /me/accept-terms`); App memanggil `fetchMe()` saat dibuka. `PrivacyPanel` di `/profil`: unduh data (blob), hapus akun (password + ketik HAPUS). Profil: centang email notifikasi. `PaymentMethodPicker` di OrderView/HrOrdersPanel/TokenWalletView. `AdminBroadcastView`: opsi "penting/insiden". CvForm mendukung tipe foto/berkas.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

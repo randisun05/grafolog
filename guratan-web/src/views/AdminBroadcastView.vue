@@ -12,7 +12,7 @@ const ROLES = [
   { value: 'hr', label: 'HR / Perusahaan' },
   { value: 'administrator', label: 'Admin' },
 ]
-const form = ref({ title: '', body: '', target_roles: [], send_email: false })
+const form = ref({ title: '', body: '', target_roles: [], send_email: false, is_critical: false })
 const history = ref([])
 const sending = ref(false)
 
@@ -26,7 +26,7 @@ async function send() {
   try {
     const { data } = await api.post('/admin/broadcasts', form.value)
     toast.push(`Terkirim ke ${data.recipients} pengguna.`)
-    form.value = { title: '', body: '', target_roles: [], send_email: false }
+    form.value = { title: '', body: '', target_roles: [], send_email: false, is_critical: false }
     await load()
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal mengirim.')
@@ -58,6 +58,10 @@ onMounted(load)
       <label class="bc__check">
         <input v-model="form.send_email" type="checkbox" /> Kirim juga lewat email (kandidat B2B
         tetap hanya kotak masuk)
+      </label>
+      <label class="bc__check">
+        <input v-model="form.is_critical" type="checkbox" /> Pemberitahuan penting / insiden data
+        (selalu dikirim email, walau pengguna menonaktifkan email notifikasi)
       </label>
       <button class="btn btn--primary" :disabled="sending">
         {{ sending ? 'Mengirim...' : 'Kirim' }}

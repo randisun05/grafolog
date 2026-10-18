@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AffiliateAdminController;
@@ -112,13 +113,16 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::middleware('throttle:10,1')->put('/auth/change-password', [PasswordChangeController::class, 'update']);
+    Route::post('/me/accept-terms', [AccountController::class, 'acceptTerms']);
+    Route::middleware('throttle:data-export')->get('/me/export', [AccountController::class, 'export']);
+    Route::middleware('throttle:account-delete')->post('/me/delete', [AccountController::class, 'destroy']);
     Route::get('/cv', [CvController::class, 'mine']);
     Route::put('/cv', [CvController::class, 'updateMine']);
-    Route::middleware('throttle:20,1')->post('/cv/files/{key}', [CvController::class, 'fileStoreMine']);
+    Route::middleware('throttle:cv-upload')->post('/cv/files/{key}', [CvController::class, 'fileStoreMine']);
     Route::delete('/cv/files/{key}', [CvController::class, 'fileDestroyMine']);
     Route::get('/cv/users/{user}', [CvController::class, 'show']);
     Route::get('/cv/users/{user}/files/{key}', [CvController::class, 'fileShow']);
-    Route::middleware(['role:hr', 'throttle:20,1'])->post('/cv/users/{user}/files/{key}', [CvController::class, 'fileStore']);
+    Route::middleware(['role:hr', 'throttle:cv-upload'])->post('/cv/users/{user}/files/{key}', [CvController::class, 'fileStore']);
     Route::middleware('role:hr')->delete('/cv/users/{user}/files/{key}', [CvController::class, 'fileDestroy']);
     Route::middleware('role:hr')->put('/cv/users/{user}', [CvController::class, 'update']);
     Route::middleware('role:user')->get('/candidate/tasks', [CandidateTaskController::class, 'index']);

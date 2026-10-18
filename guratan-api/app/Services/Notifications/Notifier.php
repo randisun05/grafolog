@@ -21,7 +21,7 @@ class Notifier
             'user_id' => $user->id, 'broadcast_id' => $broadcastId, 'type' => $type,
             'title' => $title, 'body' => $body, 'url' => $url,
         ]);
-        if ($mail) {
+        if ($mail && ($user->email_notifications !== false || in_array($type, User::ESSENTIAL_NOTICE_TYPES, true))) {
             $this->mail($user, $title, $body, $url);
         }
 
@@ -43,9 +43,9 @@ class Notifier
             $query->whereIn('role', $broadcast->target_roles);
         }
         $count = 0;
-        $query->select(['id', 'name', 'email', 'role'])->chunkById(200, function ($users) use ($broadcast, &$count) {
+        $query->select(['id', 'name', 'email', 'role', 'email_notifications'])->chunkById(200, function ($users) use ($broadcast, &$count) {
             foreach ($users as $user) {
-                $this->send($user, 'broadcast', $broadcast->title, $broadcast->body, null, $broadcast->send_email, $broadcast->id);
+                $this->send($user, $broadcast->is_critical ? 'insiden' : 'broadcast', $broadcast->title, $broadcast->body, null, $broadcast->send_email, $broadcast->id);
                 $count++;
             }
         });

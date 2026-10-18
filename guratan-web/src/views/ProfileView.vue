@@ -7,6 +7,7 @@ import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { EDUCATION, EMPLOYEE_RANGES } from '@/lib/format'
 import AvailabilityEditor from '@/components/hr/AvailabilityEditor.vue'
 import PasswordChangeForm from '@/components/shared/PasswordChangeForm.vue'
+import PrivacyPanel from '@/components/shared/PrivacyPanel.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -30,6 +31,7 @@ function fill(user) {
     gender: user.gender ?? '',
     education: user.education ?? '',
     occupation: user.occupation ?? '',
+    email_notifications: user.email_notifications !== false,
   }
   specText.value = (user.specializations ?? []).join(', ')
   company.value = { ...user.company }
@@ -38,7 +40,12 @@ function fill(user) {
 function payload() {
   const f = form.value
   const blank = (v) => (v === '' ? null : v)
-  const base = { name: f.name, phone: blank(f.phone), city: blank(f.city) }
+  const base = {
+    name: f.name,
+    phone: blank(f.phone),
+    city: blank(f.city),
+    email_notifications: !!f.email_notifications,
+  }
   if (role.value === 'grafolog') {
     return {
       ...base,
@@ -130,6 +137,11 @@ onMounted(async () => {
             <input id="pf-city" v-model="form.city" type="text" />
           </div>
         </div>
+        <label class="profile__check">
+          <input v-model="form.email_notifications" type="checkbox" />
+          Kirim notifikasi ke email saya (pesan penting seperti pembayaran dan verifikasi tetap
+          dikirim; kotak masuk di aplikasi selalu aktif)
+        </label>
       </section>
 
       <section v-if="role === 'grafolog'">
@@ -213,6 +225,7 @@ onMounted(async () => {
       <h2>Ganti kata sandi</h2>
       <PasswordChangeForm />
     </section>
+    <PrivacyPanel v-if="!loading" class="profile__pass" />
   </div>
 </template>
 
@@ -282,5 +295,16 @@ onMounted(async () => {
 .profile__pass h2 {
   font-size: 16px;
   margin: 0 0 4px;
+}
+.profile__check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  margin-top: 10px;
+}
+.profile__check input {
+  width: auto;
+  margin-top: 3px;
 }
 </style>

@@ -3,6 +3,15 @@ import { RouterView } from 'vue-router'
 import AppNavbar from '@/components/layout/AppNavbar.vue'
 import ToastNotification from '@/components/shared/ToastNotification.vue'
 import CommandPalette from '@/components/shared/CommandPalette.vue'
+import ConsentGate from '@/components/shared/ConsentGate.vue'
+import { onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+// Segarkan data pengguna (mis. status persetujuan terbaru) saat aplikasi dibuka.
+const auth = useAuthStore()
+onMounted(() => {
+  if (auth.isAuthenticated) auth.fetchMe().catch(() => {})
+})
 </script>
 
 <template>
@@ -15,6 +24,7 @@ import CommandPalette from '@/components/shared/CommandPalette.vue'
 
     <ToastNotification />
     <CommandPalette />
+    <ConsentGate />
   </div>
 </template>
 

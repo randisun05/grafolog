@@ -25,10 +25,11 @@ class BroadcastController extends Controller
             'target_roles' => ['nullable', 'array'],
             'target_roles.*' => ['string', 'in:user,grafolog,hr,administrator'],
             'send_email' => ['sometimes', 'boolean'],
+            'is_critical' => ['sometimes', 'boolean'],
         ]);
         $broadcast = Broadcast::create([
             'title' => $data['title'], 'body' => $data['body'],
-            'target_roles' => ($data['target_roles'] ?? []) ?: null, 'send_email' => $data['send_email'] ?? false,
+            'target_roles' => ($data['target_roles'] ?? []) ?: null, 'send_email' => ($data['send_email'] ?? false) || ($data['is_critical'] ?? false), 'is_critical' => $data['is_critical'] ?? false,
             'created_by' => $request->user()->id,
         ]);
         $count = $notifier->broadcast($broadcast);

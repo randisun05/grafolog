@@ -1854,6 +1854,14 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 
 `discount_codes.audiences` (json, null = semua): `client` (pesanan B2C + pembayaran sampel), `grafolog` (pembelian token), `b2b` (pesanan perusahaan/HR). `DiscountCode::isValidFor($tier, $audience)` + `appliesToAudience()`; `OrderService::quote(..., $audience)` (createBatch = b2b). `/promos?audience=` menyaring promo publik (default client). Admin bisa ubah saluran kapan saja via `PATCH /admin/discount-codes/{id}` `{audiences}`; nilai/produk tetap beku. **Metode bayar (2026-10-19)**: `discount_codes.payment_methods` (grup `va|ewallet|qris|card|retail` di `config/payment_methods.php`, null = semua). `PaymentMethods::resolve($code, $chosen)` → daftar `payment.payment_method_types` DOKU (checkout dibatasi ke channel itu; pembeli boleh memilih satu grup via `payment_method` di `POST /orders/{o}/payment`, `/hr/orders/{b}/payment`, `/tokens/purchase`, `/samples/{s}/payment`; 422 bila di luar grup promo). `GET /payment-methods` publik; preview mengembalikan `code_payment_methods`. Mode uji (bypass) mengabaikan metode. Nama channel DOKU perlu dicek ulang ke dokumentasi DOKU saat kredensial produksi ada.
 
+## Hak data, persetujuan ulang, opt-out email — 2026-10-19
+
+- `AccountController`: `POST /me/accept-terms`, `GET /me/export` (JSON data sendiri, audit `ekspor_data_pribadi`), `POST /me/delete` {password, confirm:HAPUS, forfeit_tokens?} = **anonimisasi** (nama/email/telepon/profil/CV+berkas/inbox/sertifikat/scan dihapus, token dicabut, `anonymized_at`; order/payment/laporan tetap tanpa identitas; order belum bayar dibatalkan). Ditolak: admin, HR, kandidat B2B, klien dengan pesanan diproses, grafolog dengan penugasan/layanan/supervisi aktif atau saldo token > 0 tanpa `forfeit_tokens`.
+- `User::CONSENT_VERSION` = '2026-10-19'; accessor `needs_consent` (di `$appends`) true bila versi beda ATAU `consent_source='hr'` (kandidat harus menerima sendiri). FE `ConsentGate` memblokir UI; backend hanya menandai (tidak memblokir API).
+- `users.email_notifications` (bool): `Notifier::send` melewati email bila false kecuali tipe `User::ESSENTIAL_NOTICE_TYPES` (pembayaran, refund, verifikasi, insiden). `broadcasts.is_critical` → tipe `insiden`, selalu email (alat pemberitahuan pelanggaran data 3x24 jam).
+- Rate limiter bernama (`data-export`, `account-delete`, `cv-upload`) di AppServiceProvider - `throttle:N,M` angka berbagi kunci dengan grup auth.
+- `PdfScan::inspect` kini mengembalikan `unsafe` (JavaScript/Launch/EmbeddedFile/OpenAction/AA/XFA/RichMedia) -> unggah PDF ditolak. CV bertipe `photo`/`file` (`CvController::fileStore/Show/Destroy`, disk privat `cv/{user}`), `CvDemoSeeder` (variabel contoh + isian demo, dipanggil DemoDataSeeder).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

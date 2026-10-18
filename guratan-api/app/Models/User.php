@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
     'name', 'email', 'phone', 'password', 'role', 'company_id', 'token_balance', 'consented_at', 'consent_source', 'consent_version',
     'acquisition_source', 'referred_by', 'grafolog_status', 'certificate_number', 'certificate_path',
     'grafolog_verified_at', 'grafolog_verified_by', 'grafolog_review_note',
-    'must_change_password', 'city', 'bio', 'specializations', 'experience_years', 'birth_date', 'gender', 'education', 'occupation',
+    'must_change_password', 'email_notifications', 'anonymized_at', 'city', 'bio', 'specializations', 'experience_years', 'birth_date', 'gender', 'education', 'occupation',
 ])]
 #[Hidden(['password', 'remember_token', 'certificate_path'])]
 class User extends Authenticatable
@@ -25,7 +26,21 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    public const CONSENT_VERSION = '2026-10';
+    public const CONSENT_VERSION = '2026-10-19';
+
+    /** Jenis pemberitahuan yang tetap dikirim lewat email walau pengguna mematikan email notifikasi. */
+    public const ESSENTIAL_NOTICE_TYPES = ['pembayaran', 'refund', 'verifikasi', 'insiden'];
+
+    protected $appends = ['needs_consent'];
+
+    /**
+     * Pengguna perlu menyetujui ulang ToS/Privasi bila versi persetujuannya bukan yang berlaku,
+     * atau persetujuannya dicatatkan pihak lain (HR untuk kandidat) dan belum ia terima sendiri.
+     */
+    protected function needsConsent(): Attribute
+    {
+        return Attribute::get(fn () => $this->consent_version !== self::CONSENT_VERSION || $this->consent_source === 'hr');
+    }
 
     public function company(): BelongsTo
     {
@@ -106,6 +121,8 @@ class User extends Authenticatable
             'birth_date' => 'date:Y-m-d',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            'email_notifications' => 'boolean',
+            'anonymized_at' => 'datetime',
         ];
     }
 }
