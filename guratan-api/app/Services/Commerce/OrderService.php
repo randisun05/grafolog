@@ -31,7 +31,7 @@ class OrderService
     public function __construct(private DokuService $doku, private Notifier $notifier) {}
 
     /** @return array{base:int, amount:int, discount:?DiscountCode} */
-    public function quote(Product $product, ?string $code): array
+    public function quote(Product $product, ?string $code, string $audience = 'client'): array
     {
         $base = $product->currentPrice();
         abort_if($base === null, 422, "Harga produk {$product->nama} belum diatur.");
@@ -40,7 +40,7 @@ class OrderService
         $amount = $base;
         if ($code) {
             $discount = DiscountCode::where('code', strtoupper($code))->first();
-            abort_unless($discount?->isValidFor($product->kode), 422, 'Kode promo tidak berlaku untuk produk ini.');
+            abort_unless($discount?->isValidFor($product->kode, $audience), 422, 'Kode promo tidak berlaku untuk produk ini.');
             $amount = $base - $discount->amountOff($base);
         }
 
@@ -94,7 +94,7 @@ class OrderService
     public function createBatch(Company $company, User $hr, Product $product, Collection $candidates, ?string $code, ?User $grafolog, ?string $serviceMonth = null): OrderBatch
     {
         abort_unless($product->is_active, 422, 'Produk ini sedang tidak dijual.');
-        $quote = $this->quote($product, $code);
+        $quote = $this->quote($product, $code, 'b2b');
         $n = $candidates->count();
 
         return DB::transaction(function () use ($company, $hr, $product, $candidates, $quote, $grafolog, $n, $serviceMonth) {

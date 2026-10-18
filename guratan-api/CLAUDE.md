@@ -1848,6 +1848,10 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Endpoint: `GET|PUT /cv`, `GET /cv/users/{user}`, `PUT /cv/users/{user}` (hr).
 - Token supervisi dikreditkan ke saldo validator, TIDAK bisa diuangkan (ToS pasal 8).
 
+## Saluran kode promo — 2026-10-19
+
+`discount_codes.audiences` (json, null = semua): `client` (pesanan B2C + pembayaran sampel), `grafolog` (pembelian token), `b2b` (pesanan perusahaan/HR). `DiscountCode::isValidFor($tier, $audience)` + `appliesToAudience()`; `OrderService::quote(..., $audience)` (createBatch = b2b). `/promos?audience=` menyaring promo publik (default client). Admin bisa ubah saluran kapan saja via `PATCH /admin/discount-codes/{id}` `{audiences}`; nilai/produk tetap beku. Pembatasan per METODE bayar (VA/e-wallet) belum ada: checkout DOKU memilih metode di sisi DOKU.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

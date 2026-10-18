@@ -35,6 +35,8 @@ class StoreDiscountCodeRequest extends FormRequest
                     $fail("Produk '{$value}' tidak ditemukan.");
                 }
             }],
+            'audiences' => ['nullable', 'array'],
+            'audiences.*' => ['string', 'in:client,grafolog,b2b'],
             'is_public' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:255'],
             'max_uses' => ['nullable', 'integer', 'min:1'],

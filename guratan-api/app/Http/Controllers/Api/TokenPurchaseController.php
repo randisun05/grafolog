@@ -40,7 +40,7 @@ class TokenPurchaseController extends Controller
         $amount = $baseAmount;
         if ($codeInput = $request->validated('discount_code')) {
             $discountCode = DiscountCode::where('code', strtoupper($codeInput))->first();
-            abort_unless($discountCode?->isValidFor('token'), 422, 'Kode diskon tidak berlaku.');
+            abort_unless($discountCode?->isValidFor('token', 'grafolog'), 422, 'Kode diskon tidak berlaku.');
             $amount = $baseAmount - $discountCode->amountOff($baseAmount);
         }
 

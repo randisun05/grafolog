@@ -8,8 +8,11 @@ use Illuminate\Support\Carbon;
 
 class DiscountCode extends Model
 {
+    /** Saluran pembayaran tempat kode bisa aktif: pesanan klien, pembelian token grafolog, pesanan perusahaan. */
+    public const AUDIENCES = ['client', 'grafolog', 'b2b'];
+
     protected $fillable = [
-        'code', 'type', 'value', 'applicable_tiers', 'max_uses',
+        'code', 'type', 'value', 'applicable_tiers', 'audiences', 'max_uses',
         'used_count', 'valid_from', 'valid_until', 'is_active', 'is_public', 'description', 'created_by',
     ];
 
@@ -29,6 +32,7 @@ class DiscountCode extends Model
     {
         return [
             'applicable_tiers' => 'array',
+            'audiences' => 'array',
             'is_public' => 'boolean',
             'valid_from' => 'datetime',
             'valid_until' => 'datetime',
@@ -46,10 +50,17 @@ class DiscountCode extends Model
      * berlaku untuk tier ini) - dipanggil dari endpoint preview & (nanti)
      * checkout, jangan cek sebagian syarat saja di satu tempat.
      */
-    public function isValidFor(string $tier): bool
+    public function isValidFor(string $tier, string $audience = 'client'): bool
     {
         return $this->isCurrentlyUsable()
+            && $this->appliesToAudience($audience)
             && ($this->applicable_tiers === null || in_array($tier, $this->applicable_tiers, true));
+    }
+
+    /** audiences null/kosong = aktif di semua saluran. */
+    public function appliesToAudience(string $audience): bool
+    {
+        return empty($this->audiences) || in_array($audience, $this->audiences, true);
     }
 
     /** Aktif, dalam jendela waktu, dan kuota belum habis - tanpa melihat produk/tier. */

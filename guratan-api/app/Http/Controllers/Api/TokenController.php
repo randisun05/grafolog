@@ -53,7 +53,7 @@ class TokenController extends Controller
 
         if ($codeInput) {
             $discount = DiscountCode::where('code', strtoupper($codeInput))->first();
-            $codeValid = (bool) $discount?->isValidFor('token');
+            $codeValid = (bool) $discount?->isValidFor('token', 'grafolog');
             $codeMessage = $codeValid ? null : 'Kode diskon tidak berlaku.';
         }
 

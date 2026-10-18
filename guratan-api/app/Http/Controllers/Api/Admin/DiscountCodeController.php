@@ -43,15 +43,24 @@ class DiscountCodeController extends Controller
         // Yang boleh diubah setelah dibuat hanya status aktif dan tampil-sebagai-promo (is_public):
         // nilai/kuota/produk tetap beku supaya arti pemakaian lama tidak berubah.
         $data = $request->validate([
-            'is_active' => ['required_without:is_public', 'boolean'],
-            'is_public' => ['required_without:is_active', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
+            'is_public' => ['sometimes', 'boolean'],
+            // Saluran aktif boleh diubah kapan saja (null/kosong = semua saluran).
+            'audiences' => ['sometimes', 'nullable', 'array'],
+            'audiences.*' => ['string', 'in:client,grafolog,b2b'],
         ]);
+        abort_if($data === [], 422, 'Tidak ada perubahan.');
+        if (array_key_exists('audiences', $data)) {
+            $data['audiences'] = $data['audiences'] ? array_values(array_unique($data['audiences'])) : null;
+        }
 
         $discountCode->update($data);
 
-        $aksi = array_key_exists('is_active', $data)
-            ? ($data['is_active'] ? 'aktifkan_kode_diskon' : 'nonaktifkan_kode_diskon')
-            : ($data['is_public'] ? 'tampilkan_promo' : 'sembunyikan_promo');
+        $aksi = match (true) {
+            array_key_exists('audiences', $data) => 'ubah_saluran_kode_diskon',
+            array_key_exists('is_active', $data) => $data['is_active'] ? 'aktifkan_kode_diskon' : 'nonaktifkan_kode_diskon',
+            default => $data['is_public'] ? 'tampilkan_promo' : 'sembunyikan_promo',
+        };
         AuditLog::record($aksi, DiscountCode::class, $discountCode->id, $request->user()->id, $request->ip());
 
         return response()->json($discountCode);

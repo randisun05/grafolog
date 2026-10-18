@@ -16,6 +16,7 @@ const form = ref({
   type: 'percentage',
   value: '',
   tiers: [], // kosong = berlaku semua produk
+  audiences: [], // kosong = aktif di semua saluran
   max_uses: '',
   valid_until: '',
   is_public: false,
@@ -51,6 +52,7 @@ async function submit() {
       type: form.value.type,
       value: Number(form.value.value),
       applicable_tiers: form.value.tiers.length ? form.value.tiers : null,
+      audiences: form.value.audiences.length ? form.value.audiences : null,
       max_uses: form.value.max_uses ? Number(form.value.max_uses) : null,
       valid_until: form.value.valid_until || null,
       is_public: form.value.is_public,
@@ -62,6 +64,7 @@ async function submit() {
       type: 'percentage',
       value: '',
       tiers: [],
+      audiences: [],
       max_uses: '',
       valid_until: '',
       is_public: false,
@@ -87,6 +90,30 @@ async function toggleActive(discount) {
     await loadCodes()
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal mengubah status kode.')
+  } finally {
+    togglingId.value = null
+  }
+}
+
+const SALURAN = [
+  { key: 'client', label: 'Klien' },
+  { key: 'grafolog', label: 'Grafolog (token)' },
+  { key: 'b2b', label: 'B2B / HR' },
+]
+const aktif = (d, key) => !d.audiences?.length || d.audiences.includes(key)
+
+async function toggleAudience(d, key) {
+  const now = new Set(d.audiences?.length ? d.audiences : SALURAN.map((a) => a.key))
+  now.has(key) ? now.delete(key) : now.add(key)
+  if (!now.size) return toast.push('Pilih minimal satu saluran.')
+  togglingId.value = d.id
+  try {
+    await api.patch(`/admin/discount-codes/${d.id}`, {
+      audiences: now.size === SALURAN.length ? null : [...now],
+    })
+    await loadCodes()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah saluran.')
   } finally {
     togglingId.value = null
   }
@@ -166,6 +193,15 @@ onMounted(loadCodes)
             >
           </span>
         </label>
+        <label class="admin-discounts__checkboxes">
+          Aktif di saluran (kosongkan = semua)
+          <span>
+            <label v-for="a in SALURAN" :key="a.key"
+              ><input v-model="form.audiences" type="checkbox" :value="a.key" />
+              {{ a.label }}</label
+            >
+          </span>
+        </label>
         <label>
           Kuota pemakaian (opsional)
           <input v-model="form.max_uses" type="number" min="1" placeholder="Tanpa batas" />
@@ -206,6 +242,7 @@ onMounted(loadCodes)
           <th>Kode</th>
           <th>Nilai</th>
           <th>Produk</th>
+          <th>Saluran</th>
           <th>Pemakaian</th>
           <th>Status</th>
           <th></th>
@@ -216,6 +253,17 @@ onMounted(loadCodes)
           <td class="admin-discounts__code">{{ d.code }}</td>
           <td>{{ formatValue(d) }}</td>
           <td>{{ productNames(d.applicable_tiers) }}</td>
+          <td class="admin-discounts__channels">
+            <label v-for="a in SALURAN" :key="a.key"
+              ><input
+                type="checkbox"
+                :checked="aktif(d, a.key)"
+                :disabled="togglingId === d.id"
+                @change="toggleAudience(d, a.key)"
+              />
+              {{ a.label }}</label
+            >
+          </td>
           <td>{{ d.used_count }}{{ d.max_uses ? ` / ${d.max_uses}` : '' }}</td>
           <td>
             <span class="badge" :class="d.is_active ? 'badge--active' : 'badge--inactive'">
@@ -340,5 +388,12 @@ onMounted(loadCodes)
 .badge--inactive {
   background: var(--color-seal-soft);
   color: var(--color-seal);
+}
+.admin-discounts__channels label {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 </style>

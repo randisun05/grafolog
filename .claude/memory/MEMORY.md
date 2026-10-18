@@ -22,3 +22,4 @@
 - [Notifikasi & log aktivitas](project_notifications_activity.md) — 2026-10-18: Notifier (inbox + email queued), broadcast admin, activity_logs ringan (90 hari); tahap 5 (ToS/Privacy) menyusul
 - [Legal 1.0](project_notifications_activity.md) — 2026-10-18: ToS/Privacy/SOP ditulis ulang (UU PDP, scan PDF, AI anonim, log 90 hari, no-cancel, refund admin-only); sisa placeholder [ENTITAS] wajib diisi + review penasihat hukum
 - [CV] — 2026-10-19: variabel CV diatur admin (grup/field/tipe/tag all|client|grafolog), isi oleh pemilik/HR; token supervisi = kredit non-cashable
+- [Promo per saluran] — 2026-10-19: discount_codes.audiences client|grafolog|b2b, editable admin; per-metode-bayar belum

@@ -41,7 +41,7 @@ class PricingController extends Controller
 
         if ($codeInput) {
             $discount = DiscountCode::where('code', strtoupper($codeInput))->first();
-            $codeValid = (bool) $discount?->isValidFor($tier);
+            $codeValid = (bool) $discount?->isValidFor($tier, $request->user()?->isHr() ? 'b2b' : 'client');
             $codeMessage = $codeValid ? null : 'Kode diskon tidak berlaku.';
         }
 

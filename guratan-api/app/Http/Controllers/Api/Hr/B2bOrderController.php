@@ -47,10 +47,10 @@ class B2bOrderController extends Controller
         $product = Product::forCompanies()->where('kode', $data['product'])->firstOrFail();
 
         try {
-            $quote = $this->orders->quote($product, $data['discount_code'] ?? null);
+            $quote = $this->orders->quote($product, $data['discount_code'] ?? null, 'b2b');
             $message = null;
         } catch (HttpException $e) {
-            $quote = $this->orders->quote($product, null);
+            $quote = $this->orders->quote($product, null, 'b2b');
             $message = $e->getMessage();
         }
 
