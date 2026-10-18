@@ -18,6 +18,8 @@ const TYPES = {
   boolean: 'Ya/Tidak',
   email: 'Email',
   phone: 'Telepon',
+  photo: 'Foto',
+  file: 'Berkas (PDF/DOCX)',
 }
 const TAGS = { all: 'Klien & grafolog', client: 'Klien/kandidat', grafolog: 'Grafolog' }
 const blank = () => ({

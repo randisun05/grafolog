@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class CvField extends Model
 {
-    public const TYPES = ['text', 'textarea', 'number', 'date', 'select', 'boolean', 'email', 'phone'];
+    public const TYPES = ['text', 'textarea', 'number', 'date', 'select', 'boolean', 'email', 'phone', 'photo', 'file'];
 
     public const APPLIES_TO = ['all', 'client', 'grafolog'];
 
@@ -32,6 +32,12 @@ class CvField extends Model
     public function values(): HasMany
     {
         return $this->hasMany(CvValue::class);
+    }
+
+    /** Tipe yang nilainya berkas (diunggah lewat endpoint khusus, bukan isian teks). */
+    public function isFile(): bool
+    {
+        return in_array($this->type, ['photo', 'file'], true);
     }
 
     /** Aturan validasi Laravel untuk isian bertipe ini. */

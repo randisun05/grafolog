@@ -17,12 +17,12 @@ class PdfScan
 
     public const TOLERANCE = 0.04;
 
-    /** @return array{valid: bool, pages: int, width_mm: ?int, height_mm: ?int, paper: ?string} */
+    /** @return array{valid: bool, pages: int, width_mm: ?int, height_mm: ?int, paper: ?string, unsafe: bool} */
     public static function inspect(string $path): array
     {
         $raw = @file_get_contents($path);
         if ($raw === false || ! str_starts_with(ltrim($raw), '%PDF-')) {
-            return ['valid' => false, 'pages' => 0, 'width_mm' => null, 'height_mm' => null, 'paper' => null];
+            return ['valid' => false, 'pages' => 0, 'width_mm' => null, 'height_mm' => null, 'paper' => null, 'unsafe' => false];
         }
 
         $haystacks = [$raw];
@@ -47,7 +47,15 @@ class PdfScan
         $w = $box ? (int) round($box[0] * self::PT_TO_MM) : null;
         $h = $box ? (int) round($box[1] * self::PT_TO_MM) : null;
 
-        return ['valid' => true, 'pages' => $pages, 'width_mm' => $w, 'height_mm' => $h, 'paper' => $w ? self::paper($w, $h) : null];
+        $unsafe = false;
+        foreach ($haystacks as $hay) {
+            if (preg_match('#/(JavaScript|JS|Launch|EmbeddedFile|OpenAction|RichMedia|XFA|AA)(?![a-zA-Z])#', $hay)) {
+                $unsafe = true;
+                break;
+            }
+        }
+
+        return ['valid' => true, 'pages' => $pages, 'width_mm' => $w, 'height_mm' => $h, 'paper' => $w ? self::paper($w, $h) : null, 'unsafe' => $unsafe];
     }
 
     public static function paper(int $w, int $h): ?string

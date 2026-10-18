@@ -7,8 +7,12 @@ use App\Models\Company;
 use App\Models\CvField;
 use App\Models\CvGroup;
 use App\Models\HandwritingSample;
+use App\Models\PersonalityReport;
+use App\Models\ReportValidation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /** Manajemen variabel CV oleh admin + pengisian + visibilitas per peran (2026-10-19). */
@@ -113,5 +117,41 @@ class CvTest extends TestCase
         $stranger = User::factory()->create(['role' => 'user']);
         $this->actingAs($stranger, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
         $put($candidate, $grafolog, ['semua' => 'z'])->assertForbidden();
+    }
+
+    public function test_photo_and_file_upload_visibility_and_peer_access(): void
+    {
+        Storage::fake('local');
+        $g = CvGroup::create(['name' => 'Berkas']);
+        $this->field($g, 'Foto', 'photo', 'all');
+        $this->field($g, 'Dokumen', 'file', 'grafolog', ['is_hidden' => true]);
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'verified']);
+        $client = User::factory()->create(['role' => 'user']);
+        HandwritingSample::create(['user_id' => $client->id, 'created_by' => $grafolog->id, 'tier' => 'master', 'status' => 'pending']);
+
+        $this->actingAs($grafolog, 'sanctum')->post('/api/cv/files/foto', ['file' => UploadedFile::fake()->image('a.jpg', 200, 200)], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('groups.0.fields.0.value.name', 'a.jpg');
+        $this->actingAs($grafolog, 'sanctum')->post('/api/cv/files/foto', ['file' => UploadedFile::fake()->create('x.pdf', 10)], ['Accept' => 'application/json'])->assertStatus(422);
+        $this->actingAs($grafolog, 'sanctum')->post('/api/cv/files/dokumen', ['file' => UploadedFile::fake()->create('cv.docx', 10)], ['Accept' => 'application/json'])->assertOk();
+
+        // Klien yang diperiksa: melihat foto (bukan dokumen tersembunyi) dan boleh mengunduhnya.
+        $this->actingAs($client, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertOk()->assertJsonCount(1, 'groups.0.fields');
+        $this->actingAs($client, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/foto")->assertOk();
+        $this->actingAs($client, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/dokumen")->assertNotFound();
+        $stranger = User::factory()->create(['role' => 'user']);
+        $this->actingAs($stranger, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/foto")->assertForbidden();
+        $this->actingAs($client, 'sanctum')->post('/api/cv/files/foto', ['file' => UploadedFile::fake()->image('b.jpg', 200, 200)], ['Accept' => 'application/json'])->assertOk(); // foto milik klien sendiri (applies all)
+
+        // Supervisor (peer): terhubung lewat penugasan supervisi.
+        $peer = User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'verified']);
+        $this->actingAs($peer, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
+        $sample = HandwritingSample::first();
+        $report = PersonalityReport::create(['sample_id' => $sample->id, 'tier' => 'master', 'status' => 'completed']);
+        ReportValidation::create(['report_id' => $report->id, 'requester_id' => $grafolog->id, 'validator_id' => $peer->id, 'status' => 'menunggu', 'fee' => 0, 'deadline_days' => 3, 'due_at' => now()->addDays(3)]);
+        $this->actingAs($peer, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertOk();
+        $this->actingAs($grafolog, 'sanctum')->getJson("/api/cv/users/{$peer->id}")->assertOk();
+
+        // Hapus berkas.
+        $this->actingAs($grafolog, 'sanctum')->deleteJson('/api/cv/files/foto')->assertOk()->assertJsonPath('groups.0.fields.0.value', null);
     }
 }

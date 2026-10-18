@@ -7,8 +7,11 @@ use App\Models\CvField;
 use App\Models\CvGroup;
 use App\Models\CvValue;
 use App\Models\HandwritingSample;
+use App\Models\ReportValidation;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -32,6 +35,9 @@ class CvService
             if ($viewer->role === 'user' && $this->examines($subject->id, [$viewer->id])) {
                 return 'subject';
             }
+            if ($viewer->isGrafolog() && $this->peers($viewer->id, $subject->id)) {
+                return 'peer';
+            }
             if ($viewer->isHr() && $viewer->company_id) {
                 $candidateIds = CandidateProfile::where('company_id', $viewer->company_id)->pluck('user_id')->all();
 
@@ -49,6 +55,14 @@ class CvService
         }
 
         return null;
+    }
+
+    /** Dua grafolog saling terhubung lewat penugasan supervisi yang berjalan/selesai. */
+    private function peers(int $a, int $b): bool
+    {
+        return ReportValidation::whereIn('status', [...ReportValidation::ACTIVE, ReportValidation::DONE])
+            ->where(fn (Builder $q) => $q->where(fn ($w) => $w->where('requester_id', $a)->where('validator_id', $b))
+                ->orWhere(fn ($w) => $w->where('requester_id', $b)->where('validator_id', $a)))->exists();
     }
 
     /** Apakah grafolog ini menangani (pembuat/ditugaskan) sampel salah satu dari pengguna tsb. */
@@ -92,7 +106,7 @@ class CvService
                     ->map(fn (CvField $f) => [
                         'id' => $f->id, 'key' => $f->key, 'label' => $f->label, 'type' => $f->type,
                         'options' => $f->options, 'help' => $f->help, 'required' => $f->required,
-                        'is_hidden' => $f->is_hidden, 'value' => $this->cast($f, $values[$f->id] ?? null),
+                        'is_hidden' => $f->is_hidden, 'value' => $f->isFile() ? $this->fileMeta($subject, $f, $values[$f->id] ?? null) : $this->cast($f, $values[$f->id] ?? null),
                     ])->values()->all(),
             ])->filter(fn ($g) => $g['fields'])->values()->all();
     }
@@ -104,7 +118,7 @@ class CvService
         $hiddenOk = $this->seesHidden($relation);
         $fields = CvField::where('is_active', true)->whereHas('group', fn ($q) => $q->where('is_active', true))
             ->get()
-            ->filter(fn (CvField $f) => in_array($f->applies_to, $applies, true) && ($hiddenOk || ! $f->is_hidden))
+            ->filter(fn (CvField $f) => ! $f->isFile() && in_array($f->applies_to, $applies, true) && ($hiddenOk || ! $f->is_hidden))
             ->keyBy('key')->all();
         $input = array_intersect_key($input, $fields);
         $used = array_intersect_key($fields, $input);
@@ -118,6 +132,50 @@ class CvService
             $stored = $value === null || $value === '' ? null : (is_bool($value) ? ($value ? '1' : '0') : (string) $value);
             CvValue::updateOrCreate(['user_id' => $subject->id, 'cv_field_id' => $fields[$key]->id], ['value' => $stored]);
         }
+    }
+
+    /** Field berkas yang boleh diakses relasi ini (404 bila tidak berlaku/tersembunyi). */
+    public function fileField(User $subject, string $relation, string $key): CvField
+    {
+        $field = CvField::where('key', $key)->where('is_active', true)->whereIn('type', ['photo', 'file'])->firstOrFail();
+        abort_unless(in_array($field->applies_to, $this->appliesTo($subject), true), 404);
+        abort_if($field->is_hidden && ! $this->seesHidden($relation), 404);
+
+        return $field;
+    }
+
+    public function storeFile(User $subject, CvField $field, UploadedFile $file): void
+    {
+        $this->removeFile($subject, $field);
+        $path = $file->store("cv/{$subject->id}", 'local');
+        CvValue::updateOrCreate(['user_id' => $subject->id, 'cv_field_id' => $field->id], ['value' => json_encode([
+            'path' => $path, 'name' => mb_substr($file->getClientOriginalName(), 0, 150), 'mime' => $file->getMimeType(),
+        ])]);
+    }
+
+    public function removeFile(User $subject, CvField $field): void
+    {
+        $v = CvValue::where('user_id', $subject->id)->where('cv_field_id', $field->id)->first();
+        $meta = $v?->value ? json_decode($v->value, true) : null;
+        if ($meta['path'] ?? null) {
+            Storage::disk('local')->delete($meta['path']);
+        }
+        $v?->delete();
+    }
+
+    /** @return array{name:string, mime:string, path:string}|null */
+    public function fileData(User $subject, CvField $field): ?array
+    {
+        $raw = CvValue::where('user_id', $subject->id)->where('cv_field_id', $field->id)->value('value');
+
+        return $raw ? json_decode($raw, true) : null;
+    }
+
+    private function fileMeta(User $subject, CvField $f, ?string $raw): ?array
+    {
+        $meta = $raw ? json_decode($raw, true) : null;
+
+        return $meta ? ['name' => $meta['name'], 'url' => "/cv/users/{$subject->id}/files/{$f->key}"] : null;
     }
 
     private function cast(CvField $f, ?string $raw): mixed

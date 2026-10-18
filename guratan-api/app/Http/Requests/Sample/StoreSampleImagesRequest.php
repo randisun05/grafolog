@@ -43,6 +43,11 @@ class StoreSampleImagesRequest extends FormRequest
 
                         return;
                     }
+                    if ($scan['unsafe']) {
+                        $fail('PDF berisi skrip/lampiran aktif dan ditolak. Ekspor ulang sebagai PDF hasil scan biasa.');
+
+                        return;
+                    }
                     if ($scan['pages'] < 1) {
                         $fail('PDF tidak berisi halaman.');
 

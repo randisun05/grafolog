@@ -121,8 +121,49 @@ class DemoDataSeeder extends Seeder
         $this->assign($intan, $bima, $users['hr']);
         $this->createB2bData($users, ['hendra' => $hendra, 'intan' => $intan]);
 
+        $this->seedCv($users);
+
         $this->command?->info('Data demo dibuat. Semua akun berpassword: '.self::PASSWORD);
         $this->command?->table(['Role', 'Email'], collect($users)->map(fn (User $u) => [$u->role, $u->email])->values()->all());
+    }
+
+    /** Variabel CV contoh + isian untuk beberapa akun demo (grafolog, klien, kandidat). */
+    private function seedCv(array $users): void
+    {
+        $cv = new CvDemoSeeder;
+        $cv->run();
+        $cv->fill($users['ani'], [
+            'gelar_sertifikasi' => 'Certified Graphologist (CG)', 'lembaga_sertifikasi' => 'Asosiasi Grafologi Indonesia',
+            'tahun_mulai_praktik' => 2017, 'bidang_keahlian' => 'Pengembangan diri, konseling remaja',
+            'metode_kerja' => 'Pengukuran manual dengan kaliper pada scan A4 300 dpi, lalu penyusunan laporan 40 aspek.',
+            'bahasa_yang_dikuasai' => 'Indonesia, Inggris', 'biografi_singkat' => 'Grafolog dengan 8 tahun pengalaman mendampingi klien individu.',
+            'nomor_ponsel_pribadi' => '081200000001',
+        ]);
+        $cv->fill($users['bima'], [
+            'gelar_sertifikasi' => 'Certified Graphologist (CG), M.Psi (kandidat)', 'lembaga_sertifikasi' => 'Asosiasi Grafologi Indonesia',
+            'tahun_mulai_praktik' => 2013, 'bidang_keahlian' => 'Rekrutmen, asesmen kandidat',
+            'metode_kerja' => 'Asesmen kandidat dengan pengukuran manual dan wawancara berbasis perilaku.',
+            'bahasa_yang_dikuasai' => 'Indonesia, Inggris, Sunda', 'biografi_singkat' => 'Mendampingi tim HR untuk asesmen staf hingga manajerial.',
+        ]);
+        $cv->fill($users['supervisor'], ['gelar_sertifikasi' => 'Certified Graphologist (Senior)', 'tahun_mulai_praktik' => 2010, 'bidang_keahlian' => 'Supervisi laporan']);
+        $cv->fill($users['budi'], [
+            'nama_panggilan' => 'Budi', 'jenis_kelamin' => 'Laki-laki', 'tempat_lahir' => 'Semarang', 'tanggal_lahir' => '1995-04-12',
+            'tangan_dominan_menulis' => 'Kanan', 'hobi_minat' => 'Membaca, sepeda, fotografi', 'kota_domisili' => 'Jakarta',
+            'pendidikan_terakhir' => 'S1', 'institusi_pendidikan' => 'Universitas Diponegoro', 'jurusan' => 'Manajemen',
+            'pekerjaan_saat_ini' => 'Supervisor Operasional', 'lama_pengalaman_kerja_tahun' => 6,
+            'nama_ayah' => 'Slamet', 'pekerjaan_ayah' => 'Guru', 'nama_ibu' => 'Sri', 'pekerjaan_ibu' => 'Ibu rumah tangga',
+            'anak_ke' => 2, 'jumlah_saudara_kandung' => 2, 'status_pernikahan' => 'Menikah', 'nama_pasangan' => 'Rani', 'pekerjaan_pasangan' => 'Perawat', 'jumlah_anak' => 1,
+            'alamat_lengkap' => 'Jl. Contoh No. 12, Jakarta Selatan', 'nomor_darurat' => '081200000099', 'kontak_darurat_nama_hubungan' => 'Rani (istri)',
+        ]);
+        $cv->fill($users['citra'], [
+            'nama_panggilan' => 'Citra', 'jenis_kelamin' => 'Perempuan', 'tanggal_lahir' => '1998-09-30', 'tangan_dominan_menulis' => 'Kiri',
+            'kota_domisili' => 'Bandung', 'pendidikan_terakhir' => 'S1', 'jurusan' => 'Psikologi', 'status_pernikahan' => 'Belum menikah',
+        ]);
+        $cv->fill($users['hendra'], [
+            'nama_panggilan' => 'Hendra', 'jenis_kelamin' => 'Laki-laki', 'tanggal_lahir' => '1992-01-20', 'tangan_dominan_menulis' => 'Kanan',
+            'kota_domisili' => 'Tangerang', 'pendidikan_terakhir' => 'S1', 'jurusan' => 'Akuntansi', 'pekerjaan_saat_ini' => 'Staf Akuntansi',
+            'lama_pengalaman_kerja_tahun' => 8, 'status_pernikahan' => 'Menikah', 'jumlah_anak' => 2,
+        ]);
     }
 
     /** @return array<string, User> */

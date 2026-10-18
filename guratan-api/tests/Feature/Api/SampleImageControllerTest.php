@@ -84,6 +84,15 @@ class SampleImageControllerTest extends TestCase
         $this->assertDatabaseCount('sample_images', 0);
     }
 
+    public function test_pdf_with_active_content_is_rejected(): void
+    {
+        [$client, $sample] = $this->clientSample();
+        $evil = UploadedFile::fake()->createWithContent('scan.pdf', MinimalPdf::make('x')."\n1 0 obj << /S /JavaScript /JS (app.alert(1)) >> endobj");
+        $this->actingAs($client, 'sanctum')->post("/api/samples/{$sample->id}/images", ['images' => [$evil]], ['Accept' => 'application/json'])
+            ->assertStatus(422);
+        $this->assertDatabaseCount('sample_images', 0);
+    }
+
     public function test_pdf_scan_reads_compressed_object_streams(): void
     {
         $page = '<< /Type /Page /MediaBox [0 0 595.28 841.89] >>';
@@ -91,7 +100,7 @@ class SampleImageControllerTest extends TestCase
         $path = tempnam(sys_get_temp_dir(), 'pdf');
         file_put_contents($path, $pdf);
 
-        $this->assertSame(['valid' => true, 'pages' => 1, 'width_mm' => 210, 'height_mm' => 297, 'paper' => 'A4'], PdfScan::inspect($path));
+        $this->assertSame(['valid' => true, 'pages' => 1, 'width_mm' => 210, 'height_mm' => 297, 'paper' => 'A4', 'unsafe' => false], PdfScan::inspect($path));
     }
 
     public function test_stranger_cannot_upload_or_view(): void

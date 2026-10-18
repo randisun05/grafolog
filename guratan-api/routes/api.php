@@ -112,7 +112,12 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware('throttle:10,1')->put('/auth/change-password', [PasswordChangeController::class, 'update']);
     Route::get('/cv', [CvController::class, 'mine']);
     Route::put('/cv', [CvController::class, 'updateMine']);
+    Route::middleware('throttle:20,1')->post('/cv/files/{key}', [CvController::class, 'fileStoreMine']);
+    Route::delete('/cv/files/{key}', [CvController::class, 'fileDestroyMine']);
     Route::get('/cv/users/{user}', [CvController::class, 'show']);
+    Route::get('/cv/users/{user}/files/{key}', [CvController::class, 'fileShow']);
+    Route::middleware(['role:hr', 'throttle:20,1'])->post('/cv/users/{user}/files/{key}', [CvController::class, 'fileStore']);
+    Route::middleware('role:hr')->delete('/cv/users/{user}/files/{key}', [CvController::class, 'fileDestroy']);
     Route::middleware('role:hr')->put('/cv/users/{user}', [CvController::class, 'update']);
     Route::middleware('role:user')->get('/candidate/tasks', [CandidateTaskController::class, 'index']);
     Route::get('/inbox', [InboxController::class, 'index']);

@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
@@ -16,6 +16,60 @@ const errors = ref({})
 const loading = ref(true)
 const saving = ref(false)
 
+const photos = ref({}) // key -> object URL
+const uploading = ref('')
+const fileBase = () => (props.userId ? `/cv/users/${props.userId}/files` : '/cv/files')
+
+async function loadPhotos() {
+  Object.values(photos.value).forEach((u) => URL.revokeObjectURL(u))
+  photos.value = {}
+  for (const f of groups.value.flatMap((g) => g.fields)) {
+    if (f.type !== 'photo' || !f.value) continue
+    try {
+      const { data } = await api.get(f.value.url, { responseType: 'blob' })
+      photos.value[f.key] = URL.createObjectURL(data)
+    } catch {
+      // foto tidak bisa dimuat: tampilkan placeholder teks
+    }
+  }
+}
+
+async function upload(f, event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  const fd = new FormData()
+  fd.append('file', file)
+  uploading.value = f.key
+  try {
+    apply((await api.post(`${fileBase()}/${f.key}`, fd)).data)
+    await loadPhotos()
+    toast.push('Berkas diunggah.')
+  } catch (e) {
+    toast.push(
+      e.response?.data?.errors?.file?.[0] ?? e.response?.data?.message ?? 'Gagal mengunggah.',
+    )
+  } finally {
+    uploading.value = ''
+  }
+}
+
+async function removeFile(f) {
+  if (!window.confirm(`Hapus berkas "${f.label}"?`)) return
+  apply((await api.delete(`${fileBase()}/${f.key}`)).data)
+  await loadPhotos()
+}
+
+async function download(f) {
+  const { data } = await api.get(f.value.url, { responseType: 'blob' })
+  const url = URL.createObjectURL(data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = f.value.name
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 const base = () => (props.userId ? `/cv/users/${props.userId}` : '/cv')
 
 function apply(data) {
@@ -30,6 +84,7 @@ async function load() {
   loading.value = true
   try {
     apply((await api.get(base())).data)
+    await loadPhotos()
   } finally {
     loading.value = false
   }
@@ -55,6 +110,7 @@ function show(v, f) {
 }
 
 onMounted(load)
+onBeforeUnmount(() => Object.values(photos.value).forEach((u) => URL.revokeObjectURL(u)))
 watch(() => props.userId, load)
 </script>
 
@@ -71,7 +127,33 @@ watch(() => props.userId, load)
             >{{ f.label }}<span v-if="f.required && editable" class="cv__req"> *</span
             ><span v-if="f.is_hidden" class="cv__hid"> 🔒 tersembunyi</span></label
           >
-          <template v-if="editable">
+          <div v-if="f.type === 'photo' || f.type === 'file'" class="cv__file">
+            <img
+              v-if="f.type === 'photo' && photos[f.key]"
+              :src="photos[f.key]"
+              alt=""
+              class="cv__photo"
+            />
+            <button v-else-if="f.value" type="button" class="btn" @click="download(f)">
+              ⬇ {{ f.value.name }}
+            </button>
+            <span v-if="!f.value" class="cv__value">-</span>
+            <template v-if="editable">
+              <label class="btn cv__pick">
+                {{ uploading === f.key ? 'Mengunggah...' : f.value ? 'Ganti' : 'Unggah' }}
+                <input
+                  type="file"
+                  hidden
+                  :accept="f.type === 'photo' ? 'image/jpeg,image/png,image/webp' : '.pdf,.docx'"
+                  :disabled="uploading === f.key"
+                  @change="upload(f, $event)"
+                />
+              </label>
+              <button v-if="f.value" type="button" class="btn" @click="removeFile(f)">Hapus</button>
+              <small v-if="f.help" class="cv__hint">{{ f.help }}</small>
+            </template>
+          </div>
+          <template v-else-if="editable">
             <textarea
               v-if="f.type === 'textarea'"
               :id="`cv-${f.key}`"
@@ -139,6 +221,22 @@ watch(() => props.userId, load)
 .cv__hid {
   font-size: 11.5px;
   color: var(--color-text-soft);
+}
+.cv__file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cv__photo {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+}
+.cv__pick {
+  cursor: pointer;
 }
 .cv__req {
   color: var(--color-seal);
