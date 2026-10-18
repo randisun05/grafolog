@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterGrafologRequest;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +43,7 @@ class GrafologRegistrationController extends Controller
         });
 
         AuditLog::record('daftar_grafolog', User::class, $user->id, $user->id, $request->ip());
+        app(Notifier::class)->toAdmins('verifikasi_baru', 'Pendaftar grafolog baru', "{$user->name} mendaftar sebagai grafolog dan menunggu verifikasi sertifikat.", '/admin/verifikasi?tab=grafolog');
 
         return response()->json([
             'user' => $user->fresh(),

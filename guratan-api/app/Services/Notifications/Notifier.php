@@ -28,6 +28,13 @@ class Notifier
         return $message;
     }
 
+    /** Beri tahu semua administrator (kotak masuk saja - tidak membanjiri email). */
+    public function toAdmins(string $type, string $title, string $body, ?string $url = null): void
+    {
+        User::where('role', 'administrator')->get(['id', 'name', 'email', 'role'])
+            ->each(fn (User $a) => $this->send($a, $type, $title, $body, $url, mail: false));
+    }
+
     /** Kirim ke banyak pengguna sekaligus (target_roles null = semua). */
     public function broadcast(Broadcast $broadcast): int
     {

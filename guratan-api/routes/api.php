@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AffiliateAdminController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Api\Admin\ArticleAdminController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
+use App\Http\Controllers\Api\Admin\BroadcastController;
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\CompanyVerificationController;
 use App\Http\Controllers\Api\Admin\ConceptMapController;
@@ -47,6 +49,7 @@ use App\Http\Controllers\Api\Hr\CandidateAnalysisController;
 use App\Http\Controllers\Api\Hr\CandidateController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\Hr\PositionController;
+use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\MeasurementVariableController;
 use App\Http\Controllers\Api\OrderController;
@@ -106,6 +109,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::middleware('throttle:10,1')->put('/auth/change-password', [PasswordChangeController::class, 'update']);
     Route::middleware('role:user')->get('/candidate/tasks', [CandidateTaskController::class, 'index']);
+    Route::get('/inbox', [InboxController::class, 'index']);
+    Route::get('/inbox/unread-count', [InboxController::class, 'unreadCount']);
+    Route::post('/inbox/read-all', [InboxController::class, 'readAll']);
+    Route::post('/inbox/{message}/read', [InboxController::class, 'read']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
 
@@ -199,6 +206,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/grafolog-applications/{user}/certificate', [GrafologVerificationController::class, 'certificate']);
         Route::post('/grafolog-applications/{user}/decision', [GrafologVerificationController::class, 'decide']);
         Route::get('/verification-counts', VerificationCountsController::class);
+        Route::get('/broadcasts', [BroadcastController::class, 'index']);
+        Route::post('/broadcasts', [BroadcastController::class, 'store']);
+        Route::get('/activity-logs', [ActivityLogController::class, 'index']);
         Route::get('/company-applications', [CompanyVerificationController::class, 'index']);
         Route::get('/validations', [ValidationIndexController::class, 'index']);
         Route::get('/refunds', [RefundController::class, 'index']);

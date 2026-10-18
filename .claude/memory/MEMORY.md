@@ -19,3 +19,4 @@
 - [Matrix & ciri bersama](project_matrix_ciri_bersama.md) — 2026-10-16: admin KB Matriks tab, same-name indikator sync (changes new scores, needs grafolog confirmation), cascade latch fix, empirical correlation
 - [Payment bypass](project_payment_bypass.md) — 2026-10-17: PAYMENT_BYPASS test mode, orders/tokens instantly paid without DOKU; never in production
 - [Manual-test feedback](project_manual_test_feedback.md) — 2026-10-17: 21 points, decisions, phases A–E (A–E all done)
+- [Notifikasi & log aktivitas](project_notifications_activity.md) — 2026-10-18: Notifier (inbox + email queued), broadcast admin, activity_logs ringan (90 hari); tahap 5 (ToS/Privacy) menyusul

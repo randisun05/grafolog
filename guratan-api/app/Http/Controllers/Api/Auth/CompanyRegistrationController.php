@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\RegisterCompanyRequest;
 use App\Models\AuditLog;
 use App\Models\Company;
 use App\Models\User;
+use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -48,6 +49,7 @@ class CompanyRegistrationController extends Controller
         });
 
         AuditLog::record('daftar_perusahaan', Company::class, $user->company_id, $user->id, $request->ip());
+        app(Notifier::class)->toAdmins('verifikasi_baru', 'Perusahaan baru mendaftar', "{$user->company->name} mendaftar dan menunggu verifikasi.", '/admin/verifikasi?tab=perusahaan');
 
         return response()->json([
             'user' => $user->fresh()->load('company'),

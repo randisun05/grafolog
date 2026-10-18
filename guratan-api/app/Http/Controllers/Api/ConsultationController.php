@@ -8,6 +8,7 @@ use App\Mail\ConsultationScheduledMail;
 use App\Models\AuditLog;
 use App\Models\HandwritingSample;
 use App\Models\SampleConsultation;
+use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Mail;
 
@@ -29,6 +30,7 @@ class ConsultationController extends Controller
         $scheduleChanged = $consultation->wasRecentlyCreated || $consultation->wasChanged(['scheduled_at', 'meeting_url']);
         if ($scheduleChanged && $consultation->status === 'dijadwalkan' && $sample->user) {
             Mail::to($sample->user->email)->queue(new ConsultationScheduledMail($consultation));
+            app(Notifier::class)->send($sample->user, 'jadwal_layanan', 'Sesi konsultasi dijadwalkan', 'Jadwal konsultasi hasil Anda sudah ditetapkan - lihat di halaman laporan.', "/reports/{$sample->reports()->latest('id')->value('id')}", mail: false);
         }
 
         return response()->json($consultation, $consultation->wasRecentlyCreated ? 201 : 200);

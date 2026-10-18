@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\ServiceDelivery;
 use App\Models\User;
 use App\Services\Commerce\OrderService;
+use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -51,7 +52,7 @@ class ServiceDeliveryController extends Controller
         return response()->json($delivery->load(['component', 'user:id,name,email', 'assignee:id,name', 'order.product:id,kode,nama']));
     }
 
-    public function assign(Request $request, ServiceDelivery $delivery): JsonResponse
+    public function assign(Request $request, ServiceDelivery $delivery, Notifier $notifier): JsonResponse
     {
         $user = $request->user();
         $batch = $delivery->order->batch;
@@ -65,11 +66,12 @@ class ServiceDeliveryController extends Controller
 
         $delivery->update(['assigned_to' => $grafolog->id, 'status' => $delivery->scheduled_at ? 'dijadwalkan' : 'ditugaskan']);
         AuditLog::record('tugaskan_layanan', ServiceDelivery::class, $delivery->id, $user->id, $request->ip());
+        $notifier->send($grafolog, 'penugasan', 'Penugasan layanan baru', "Anda ditugaskan menangani layanan #{$delivery->id}.", '/grafolog/ditugaskan');
 
         return response()->json($delivery->fresh(['assignee:id,name', 'component']));
     }
 
-    public function schedule(Request $request, ServiceDelivery $delivery): JsonResponse
+    public function schedule(Request $request, ServiceDelivery $delivery, Notifier $notifier): JsonResponse
     {
         abort_unless($delivery->assigned_to === $request->user()->id, 403);
         abort_if(in_array($delivery->status, ['selesai', 'dibatalkan'], true), 422, 'Layanan sudah ditutup.');
@@ -80,6 +82,8 @@ class ServiceDeliveryController extends Controller
 
         $delivery->update($data + ['status' => 'dijadwalkan']);
         AuditLog::record('jadwalkan_layanan', ServiceDelivery::class, $delivery->id, $request->user()->id, $request->ip());
+        $when = $delivery->scheduled_at->timezone('Asia/Jakarta')->translatedFormat('d M Y H:i');
+        $notifier->send($delivery->user, 'jadwal_layanan', 'Sesi Anda dijadwalkan', "Sesi layanan dijadwalkan {$when} WIB.".($delivery->meeting_url ? " Tautan: {$delivery->meeting_url}" : ''), $delivery->order?->batch_id ? '/tugas-asesmen' : '/riwayat');
 
         return response()->json($delivery->fresh(['component', 'user:id,name,email']));
     }

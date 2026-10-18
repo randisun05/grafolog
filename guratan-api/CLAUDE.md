@@ -1834,6 +1834,13 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   butuh tindakan: grafolog/perusahaan pending, pesanan perlu ditugaskan, >90 hari, supervisi lewat tenggat).
 - 497 test.
 
+## Notifikasi, kotak masuk, log aktivitas — 2026-10-18
+
+- `Notifier` (`app/Services/Notifications`): satu pintu — `toUser/toAdmins/broadcast`. Simpan ke `inbox_messages` + antre `NotificationMail` (view `emails/notification`). Kandidat B2B (akun tanpa email nyata) hanya kotak masuk.
+- Hook: pesanan lunas/ditugaskan/selesai, supervisi (publish/keputusan/konfirmasi), verifikasi grafolog & perusahaan, registrasi (admin), konsultasi, laporan selesai.
+- Endpoint: `GET /inbox`, `/inbox/unread-count`, `POST /inbox/read-all`, `/inbox/{id}/read`; admin: `GET|POST /admin/broadcasts` (target_roles kosong = semua, `send_email` opsional), `GET /admin/activity-logs` (q/event/user_id/from/to, 50/halaman).
+- Log aktivitas ringan: middleware `LogActivity` (terminable, grup `api`) → tabel `activity_logs` (metadata saja: user, event request/login/login_gagal/logout, method, path, route, status, ip, UA; tanpa body). Konfigurasi `config/activity.php` (enabled, log_reads=false, retensi 90 hari, skip list). `activity:prune` harian.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

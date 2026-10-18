@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\CompanyVerificationMail;
 use App\Models\AuditLog;
 use App\Models\Company;
+use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -25,7 +26,7 @@ class CompanyVerificationController extends Controller
         );
     }
 
-    public function decide(Request $request, Company $company): JsonResponse
+    public function decide(Request $request, Company $company, Notifier $notifier): JsonResponse
     {
         $data = $request->validate([
             'decision' => ['required', 'in:approve,reject'],
@@ -43,6 +44,8 @@ class CompanyVerificationController extends Controller
         AuditLog::record($approve ? 'verifikasi_perusahaan' : 'tolak_perusahaan', Company::class, $company->id, $request->user()->id, $request->ip());
         foreach ($company->users()->where('role', 'hr')->get() as $hr) {
             Mail::to($hr->email)->queue(new CompanyVerificationMail($company, $hr));
+            $notifier->send($hr, 'verifikasi', $approve ? 'Perusahaan diverifikasi' : 'Pendaftaran perusahaan belum disetujui',
+                $approve ? 'Anda kini bisa menambah posisi, kandidat, dan memesan asesmen.' : ($data['note'] ?? 'Lihat email untuk catatan admin.'), '/status-perusahaan', mail: false);
         }
 
         return response()->json($company->fresh());

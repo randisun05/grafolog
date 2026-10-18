@@ -1,9 +1,10 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
+import { useInbox } from '@/composables/useInbox'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -26,6 +27,16 @@ watch(
   },
   { immediate: true },
 )
+// Lonceng kotak masuk: segarkan hitungan tiap pindah halaman + polling ringan 60 dtk.
+const { unread, refresh: refreshInbox } = useInbox()
+watch(
+  () => [auth.isAuthenticated, route.fullPath],
+  ([ok]) => (ok ? refreshInbox() : (unread.value = 0)),
+  { immediate: true },
+)
+let inboxTimer
+onMounted(() => (inboxTimer = setInterval(() => auth.isAuthenticated && refreshInbox(), 60000)))
+onBeforeUnmount(() => clearInterval(inboxTimer))
 const { theme, toggle: toggleTheme } = useTheme()
 
 const isDark = computed(() => {
@@ -87,6 +98,8 @@ async function handleLogout() {
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
             <RouterLink to="/admin/engagement">Cek Tulisan, Mitra &amp; Artikel</RouterLink>
             <RouterLink to="/admin/announcements">Pengumuman</RouterLink>
+            <RouterLink to="/admin/broadcast">Broadcast Kotak Masuk</RouterLink>
+            <RouterLink to="/admin/log-aktivitas">Log Aktivitas</RouterLink>
             <RouterLink to="/admin/knowledge">Knowledge Base</RouterLink>
           </div>
         </details>
@@ -99,6 +112,24 @@ async function handleLogout() {
           >{{ auth.user?.name }}</RouterLink
         >
         <span v-else class="app-navbar__user">{{ auth.user?.name }}</span>
+        <RouterLink
+          to="/kotak-masuk"
+          class="app-navbar__bell"
+          title="Kotak masuk"
+          aria-label="Kotak masuk"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+          </svg>
+          <span v-if="unread" class="app-navbar__badge">{{ unread > 99 ? '99+' : unread }}</span>
+        </RouterLink>
         <span class="app-navbar__cmdk-hint" title="Buka command palette">Ctrl/&#8984;+K</span>
         <button type="button" class="app-navbar__logout" @click="handleLogout">Keluar</button>
       </template>
@@ -218,6 +249,11 @@ async function handleLogout() {
 }
 .app-navbar__menu-list a:hover {
   background: var(--color-seal-soft);
+}
+.app-navbar__bell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .app-navbar__user {
   color: var(--color-ink-soft);

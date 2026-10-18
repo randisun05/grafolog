@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\GrafologVerificationMail;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -40,7 +41,7 @@ class GrafologVerificationController extends Controller
         return Storage::disk(GrafologRegistrationController::CERT_DISK)->response($user->certificate_path);
     }
 
-    public function decide(Request $request, User $user): JsonResponse
+    public function decide(Request $request, User $user, Notifier $notifier): JsonResponse
     {
         abort_unless($user->role === 'grafolog', 404);
         $data = $request->validate([
@@ -58,6 +59,8 @@ class GrafologVerificationController extends Controller
 
         AuditLog::record($approve ? 'verifikasi_grafolog' : 'tolak_grafolog', User::class, $user->id, $request->user()->id, $request->ip());
         Mail::to($user->email)->queue(new GrafologVerificationMail($user));
+        $notifier->send($user, 'verifikasi', $approve ? 'Akun grafolog diverifikasi' : 'Pendaftaran grafolog belum disetujui',
+            $approve ? 'Anda kini bisa mendaftarkan klien dan menerima penugasan.' : ($data['note'] ?? 'Lihat email untuk catatan admin.'), '/status-grafolog', mail: false);
 
         return response()->json($user->only(['id', 'name', 'email', 'grafolog_status', 'grafolog_review_note', 'grafolog_verified_at']));
     }

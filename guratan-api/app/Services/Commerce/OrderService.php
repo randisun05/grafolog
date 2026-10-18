@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Notifications\Notifier;
 use App\Services\Payment\DokuService;
 use App\Services\Payment\PaymentMode;
 use Illuminate\Support\Collection;
@@ -27,7 +28,7 @@ use Illuminate\Support\Str;
  */
 class OrderService
 {
-    public function __construct(private DokuService $doku) {}
+    public function __construct(private DokuService $doku, private Notifier $notifier) {}
 
     /** @return array{base:int, amount:int, discount:?DiscountCode} */
     public function quote(Product $product, ?string $code): array
@@ -165,6 +166,21 @@ class OrderService
                 ->where('stage', 'baru')
                 ->update(['stage' => 'asesmen']);
         });
+
+        // Satu notifikasi per pihak (bukan per kandidat): HR, grafolog pilihan, dan tiap kandidat (kotak masuk saja).
+        $n = $batch->orders()->count();
+        if ($batch->creator) {
+            $this->notifier->send($batch->creator, 'pembayaran', 'Pembayaran pesanan perusahaan diterima',
+                "Pesanan #{$batch->id} ({$n} kandidat) lunas. Grafolog pilihan sudah ditugaskan.", '/hr/candidates?tab=pesanan');
+        }
+        if ($batch->grafolog) {
+            $this->notifier->send($batch->grafolog, 'penugasan', 'Penugasan baru dari perusahaan',
+                "Anda ditugaskan menangani {$n} kandidat (bulan layanan {$batch->service_month}) dari pesanan #{$batch->id}.", '/grafolog/ditugaskan');
+        }
+        $batch->orders()->with('user')->get()->each(fn (Order $o) => $this->notifier->send(
+            $o->user, 'tugas_asesmen', 'Tugas asesmen dari perusahaan',
+            'Unggah hasil scan tulisan tangan Anda (PDF) untuk asesmen yang dipesan perusahaan.', '/tugas-asesmen', mail: false,
+        ));
     }
 
     public function cancelBatch(OrderBatch $batch, string $reason, User $by, ?string $ip = null): void
@@ -243,6 +259,16 @@ class OrderService
                 );
             }
         });
+
+        // Notifikasi di luar transaksi. B2C: ke klien; layanan/penugasan: ke grafolog yang ditugaskan.
+        if (! $order->batch_id) {
+            $this->notifier->send($order->user, 'pembayaran', 'Pembayaran diterima',
+                "Pesanan #{$order->id} ({$order->product->nama}) sudah dibayar dan sedang diproses.", '/riwayat');
+        }
+        if ($order->grafolog_id && ! $order->batch_id) {
+            $this->notifier->send($order->grafolog, 'penugasan', 'Penugasan baru',
+                "Anda ditugaskan menangani pesanan #{$order->id} ({$order->product->nama}) untuk kandidat/klien.", '/grafolog/ditugaskan');
+        }
     }
 
     /** Tandai selesai bila laporan grafologi disetujui dan semua layanan sudah dilaporkan. */

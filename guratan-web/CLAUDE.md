@@ -704,6 +704,11 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `AdminVerificationView` (`/admin/verifikasi?tab=grafolog|perusahaan`) + menu navbar "Verifikasi"
   berlencana jumlah pending (top-level, bukan hanya dropdown) + kartu "Perlu tindakan" di Dashboard admin.
 
+## Kotak masuk, broadcast, log aktivitas — 2026-10-18
+
+- Lonceng di `AppNavbar` (unread dari `composables/useInbox.js`, refresh tiap ganti route + polling 60 dtk) → `/kotak-masuk` (`InboxView`: filter belum dibaca, tandai semua, klik → `url` pesan).
+- Admin: `/admin/broadcast` (`AdminBroadcastView`, konfirmasi sebelum kirim) dan `/admin/log-aktivitas` (`AdminActivityView`, filter + paginasi). Ada di menu Admin & CommandPalette.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

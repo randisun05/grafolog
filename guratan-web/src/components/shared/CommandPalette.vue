@@ -23,6 +23,7 @@ const commands = computed(() => {
   if (auth.isClient) {
     items.push({ label: 'Pesan Laporan', to: { name: 'order' } })
   }
+  items.push({ label: 'Kotak Masuk', to: { name: 'inbox' } })
   if (auth.isGrafolog) {
     items.push({ label: 'Portal Grafolog', to: { name: 'portal-grafolog' } })
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
@@ -39,6 +40,8 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })
     items.push({ label: 'Cek Tulisan, Mitra & Artikel', to: { name: 'admin-engagement' } })
     items.push({ label: 'Pengumuman', to: { name: 'admin-announcements' } })
+    items.push({ label: 'Broadcast Kotak Masuk', to: { name: 'admin-broadcast' } })
+    items.push({ label: 'Log Aktivitas', to: { name: 'admin-activity' } })
     items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })
     items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
   }

@@ -39,6 +39,11 @@ class OrderBatch extends Model
         return $this->belongsTo(User::class, 'grafolog_id');
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function discountCode(): BelongsTo
     {
         return $this->belongsTo(DiscountCode::class);

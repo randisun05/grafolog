@@ -7,6 +7,7 @@ use App\Http\Requests\StoreAssignmentRequest;
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
 use App\Models\User;
+use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -17,7 +18,7 @@ use Illuminate\Http\JsonResponse;
  */
 class AssignmentController extends Controller
 {
-    public function store(StoreAssignmentRequest $request, HandwritingSample $sample): JsonResponse
+    public function store(StoreAssignmentRequest $request, HandwritingSample $sample, Notifier $notifier): JsonResponse
     {
         $user = $request->user();
 
@@ -35,6 +36,8 @@ class AssignmentController extends Controller
             ['sample_id' => $sample->id],
             ['grafolog_id' => $grafolog->id, 'assigned_by' => $user->id, 'status' => 'assigned']
         );
+
+        $notifier->send($grafolog, 'penugasan', 'Penugasan baru', "Anda ditugaskan menangani sampel #{$sample->id}.", '/grafolog/ditugaskan');
 
         return response()->json($assignment->load('grafolog:id,name,email'), 201);
     }

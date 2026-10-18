@@ -12,3 +12,4 @@ Artisan::command('inspire', function () {
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
 Schedule::call(fn () => app(ReportValidationService::class)->sweep())
     ->hourly()->name('supervisi-sweep');
+Schedule::command('activity:prune')->daily();

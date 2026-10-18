@@ -193,6 +193,24 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/kotak-masuk',
+      name: 'inbox',
+      component: () => import('../views/InboxView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/broadcast',
+      name: 'admin-broadcast',
+      component: () => import('../views/AdminBroadcastView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/log-aktivitas',
+      name: 'admin-activity',
+      component: () => import('../views/AdminActivityView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/hr/candidates',
       name: 'hr-candidates',
       component: () => import('../views/HrCandidatesView.vue'),
