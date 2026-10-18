@@ -1,88 +1,150 @@
 <!--
-STATUS: DRAFT — belum ditinjau tim legal/bisnis. Sejak 2026-10-03
-ditampilkan di guratan-web (/syarat) dengan banner "Draf" selama masih ada
-[kurung siku]. Ditulis 2026-07-27, diperbarui 2026-10-03. Semua
-[DALAM KURUNG SIKU] wajib diisi/dikonfirmasi. Pasal 3 (batasan keakuratan)
-adalah yang PALING PENTING di dokumen ini - ini yang melindungi Guratan
-secara hukum dari klaim "produk ini salah mendiagnosis saya", sesuai prinsip
-"jangan klaim akurasi ilmiah berlebihan" di CLAUDE.md root. Jangan lemahkan
-pasal ini demi bahasa pemasaran yang lebih menarik.
+Ditulis ulang 2026-10-18 (tahap 5). Memuat kondisi sistem terbaru: scan PDF,
+akun kandidat B2B, supervisi antar-grafolog, analisis gabungan berbantuan AI,
+kebijakan tanpa pembatalan setelah bayar, refund hanya oleh administrator.
+Kurung siku [HURUF KAPITAL] = data entitas hukum yang tidak bisa dikarang;
+banner "Draf" di web tampil selama masih ada. Pasal 3 (bukan diagnosis) adalah
+pelindung hukum utama - jangan dilemahkan demi bahasa pemasaran. Draf ini belum
+ditinjau penasihat hukum.
 -->
 
 # Ketentuan Layanan Guratan
 
-*Terakhir diperbarui: [TANGGAL RILIS]*
+*Berlaku sejak: [TANGGAL RILIS] · Versi 1.0*
+
+Dengan membuat akun atau memakai Guratan, Anda menyetujui ketentuan ini dan
+[Kebijakan Privasi](/privasi). Bila tidak setuju, mohon tidak menggunakan layanan.
 
 ## 1. Tentang Layanan
 
-Guratan adalah platform analisis grafologi (ilmu membaca kepribadian dari
-tulisan tangan) berbasis web, tersedia dalam dua tier:
+Guratan adalah platform analisis grafologi (membaca kecenderungan kepribadian dari
+tulisan tangan) berbahasa Indonesia, dioperasikan oleh [NAMA PERUSAHAAN].
 
-| Tier | Cara Kerja |
+| Layanan | Cara Kerja |
 |---|---|
-| Comprehensive (berbayar) | Grafolog bersertifikat mengukur tulisan tangan Anda secara manual dan mengisi skor 40 aspek. Laporan ditinjau supervisor sebelum dirilis. |
-| Master (berbayar, premium) | Sama seperti Comprehensive, ditambah satu sesi konsultasi daring dengan grafolog (jadwal dan tautan ditetapkan grafolog). |
+| Comprehensive (berbayar) | Grafolog bersertifikat mengukur tulisan tangan dari scan PDF secara manual (kaliper) dan mengisi skor 40 aspek; laporan dibuat dari basis pengetahuan grafologi. |
+| Master (berbayar) | Seperti Comprehensive, ditambah satu sesi konsultasi daring dengan grafolog. |
+| Layanan pendukung | Wawancara, konsultasi, konseling, program lain sesuai katalog. |
+| Asesmen perusahaan (B2B) | Perusahaan memesan asesmen untuk kandidat; grafolog dipilih perusahaan dari yang tersedia; tersedia analisis gabungan antar-kandidat. |
 
-## 2. Bukan Alat Diagnosis Klinis
+## 2. Peran Pengguna
 
-**Guratan adalah alat insight reflektif untuk eksplorasi kepribadian, BUKAN
-alat diagnosis psikologis atau klinis.** Grafologi tidak memiliki dasar
-ilmiah sekuat psikometri standar (misalnya Big Five). Laporan yang Anda
-terima:
+- **Klien**: individu yang memesan analisis untuk dirinya sendiri.
+- **Grafolog**: profesional terverifikasi yang mengukur dan menerbitkan laporan. Dapat
+  menugaskan grafolog lain sebagai *supervisor* untuk memvalidasi laporannya (pasal 9).
+- **HR / Perusahaan**: perusahaan terverifikasi yang memesan asesmen kandidat dan
+  mengelola akun kandidatnya.
+- **Kandidat**: orang yang didaftarkan perusahaan. Akun dibuat oleh HR tanpa email
+  pemberitahuan; kata sandi sementara diserahkan HR dan wajib diganti saat masuk pertama.
+- **Administrator**: staf Guratan.
 
-- Tidak boleh dijadikan satu-satunya dasar keputusan penting (medis, hukum,
-  finansial, atau hubungan kerja/rekrutmen).
-- Tidak menggantikan konsultasi dengan psikolog atau profesional kesehatan
-  mental berlisensi.
-- Disusun dari basis pengetahuan grafologi (referensi Sindrom/Aspek/
-  Indikator) yang ditafsirkan oleh grafolog bersertifikat.
+## 3. Bukan Alat Diagnosis
 
-## 3. Batasan Tanggung Jawab
+**Guratan adalah alat insight reflektif, BUKAN alat diagnosis psikologis atau klinis.**
+Grafologi tidak memiliki dasar ilmiah sekuat psikometri standar. Laporan dan analisis
+(termasuk analisis gabungan berbantuan AI):
 
-Sepanjang diizinkan hukum yang berlaku, [NAMA PERUSAHAAN] tidak bertanggung
-jawab atas keputusan yang Anda ambil berdasarkan laporan Guratan, termasuk
-namun tidak terbatas pada keputusan karier, hubungan, atau kesehatan mental.
-Jika Anda mengalami masalah kesehatan mental, segera hubungi profesional
-berlisensi atau layanan darurat setempat.
+- tidak boleh menjadi satu-satunya dasar keputusan penting: kesehatan, hukum, keuangan,
+  serta **rekrutmen, promosi, atau pemutusan hubungan kerja**;
+- tidak menggantikan psikolog atau profesional kesehatan mental berlisensi;
+- tidak menyatakan seseorang "lolos/tidak lolos"; keputusan tetap tanggung jawab manusia
+  pengambil keputusan.
 
-## 4. Akun Pengguna
+Perusahaan pengguna menyatakan akan memakai hasil Guratan hanya sebagai salah satu
+pertimbangan, bersama metode seleksi lain yang sah.
 
-- Anda bertanggung jawab menjaga kerahasiaan kata sandi akun Anda.
-- Grafolog dapat mendaftar sendiri, tetapi akunnya baru aktif setelah
-  administrator Guratan memverifikasi sertifikat grafologinya.
-  [Tuliskan kriteria verifikasi sertifikasi yang dipakai.]
-- Akun perusahaan (B2B) aktif setelah administrator memverifikasi data
-  perusahaan.
+## 4. Akun dan Keamanan
 
-## 5. Pembayaran & Pengembalian Dana
+- Jaga kerahasiaan kata sandi; aktivitas dari akun Anda menjadi tanggung jawab Anda.
+- Informasi pendaftaran harus benar. Akun grafolog dan perusahaan aktif setelah
+  administrator memverifikasi sertifikat/dokumen yang diminta.
+- Kami dapat menangguhkan akun yang melanggar ketentuan, menyalahgunakan sistem, atau
+  memberi data palsu.
+- Aktivitas pada sistem dicatat dalam log ringan untuk keamanan (lihat Kebijakan Privasi).
 
-- Pembayaran diproses melalui mitra payment gateway pihak ketiga, DOKU.
-- Harga berlaku sesuai yang tertera di halaman pemesanan saat transaksi
-  dilakukan.
-- Pembelian, pembatalan, dan pengembalian dana mengikuti
-  [Kebijakan Pembelian, Pembatalan & Pengembalian Dana](/kebijakan-transaksi).
+## 5. Unggahan Tulisan Tangan
 
-## 6. Kekayaan Intelektual
+- Unggah **hasil scan dalam format PDF** (kertas A4/F4 utuh), bukan foto. Sistem memeriksa
+  format dan ukuran halaman.
+- Anda menjamin tulisan tangan itu milik Anda, atau Anda memiliki persetujuan sah pemilik
+  tulisan (untuk perusahaan: persetujuan kandidat).
+- Dilarang mengunggah konten melanggar hukum atau tidak berkaitan dengan layanan.
 
-Basis pengetahuan grafologi (Sindrom, Aspek, Indikator, dan narasi terkait)
-adalah milik [NAMA PEMEGANG HAK - perusahaan/individu penyusun materi
-grafologi asli]. Laporan yang dihasilkan untuk Anda adalah milik Anda untuk
-penggunaan pribadi.
+## 6. Pemesanan, Pembayaran, dan Pembatalan
 
-## 7. Perubahan Ketentuan
+- Harga yang berlaku adalah harga saat pesanan dibuat, termasuk promo yang sah saat itu.
+  Pembayaran melalui mitra payment gateway DOKU.
+- **Pesanan yang belum dibayar** dapat dibatalkan tanpa biaya.
+- **Pesanan yang sudah dibayar (sudah di-order) tidak dapat dibatalkan** oleh pengguna.
+  Dengan membayar, Anda menyetujui ketentuan ini.
+- **Pengembalian dana hanya dapat dipicu oleh administrator Guratan**, dan hanya bila:
+  (a) terjadi **kesalahan sistem** (mis. pembayaran sukses tetapi pesanan tidak terproses), atau
+  (b) pesanan **belum selesai dikerjakan grafolog lebih dari 90 hari** sejak dibayar.
+  Dana dikembalikan ke metode pembayaran semula. Rincian ada di
+  [Kebijakan Pembelian & Refund](/kebijakan-transaksi).
+- Isi laporan yang menurut Anda kurang sesuai bukan alasan refund; ajukan keberatan atau
+  koreksi lewat kanal kontak (pasal 12).
 
-Kami dapat memperbarui Ketentuan Layanan ini dari waktu ke waktu.
-Perubahan material akan diberitahukan melalui [email / notifikasi di
-aplikasi].
+## 7. Jadwal dan Ketersediaan Grafolog
 
-## 8. Hukum yang Berlaku
+Grafolog menetapkan ketersediaan per bulan untuk satu tahun ke depan. Pemesan hanya dapat
+memilih grafolog yang tersedia pada bulan layanan yang dipilih. Estimasi waktu pengerjaan
+adalah perkiraan, bukan jaminan, tetapi tunduk pada batas 90 hari di pasal 6.
 
-Ketentuan ini diatur oleh hukum Republik Indonesia. [Konfirmasi mekanisme
-penyelesaian sengketa - pengadilan negeri mana / arbitrase, sesuai domisili
-badan hukum perusahaan.]
+## 8. Token Grafolog
 
-## 9. Kontak
+Token adalah saldo internal grafolog untuk layanan supervisi; **bukan uang elektronik**,
+tidak dapat diperjualbelikan antar-pengguna di luar sistem, dan pencairannya diatur
+terpisah oleh Guratan.
 
-[NAMA PERUSAHAAN/ENTITAS HUKUM]
-[ALAMAT]
-[EMAIL KONTAK]
+## 9. Supervisi Antar-Grafolog
+
+Grafolog pembuat laporan dapat menugaskan grafolog lain yang tersedia sebagai
+supervisor dengan batas waktu yang ia tentukan. Supervisor dapat menolak atau
+menyetujui/menolak laporan. Token biaya supervisi ditahan di sistem (escrow) dan baru
+diteruskan ke supervisor setelah pembuat laporan mengonfirmasi hasil; bila supervisor
+melewati batas waktu atau menolak penugasan, token kembali dan penugasan dapat dialihkan.
+Administrator hanya mengindeks penugasan dan tidak menerima token.
+
+## 10. Analisis Berbantuan AI
+
+Untuk analisis gabungan kandidat, Guratan dapat memakai penyedia AI pihak ketiga yang
+hanya menerima **data teranonimkan** (tanpa nama/email/identitas) berupa ringkasan skor
+dan teks dari basis pengetahuan. Hasilnya disusun dari teks basis pengetahuan,
+ditandai jelas sebagai ringkasan otomatis, dan dapat berbeda antar-pembuatan. Bila
+layanan AI tidak tersedia, sistem memakai ringkasan berbasis aturan tanpa AI.
+
+## 11. Kekayaan Intelektual
+
+Basis pengetahuan grafologi (sindrom, aspek, indikator, narasi) dan perangkat lunak
+Guratan adalah milik [PEMEGANG HAK]. Laporan yang dibuat untuk Anda boleh Anda gunakan
+untuk keperluan pribadi/internal; dilarang menjual ulang atau menyalin basis pengetahuan
+secara massal.
+
+## 12. Notifikasi dan Komunikasi
+
+Kami mengirim notifikasi lewat email dan kotak masuk di aplikasi (status pesanan,
+penugasan, laporan selesai, verifikasi, pengumuman). Akun kandidat perusahaan hanya
+menerima notifikasi di kotak masuk. Pesan layanan penting tidak dapat dimatikan.
+
+## 13. Batasan Tanggung Jawab
+
+Sepanjang diizinkan hukum, [NAMA PERUSAHAAN] tidak bertanggung jawab atas keputusan
+yang diambil berdasarkan laporan, termasuk keputusan karier, hubungan, atau kesehatan.
+Tanggung jawab kami untuk satu pesanan dibatasi sebesar nilai yang Anda bayarkan untuk
+pesanan tersebut, kecuali hukum menentukan lain. Layanan diberikan sebagaimana adanya
+tanpa jaminan keakuratan ilmiah.
+
+## 14. Perubahan Ketentuan
+
+Ketentuan dapat diperbarui. Perubahan material diberitahukan lewat email dan kotak
+masuk minimal 14 hari sebelum berlaku; pemakaian setelahnya berarti menerima.
+
+## 15. Hukum dan Sengketa
+
+Tunduk pada hukum Republik Indonesia. Kami mengutamakan penyelesaian musyawarah;
+bila gagal, sengketa diselesaikan di pengadilan negeri tempat domisili [NAMA PERUSAHAAN].
+
+## 16. Kontak
+
+[NAMA PERUSAHAAN] · [ALAMAT] · [EMAIL KONTAK]

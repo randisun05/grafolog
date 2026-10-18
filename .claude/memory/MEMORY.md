@@ -20,3 +20,4 @@
 - [Payment bypass](project_payment_bypass.md) — 2026-10-17: PAYMENT_BYPASS test mode, orders/tokens instantly paid without DOKU; never in production
 - [Manual-test feedback](project_manual_test_feedback.md) — 2026-10-17: 21 points, decisions, phases A–E (A–E all done)
 - [Notifikasi & log aktivitas](project_notifications_activity.md) — 2026-10-18: Notifier (inbox + email queued), broadcast admin, activity_logs ringan (90 hari); tahap 5 (ToS/Privacy) menyusul
+- [Legal 1.0](project_notifications_activity.md) — 2026-10-18: ToS/Privacy/SOP ditulis ulang (UU PDP, scan PDF, AI anonim, log 90 hari, no-cancel, refund admin-only); sisa placeholder [ENTITAS] wajib diisi + review penasihat hukum

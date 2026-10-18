@@ -1,116 +1,119 @@
 <!--
-STATUS: DRAFT — belum ditinjau tim legal/bisnis. Sejak 2026-10-03 file ini
-DITAMPILKAN di guratan-web (/privasi, ditautkan dari checkbox persetujuan
-register) dengan banner "Draf" selama masih ada [kurung siku] - wajib
-ditinjau penasihat hukum sebelum go-live. Ditulis 2026-07-27, diperbarui
-2026-10-03 (Rapid dihapus, foto privat, HR, supervisor, konsultasi) berdasarkan
-CLAUDE.md root (prinsip produk) dan kondisi teknis nyata di guratan-api/web
-CLAUDE.md. Semua [DALAM KURUNG SIKU] wajib diisi/dikonfirmasi sebelum rilis.
-Rujukan hukum: UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (PDP) -
-draft ini mengasumsikan Guratan adalah Pengendali Data Pribadi berdasarkan UU
-tsb; konfirmasikan ke penasihat hukum, jangan andalkan draft AI untuk
-kepatuhan hukum final.
+Ditulis ulang 2026-10-18 (tahap 5) mengacu UU No. 27 Tahun 2022 (PDP): data
+spesifik/sensitif, dasar pemrosesan (persetujuan), hak subjek data (Ps. 5-15),
+kewajiban pengendali (Ps. 20-50 termasuk pemberitahuan kegagalan pelindungan
+dalam 3x24 jam, Ps. 46), pejabat PDP (Ps. 53), transfer lintas negara (Ps. 56).
+Isi mengikuti kondisi sistem nyata (lihat guratan-api/CLAUDE.md). Kurung siku
+[HURUF KAPITAL] = data entitas yang harus diisi. Belum ditinjau penasihat hukum.
 -->
 
 # Kebijakan Privasi Guratan
 
-*Terakhir diperbarui: [TANGGAL RILIS]*
+*Berlaku sejak: [TANGGAL RILIS] · Versi 1.0*
 
-## 1. Data Apa yang Kami Kumpulkan
+[NAMA PERUSAHAAN] ("kami") adalah **Pengendali Data Pribadi** atas data yang diproses
+lewat Guratan menurut UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP).
 
-- **Data akun**: nama, email, kata sandi (di-hash, tidak pernah disimpan
-  dalam bentuk asli), peran, serta waktu Anda memberikan persetujuan
-  pemrosesan data.
-- **Foto tulisan tangan**: diunggah oleh Anda (atau oleh grafolog/perusahaan
-  yang menangani Anda) untuk diukur oleh grafolog. Disimpan di penyimpanan
-  privat, tidak bisa diakses lewat tautan publik.
-- **Skor grafologi**: 40 aspek yang diinput grafolog bersertifikat
-  berdasarkan pengukuran manual tulisan tangan Anda, beserta catatan
-  pengukuran.
-- **Jadwal konsultasi** (tier Master): waktu dan tautan pertemuan daring.
-- **Data pembayaran** (tier Comprehensive/Master): nomor invoice, jumlah,
-  status transaksi. Detail kartu/rekening/e-wallet Anda **tidak pernah**
-  disimpan atau diproses oleh server kami — diproses langsung oleh mitra
-  payment gateway kami, DOKU ([tautan kebijakan privasi DOKU]).
-- **Log akses**: setiap kali laporan kepribadian Anda dibaca (termasuk oleh
-  Anda sendiri), dicatat untuk audit keamanan (waktu, alamat IP, hasil akses
-  diterima/ditolak).
+## 1. Data yang Kami Proses
 
-## 2. Kenapa Data Ini Sensitif
+| Kategori | Isi |
+|---|---|
+| Akun | Nama, email, kata sandi (di-hash), peran, waktu persetujuan. |
+| Tulisan tangan | **Scan PDF** tulisan tangan, disimpan privat (tanpa tautan publik). |
+| Hasil analisis | Skor 40 aspek, catatan pengukuran, laporan kepribadian, analisis gabungan kandidat. |
+| Kandidat (B2B) | Nama, identitas akun yang dibuat HR, posisi/jabatan yang dinilai, status penugasan. |
+| Grafolog | Profil, sertifikat, ketersediaan bulanan, saldo dan riwayat token, riwayat supervisi. |
+| Transaksi | Nomor pesanan/invoice, jumlah, status; detail kartu/rekening **tidak** kami simpan (diproses DOKU). |
+| Komunikasi | Pesan kotak masuk, riwayat email notifikasi, jadwal konsultasi. |
+| Log aktivitas | Waktu, akun, jenis kejadian (permintaan/login/login gagal/logout), alamat endpoint, kode status, alamat IP, user agent. **Tanpa isi permintaan** dan tanpa isi tulisan/laporan. |
+| Log audit | Setiap akses ke laporan/scan dan tindakan penting administratif. |
 
-Laporan kepribadian yang dihasilkan Guratan berasal dari analisis grafologi
-terhadap tulisan tangan Anda. **Kami memperlakukan ini sebagai data pribadi
-yang bersifat sensitif** (terkait profil psikologis seseorang), meskipun
-grafologi sendiri bukan alat diagnosis klinis berbasis psikometri standar —
-lihat Ketentuan Layanan pasal soal batasan keakuratan. Karena sifat
-sensitifnya, kami menerapkan kontrol keamanan tambahan (lihat bagian 4).
+## 2. Data Sensitif
 
-## 3. Untuk Apa Data Digunakan
+Hasil analisis grafologi adalah profil kepribadian seseorang. Kami **memperlakukannya
+sebagai data pribadi yang bersifat sensitif** dan hanya memprosesnya dengan persetujuan
+eksplisit Anda (atau, untuk kandidat, persetujuan yang dikonfirmasi perusahaan). Kami
+tidak memakai data ini untuk iklan atau profiling lain di luar layanan.
 
-- Menghasilkan dan menampilkan laporan kepribadian Anda.
-- Memproses pembayaran untuk tier berbayar (Comprehensive/Master).
-- Mengirim notifikasi email saat laporan Anda selesai dan disetujui, saat
-  jadwal konsultasi ditetapkan, dan untuk pemulihan kata sandi.
-- Peninjauan mutu (quality review) laporan oleh supervisor internal
-  sebelum laporan dirilis kepada Anda.
-- Audit keamanan internal (mendeteksi akses tidak sah ke laporan sensitif).
-- **Tidak digunakan** untuk melatih model AI/LLM pihak ketiga — narasi
-  laporan berasal dari basis pengetahuan grafologi yang sudah ada, LLM (jika
-  dipakai) hanya merangkai teks yang sudah tersedia, bukan mengirim data
-  pribadi Anda ke penyedia LLM eksternal untuk pemrosesan bebas. [Konfirmasi:
-  status LLM_PROVIDER aktif saat rilis - lihat guratan-api/CLAUDE.md, karena
-  ini memengaruhi apakah ada data yang benar-benar dikirim ke pihak ketiga.]
+## 3. Tujuan dan Dasar Pemrosesan
 
-## 4. Bagaimana Data Dilindungi
+- Membuat dan menampilkan laporan Anda (persetujuan/pelaksanaan perjanjian).
+- Memproses pembayaran, refund oleh administrator, dan pembukuan (perjanjian & kewajiban hukum).
+- Mengirim notifikasi email dan kotak masuk tentang pesanan/penugasan/laporan.
+- Validasi mutu laporan lewat supervisi grafolog lain (laporan yang diminta supervisi dilihat supervisor terkait).
+- Keamanan sistem, pencegahan penyalahgunaan, dan audit (kepentingan sah & kewajiban keamanan).
+- Analisis gabungan kandidat berbantuan AI untuk perusahaan (lihat pasal 4).
 
-- Kata sandi di-hash (bcrypt), tidak pernah disimpan/ditampilkan dalam
-  bentuk asli.
-- Autentikasi berbasis token (Sanctum), dikirim lewat HTTPS di production.
-- Setiap pembacaan laporan kepribadian tercatat di log audit internal,
-  terlepas dari apakah akses tersebut berhasil atau ditolak.
-- Foto tulisan tangan dan laporan hanya bisa diakses oleh pemilik akun,
-  grafolog yang menangani, supervisor peninjau mutu, administrator, dan -
-  untuk kandidat rekrutmen - HR perusahaan yang mendaftarkan Anda. Setiap
-  akses foto dan laporan dicatat di log audit.
-- Sesi login otomatis kedaluwarsa setelah [30] hari.
+## 4. Pemrosesan oleh Penyedia AI
 
-## 5. Berapa Lama Data Disimpan
+Analisis gabungan memakai penyedia model bahasa pihak ketiga ([PENYEDIA AI]). Yang
+dikirim hanya **data teranonimkan**: ringkasan skor dan teks dari basis pengetahuan
+grafologi, **tanpa nama, email, identitas, maupun scan**. Teks pembentuk narasi laporan
+berasal dari basis pengetahuan; AI tidak mengarang interpretasi baru dan tidak
+memutuskan kelolosan. Hasil disimpan sementara (cache) agar tidak diproses ulang.
+Data tidak digunakan kami untuk melatih model. Penyedia dapat berada di luar Indonesia;
+transfer lintas negara dilakukan dengan memastikan tingkat pelindungan yang memadai
+sesuai UU PDP.
 
-[BELUM DIPUTUSKAN - perlu kebijakan retensi resmi. Pertimbangan: laporan
-kepribadian dan skor mentah bisa disimpan selama akun aktif; pertimbangkan
-periode penghapusan otomatis setelah akun tidak aktif N tahun, sesuai
-prinsip minimisasi data UU PDP.]
+## 5. Siapa yang Dapat Mengakses
 
-## 6. Berbagi Data ke Pihak Ketiga
+- Pemilik akun, grafolog yang menangani, supervisor yang ditugaskan pada laporan itu,
+  dan administrator (terbatas kebutuhan operasional).
+- **Kandidat B2B**: HR perusahaan yang mendaftarkan Anda melihat laporan dan analisis
+  Anda. Perusahaan wajib mendapat persetujuan Anda sebelum mendaftarkan; akun Anda dibuat
+  perusahaan tanpa email, dan kata sandi sementara wajib Anda ganti.
+- Perusahaan lain tidak dapat melihat data Anda.
+- Kami **tidak menjual** data pribadi.
 
-- **DOKU** (payment gateway): menerima nama, email, dan detail transaksi
-  untuk memproses pembayaran tier berbayar. Tidak menerima foto tulisan
-  tangan atau skor kepribadian Anda.
-- **Penyedia email** [isi nama provider SMTP production]: menerima alamat
-  email untuk mengirim notifikasi laporan selesai.
-- Kami **tidak menjual** data pribadi Anda ke pihak mana pun.
-- **Perusahaan perekrut (B2B)**: jika Anda didaftarkan sebagai kandidat
-  oleh HR sebuah perusahaan, laporan Anda dapat dilihat oleh HR perusahaan
-  tersebut. Perusahaan wajib memperoleh persetujuan tertulis Anda sebelum
-  mendaftarkan Anda (dikonfirmasi HR di sistem saat impor kandidat).
-  [Tinjau penasihat hukum: apakah perlu perjanjian pemrosesan data
-  terpisah dengan perusahaan klien.]
+## 6. Pihak Ketiga
 
-## 7. Hak Anda
+| Pihak | Data | Tujuan |
+|---|---|---|
+| DOKU | Nama, email, detail transaksi | Pembayaran |
+| Penyedia email [PENYEDIA EMAIL] | Alamat email, isi notifikasi | Pengiriman email |
+| Penyedia AI | Data teranonimkan | Analisis gabungan |
+| Penyedia hosting [PENYEDIA HOSTING] | Seluruh data tersimpan terenkripsi sesuai konfigurasi | Infrastruktur |
 
-Sesuai UU PDP, Anda berhak untuk:
-- Meminta salinan data pribadi yang kami simpan tentang Anda.
-- Meminta koreksi data yang tidak akurat.
-- Meminta penghapusan akun dan data terkait (dengan pengecualian data yang
-  wajib disimpan untuk kepatuhan hukum/pembukuan transaksi).
-- Menarik persetujuan pemrosesan data (dapat berdampak pada kemampuan kami
-  memberikan layanan).
+## 7. Retensi
 
-Hubungi kami di [EMAIL KONTAK PRIVASI] untuk permintaan terkait hak-hak di
-atas.
+| Data | Disimpan |
+|---|---|
+| Log aktivitas | **90 hari**, lalu dihapus otomatis. |
+| Log audit keamanan | [BATAS RETENSI AUDIT, mis. 2 tahun]. |
+| Data transaksi | Sesuai kewajiban pembukuan/pajak. |
+| Scan, skor, laporan | Selama akun aktif; dihapus/dianonimkan atas permintaan Anda, kecuali yang wajib disimpan hukum. |
+| Akun kandidat | Mengikuti masa penugasan di perusahaan; dihapus saat perusahaan atau Anda memintanya. |
+| Pesan kotak masuk | Selama akun aktif. |
 
-## 8. Kontak
+## 8. Keamanan
 
-[NAMA PERUSAHAAN/ENTITAS HUKUM]
-[ALAMAT]
-[EMAIL KONTAK]
+Kata sandi di-hash; token sesi kedaluwarsa otomatis (maks. 30 hari); lalu lintas lewat
+HTTPS; berkas scan di penyimpanan privat; pembatasan akses berbasis peran; pencatatan
+audit atas akses laporan; log aktivitas hanya berisi metadata. **Bila terjadi kegagalan
+pelindungan data pribadi**, kami memberitahu Anda dan lembaga berwenang secara tertulis
+paling lambat **3 x 24 jam** sesuai UU PDP, memuat data yang terungkap, kapan dan
+bagaimana terjadinya, serta langkah penanganan.
+
+## 9. Hak Anda
+
+Sesuai UU PDP Anda berhak: mendapat informasi tentang pemrosesan; mengakses dan
+memperoleh salinan data; melengkapi/memperbarui/memperbaiki data; mengakhiri
+pemrosesan, menghapus, atau memusnahkan data; menarik persetujuan; mengajukan keberatan
+atas keputusan yang semata-mata berdasarkan pemrosesan otomatis; menunda atau membatasi
+pemrosesan; menggugat dan menerima ganti rugi atas pelanggaran; serta memperoleh data
+dalam format yang lazim. Kirim permintaan ke [EMAIL PRIVASI]; kami menanggapi paling
+lambat 3 x 24 jam (konfirmasi) dan menyelesaikan dalam batas waktu yang wajar menurut
+hukum. Penarikan persetujuan dapat membuat layanan tidak dapat dilanjutkan.
+
+## 10. Anak
+
+Layanan ditujukan untuk usia 17 tahun ke atas. Data anak hanya diproses dengan
+persetujuan orang tua/wali.
+
+## 11. Perubahan Kebijakan
+
+Perubahan material kami beritahukan lewat email dan kotak masuk sebelum berlaku.
+
+## 12. Kontak
+
+Pejabat pelindungan data: [NAMA / JABATAN] · [EMAIL PRIVASI] · [NAMA PERUSAHAAN], [ALAMAT]

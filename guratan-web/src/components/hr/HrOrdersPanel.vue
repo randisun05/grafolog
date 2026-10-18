@@ -41,6 +41,7 @@ const grafologId = ref(null)
 const code = ref('')
 const quote = ref(null)
 const submitting = ref(false)
+const agreed = ref(false)
 const paying = ref(null)
 
 async function load() {
@@ -258,10 +259,19 @@ onMounted(load)
           >
           <strong>{{ formatRupiah(quote.final_total) }}</strong>
         </div>
+        <label class="hro__toc">
+          <input v-model="agreed" type="checkbox" />
+          <span>
+            Saya memahami bahwa pesanan yang <strong>sudah dibayar tidak dapat dibatalkan</strong>.
+            Refund hanya oleh administrator bila terjadi kesalahan sistem atau pesanan belum selesai
+            lebih dari 90 hari.
+            <RouterLink to="/kebijakan-transaksi" target="_blank">Baca kebijakan</RouterLink>
+          </span>
+        </label>
         <button
           type="button"
           class="btn btn--primary"
-          :disabled="submitting || !product || !chosen.length || !grafologId"
+          :disabled="submitting || !agreed || !product || !chosen.length || !grafologId"
           @click="submit"
         >
           {{ submitting ? 'Memproses...' : 'Buat pesanan & bayar' }}
@@ -448,5 +458,16 @@ onMounted(load)
 .hro__tag--off {
   background: var(--color-border);
   color: var(--color-text-soft);
+}
+.hro__toc {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  margin: 10px 0;
+}
+.hro__toc input {
+  width: auto;
+  margin-top: 3px;
 }
 </style>

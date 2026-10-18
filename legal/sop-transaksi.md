@@ -1,64 +1,53 @@
 <!--
-SOP Pembelian, Pembatalan & Refund - draf 2026-10-17 (Fase E hasil uji manual).
-Bagian [DALAM KURUNG SIKU] adalah keputusan bisnis/hukum yang belum final dan
-membuat halaman ditandai "Draf" otomatis di LegalView. Alur sistem yang
-dijelaskan di bawah SUDAH dibangun: OrderService, OrderController::requestRefund,
-Admin\RefundController.
+Diperbarui 2026-10-18 (tahap 5): pesanan lunas tidak bisa dibatalkan, tidak ada
+pengajuan refund dari klien; refund hanya dipicu administrator (kesalahan sistem
+atau grafolog belum selesai > 90 hari). Sesuai OrderService::cancel,
+Admin\RefundController (alasan kesalahan_sistem | grafolog_terlambat).
+Draf, belum ditinjau penasihat hukum.
 -->
 
-# Kebijakan Pembelian, Pembatalan & Pengembalian Dana
+# Kebijakan Pembelian & Pengembalian Dana
 
-Berlaku untuk semua layanan Guratan: Master Graphology, layanan pendukung
-(wawancara, konsultasi, konseling, program intervensi), dan pesanan perusahaan.
+Berlaku untuk semua layanan Guratan, termasuk pesanan perusahaan.
 
 ## 1. Pembelian
 
-1. Pilih layanan di halaman **Pesan Layanan** (perusahaan: menu **Rekrutmen →
-   Pesan Asesmen**). Harga yang berlaku adalah harga yang tertera saat pesanan
-   dibuat, termasuk potongan kode promo yang valid saat itu.
-2. Untuk layanan dengan analisis tulisan tangan, unggah **hasil scan** tulisan
-   (kertas A4 utuh, 300 dpi, JPG/PNG, minimal 1920×1080 piksel, maks. 30 MB).
-3. Bayar melalui mitra pembayaran DOKU. Pesanan berstatus **Diproses** setelah
-   pembayaran terkonfirmasi; grafolog lalu ditugaskan (oleh admin, atau grafolog
-   pilihan perusahaan untuk pesanan B2B).
-4. Laporan grafologi terbit setelah grafolog menerbitkannya sendiri atau setelah
-   divalidasi supervisor (bila grafolog memintanya). Layanan pendukung
-   dijadwalkan oleh grafolog dan laporannya tersedia di **Riwayat**.
-5. Estimasi waktu pengerjaan: [ISI - mis. laporan grafologi X hari kerja setelah
-   scan lengkap diterima].
+1. Pilih layanan di **Pesan Layanan** (perusahaan: **Rekrutmen → Pesan Asesmen**, pilih
+   bulan layanan dan grafolog yang tersedia).
+2. Untuk analisis tulisan tangan, unggah **hasil scan PDF** kertas A4/F4 utuh, maks. 30 MB.
+   Perusahaan dapat mengunggah sendiri atau meminta kandidat mengunggah lewat akun kandidat.
+3. Bayar lewat DOKU. Setelah pembayaran terkonfirmasi pesanan berstatus **Diproses** dan
+   masuk antrean grafolog.
+4. Laporan terbit setelah grafolog menerbitkannya (dengan atau tanpa validasi supervisor).
+5. Anda menerima notifikasi email dan kotak masuk di setiap tahap penting.
 
-## 2. Pembatalan sebelum pembayaran
+## 2. Pembatalan
 
-Pesanan yang belum dibayar dapat dibatalkan kapan saja dari halaman
-**Riwayat** (perusahaan: **Rekrutmen → Pesan Asesmen → Riwayat pesanan**),
-tanpa biaya.
+- **Belum dibayar**: dapat dibatalkan kapan saja tanpa biaya.
+- **Sudah dibayar (sudah di-order): tidak dapat dibatalkan.** Syarat ini ditampilkan dan
+  disetujui pada saat pemesanan.
 
-## 3. Pengembalian dana (refund)
+## 3. Pengembalian dana
 
-1. Refund dapat **diajukan** dari halaman Riwayat selama pesanan masih
-   **Diproses** dan **belum ada hasil yang diserahkan** - laporan grafologi belum
-   terbit dan belum ada layanan pendukung yang selesai.
-2. Sertakan alasan pengajuan. Admin Guratan meninjau dan memberi keputusan
-   beserta catatan dalam [ISI - mis. 3 hari kerja].
-3. Bila disetujui, pesanan berstatus **Dikembalikan**, layanan yang belum
-   selesai dibatalkan, dan dana dikembalikan ke metode pembayaran semula melalui
-   DOKU dalam [ISI - estimasi hari kerja sesuai ketentuan DOKU/bank].
-   Besaran refund: [ISI - penuh / dipotong biaya administrasi X%].
-4. Setelah laporan terbit atau layanan selesai, refund tidak dapat diajukan
-   lewat aplikasi. Keluhan kualitas ditangani melalui [ISI - kanal kontak], dan
-   admin dapat memutuskan refund atas inisiatif sendiri.
-5. Kegagalan teknis di sisi Guratan (mis. pembayaran sukses tetapi pesanan tidak
-   terproses) selalu dikembalikan penuh: [KONFIRMASI].
+1. Tidak ada pengajuan refund oleh pengguna. **Hanya administrator** yang dapat memicu
+   refund, dalam dua keadaan saja:
+   - **Kesalahan sistem**, mis. pembayaran sukses tetapi pesanan gagal diproses, atau
+     layanan tidak dapat diberikan karena gangguan di sisi Guratan.
+   - **Grafolog belum menyelesaikan pesanan lebih dari 90 hari** sejak pembayaran.
+2. Administrator memeriksa kasus, mencatat alasan, lalu status pesanan menjadi **Dikembalikan**
+   dan pekerjaan yang belum selesai dibatalkan. Anda dinotifikasi.
+3. Dana dikembalikan penuh ke metode pembayaran semula lewat DOKU; waktu masuk mengikuti
+   ketentuan DOKU/bank Anda.
+4. Ketidakpuasan terhadap isi laporan bukan dasar refund. Sampaikan keberatan lewat
+   [EMAIL KONTAK]; kami dapat meminta grafolog meninjau/mengoreksi laporan.
+5. Pesanan yang sudah selesai (laporan terbit) tidak dapat direfund.
 
 ## 4. Pesanan perusahaan (B2B)
 
-Satu pesanan perusahaan mencakup beberapa kandidat dan dibayar sekali. Pesanan
-yang belum dibayar dapat dibatalkan oleh HR. Refund untuk kandidat tertentu
-diajukan melalui [ISI - kanal kontak akun perusahaan] dan diproses admin per
-kandidat.
+Satu pesanan mencakup beberapa kandidat dan dibayar sekali. Aturan pasal 2–3 berlaku;
+refund dihitung per kandidat/pekerjaan yang belum selesai sesuai alasan di atas.
 
-## 5. Layanan pendukung & jadwal
+## 5. Layanan pendukung
 
-Perubahan jadwal sesi (wawancara, konsultasi, konseling) disepakati langsung
-dengan grafolog yang ditugaskan. Ketidakhadiran tanpa pemberitahuan: [ISI -
-kebijakan no-show].
+Jadwal sesi disepakati langsung dengan grafolog yang ditugaskan; sesi yang sudah
+terlaksana tidak dapat direfund.
