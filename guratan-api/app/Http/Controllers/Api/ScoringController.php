@@ -133,6 +133,7 @@ class ScoringController extends Controller
         abort_if($sample->requiresPayment() && ! $sample->isPaid(), 402, 'Sample ini belum dibayar.');
 
         $report = $sample->reports()->latest()->firstOrFail();
+        abort_if($report->hasActiveValidation(), 422, 'Laporan sedang dalam proses supervisi - tidak bisa dikoreksi sampai selesai.');
 
         $report = DB::transaction(function () use ($request, $report, $user, $sample) {
             $this->reportRevisions->snapshotBeforeChange($report, 'koreksi_skor', $user, $request->input('catatan'));

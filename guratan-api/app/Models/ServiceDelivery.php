@@ -57,7 +57,7 @@ class ServiceDelivery extends Model
         // Layanan B2B (wawancara kandidat) adalah laporan untuk perusahaan, bukan untuk kandidat.
         return ($user->id === $this->user_id && ! $batch)
             || $user->id === $this->assigned_to
-            || $user->isAdministrator() || $user->isSupervisor()
+            || $user->isAdministrator()
             || ($user->isHr() && ($batch ? $batch->company_id === $user->company_id : $this->order?->created_by === $user->id));
     }
 }

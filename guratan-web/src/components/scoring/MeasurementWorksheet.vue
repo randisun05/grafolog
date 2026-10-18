@@ -72,8 +72,8 @@ async function save() {
     <p class="measurement-worksheet__hint">
       Isi hasil ukur fisik (kaliper) untuk variabel yang relevan. Tidak perlu semua variabel -
       Indikator yang punya aturan operator akan otomatis tercentang di langkah berikutnya begitu
-      variabelnya terisi. Kolom <strong>Min</strong>/<strong>Maks</strong> opsional - isi kalau ukurannya
-      bervariasi di tulisan (dipakai rule "irregular", dihitung dari selisih maks-min).
+      variabelnya terisi. Kolom <strong>Min</strong>/<strong>Maks</strong> opsional - isi kalau
+      ukurannya bervariasi di tulisan (dipakai rule "irregular", dihitung dari selisih maks-min).
     </p>
 
     <SkeletonLoader v-if="loading" variant="form" :rows="6" label="Memuat variabel ukur..." />
@@ -82,9 +82,27 @@ async function save() {
         <div v-for="v in variables" :key="v.id" class="measurement-worksheet__field">
           <span class="measurement-worksheet__label">{{ v.nama }}</span>
           <div class="measurement-worksheet__inputs">
-            <input v-model="nilai[v.id]" type="number" step="0.01" placeholder="nilai" title="Nilai" />
-            <input v-model="nilaiMin[v.id]" type="number" step="0.01" placeholder="min" title="Min (untuk rentang)" />
-            <input v-model="nilaiMax[v.id]" type="number" step="0.01" placeholder="maks" title="Maks (untuk rentang)" />
+            <input
+              v-model="nilai[v.id]"
+              type="number"
+              step="0.01"
+              placeholder="nilai"
+              title="Nilai"
+            />
+            <input
+              v-model="nilaiMin[v.id]"
+              type="number"
+              step="0.01"
+              placeholder="min"
+              title="Min (untuk rentang)"
+            />
+            <input
+              v-model="nilaiMax[v.id]"
+              type="number"
+              step="0.01"
+              placeholder="maks"
+              title="Maks (untuk rentang)"
+            />
           </div>
         </div>
       </div>

@@ -1770,6 +1770,35 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   / kuota kurang untuk jumlah kandidat (422). Penugasan manual admin tidak dibatasi.
 - Test: `GrafologAvailabilityTest` (3).
 
+## Supervisi antar-grafolog, jadwal setahun, refund admin — 2026-10-18
+
+- **Peran `supervisor` dihapus** (digabung ke grafolog; migrasi mengubah akun lama jadi grafolog
+  verified; `User::isSupervisor()` & `ReportReviewController`/`/reviews` dibuang). Laporan baru =
+  `draf`. `ReportValidationService` (menggantikan versi Fase D): pembuat laporan `publish` sendiri
+  atau `request-validation {validator_id, deadline_days 1-30}` ke grafolog lain yang
+  `supervisable` bulan ini (bukan penanganan sampel itu). Tabel `report_validations`
+  (menunggu|disetujui|perlu_revisi|selesai|ditolak|kedaluwarsa). **Escrow**: token
+  (`TokenCost validasi_supervisor`) didebit dari pembuat saat penugasan; ditolak/lewat tenggat →
+  `pengembalian_validasi` + laporan kembali draf (bisa ditugaskan ulang); validator `decide`
+  (approve | request_revision + catatan) atau `decline`; pembuat `confirm` → token cair ke validator
+  (`pendapatan_validasi`) dan laporan terbit (setuju) / `perlu_revisi`; tanpa konfirmasi → otomatis
+  3 hari. `sweep()` (terjadwal tiap jam + dipanggil saat daftar dibuka). Laporan terkunci dari
+  edit/koreksi selama supervisi aktif; edit setelah terbit → draf. Validator boleh membaca laporan &
+  sampel (`isValidatedBy`). Admin hanya indeks `GET /admin/validations` (tanpa token).
+  Endpoint: `GET /validations` (assigned/requested), `GET /reports/{r}/validations`,
+  `GET /report-validation/{fee,validators}`. `GET /reports/{r}` menyertakan `can_handle`/`is_validator`.
+- **Jadwal setahun**: `GrafologAvailability::window()` = 12 bulan; kolom `supervision` (opt-in,
+  default false) = bersedia disupervisi bulan itu. Kuota kini per **bulan layanan**
+  (`order_batches.service_month`; beban = order batch grafolog itu di bulan itu). `GET /grafologs?month=`:
+  HR hanya melihat yang `bookable` di bulan itu; tiap grafolog membawa `calendar` (bulan yang diatur).
+  `POST /hr/orders` menerima `month` (default bulan ini).
+- **Refund hanya admin** (`POST /admin/orders/{o}/refund {reason: kesalahan_sistem|grafolog_terlambat,
+  note}`): pesanan dibayar tidak bisa dibatalkan klien (hanya yang belum dibayar); `grafolog_terlambat`
+  butuh > 90 hari sejak dibayar & belum selesai (`Order::isOverdueForRefund`, daftar di
+  `GET /admin/refunds`). Endpoint ajuan refund klien dihapus. Klien dapat notifikasi kotak masuk.
+- `Services\Notifications\Notifier`, tabel `inbox_messages`/`broadcasts`/`activity_logs` sudah ada
+  (UI/endpoint menyusul di tahap berikutnya). 487 test.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

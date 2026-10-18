@@ -21,7 +21,6 @@ export const useAuthStore = defineStore('auth', () => {
   const isPendingHr = computed(
     () => isHr.value && !!user.value?.company && user.value.company.status !== 'verified',
   )
-  const isSupervisor = computed(() => user.value?.role === 'supervisor')
   const isClient = computed(() => user.value?.role === 'user')
 
   function persist(newUser, newToken) {
@@ -87,7 +86,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAdministrator,
     isHr,
     isPendingHr,
-    isSupervisor,
     isClient,
     register,
     registerGrafolog,

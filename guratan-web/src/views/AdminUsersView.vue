@@ -22,7 +22,6 @@ const submitting = ref(false)
 
 const roleLabel = {
   administrator: 'Administrator',
-  supervisor: 'Supervisor',
   grafolog: 'Grafolog',
   user: 'Klien',
 }
@@ -63,8 +62,8 @@ onMounted(loadUsers)
   <div class="admin-users">
     <h1>Kelola Akun Staf</h1>
     <p class="admin-users__note">
-      Buat akun Administrator, Supervisor, atau Grafolog. Akun Klien tetap mendaftar sendiri lewat
-      halaman Daftar.
+      Buat akun Administrator, HR, atau Grafolog. Akun Klien tetap mendaftar sendiri lewat halaman
+      Daftar.
     </p>
 
     <form class="admin-users__form" @submit.prevent="submit">
@@ -95,7 +94,6 @@ onMounted(loadUsers)
         Role
         <select v-model="form.role">
           <option value="grafolog">Grafolog</option>
-          <option value="supervisor">Supervisor</option>
           <option value="administrator">Administrator</option>
         </select>
       </label>

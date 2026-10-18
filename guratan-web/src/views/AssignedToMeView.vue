@@ -64,7 +64,7 @@ onMounted(async () => {
     </p>
 
     <section v-if="revisions.length" class="assigned__revisions">
-      <h2>Perlu Revisi dari Supervisor</h2>
+      <h2>Perlu Revisi dari Validator</h2>
       <ul class="assigned__list">
         <li v-for="r in revisions" :key="r.id" class="assigned__item">
           <div>

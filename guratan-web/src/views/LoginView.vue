@@ -18,7 +18,9 @@ async function submit() {
     await auth.login(form.value)
     router.push(route.query.redirect || { name: 'dashboard' })
   } catch (e) {
-    errors.value = e.response?.data?.errors ?? { email: [e.response?.data?.message ?? 'Gagal masuk.'] }
+    errors.value = e.response?.data?.errors ?? {
+      email: [e.response?.data?.message ?? 'Gagal masuk.'],
+    }
   } finally {
     loading.value = false
   }

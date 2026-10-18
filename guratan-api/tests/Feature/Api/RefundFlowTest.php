@@ -3,14 +3,13 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Order;
-use App\Models\PersonalityReport;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-/** SOP pembelian/refund/pembatalan (Fase E, 2026-10-17). */
+/** Refund hanya oleh administrator: kesalahan sistem, atau pesanan > 90 hari belum selesai (2026-10-18). */
 class RefundFlowTest extends TestCase
 {
     use RefreshDatabase;
@@ -32,61 +31,53 @@ class RefundFlowTest extends TestCase
         return Order::findOrFail($id);
     }
 
-    public function test_client_requests_refund_and_admin_approves(): void
+    public function test_paid_orders_cannot_be_cancelled_or_refunded_by_the_client(): void
     {
         $client = User::factory()->create(['role' => 'user']);
         $order = $this->paidOrder($client);
-        $admin = User::factory()->create(['role' => 'administrator']);
 
-        $this->actingAs($client, 'sanctum')->getJson('/api/orders')->assertJsonPath('0.refundable', true);
-        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order->id}/refund-request", ['reason' => 'pendek'])
-            ->assertUnprocessable();
-        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order->id}/refund-request", ['reason' => 'Saya salah memilih produk.'])
-            ->assertOk()->assertJsonPath('refund_status', 'diajukan')->assertJsonPath('refundable', false);
-
-        $this->actingAs($admin, 'sanctum')->getJson('/api/admin/refunds')->assertOk()->assertJsonCount(1);
-        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['decision' => 'approve', 'note' => 'Dana dikembalikan via DOKU.'])
-            ->assertOk()->assertJsonPath('status', 'dikembalikan');
-
-        $fresh = $order->fresh();
-        $this->assertFalse($fresh->sample->isPaid()); // skoring terkunci lagi (402)
-        $this->assertSame(['dibatalkan'], $fresh->deliveries->pluck('status')->unique()->values()->all());
-        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['decision' => 'approve', 'note' => 'x'])
-            ->assertUnprocessable();
+        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order->id}/cancel")->assertUnprocessable();
+        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order->id}/refund-request", ['reason' => 'Berubah pikiran saja.'])->assertNotFound();
+        $this->actingAs($client, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['reason' => 'kesalahan_sistem', 'note' => 'x'])->assertForbidden();
     }
 
-    public function test_refund_not_allowed_after_report_released_and_reject_needs_request(): void
-    {
-        $client = User::factory()->create(['role' => 'user']);
-        $order = $this->paidOrder($client);
-        $admin = User::factory()->create(['role' => 'administrator']);
-
-        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['decision' => 'reject', 'note' => 'x'])
-            ->assertUnprocessable();
-
-        PersonalityReport::create(['sample_id' => $order->sample_id, 'tier' => 'master', 'status' => 'completed',
-            'review_status' => PersonalityReport::REVIEW_APPROVED, 'data' => []]);
-        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order->id}/refund-request", ['reason' => 'Berubah pikiran setelah membaca.'])
-            ->assertUnprocessable();
-    }
-
-    public function test_rejected_request_keeps_order_running(): void
+    public function test_admin_refunds_for_system_error_and_locks_the_order(): void
     {
         $client = User::factory()->create(['role' => 'user']);
         $order = $this->paidOrder($client, 'konseling');
         $admin = User::factory()->create(['role' => 'administrator']);
-        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order->id}/refund-request", ['reason' => 'Jadwal saya tidak cocok.'])->assertOk();
 
-        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['decision' => 'reject', 'note' => 'Jadwal bisa diatur ulang.'])
-            ->assertOk()->assertJsonPath('status', 'diproses')->assertJsonPath('refund_status', 'ditolak');
-        $this->actingAs($client, 'sanctum')->getJson('/api/orders')->assertJsonPath('0.refund_note', 'Jadwal bisa diatur ulang.');
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['reason' => 'kesalahan_sistem'])->assertUnprocessable(); // catatan wajib
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['reason' => 'kesalahan_sistem', 'note' => 'Layanan tidak terproses.'])
+            ->assertOk()->assertJsonPath('status', 'dikembalikan')->assertJsonPath('refund_reason', 'kesalahan_sistem');
+
+        $this->assertSame(['dibatalkan'], $order->fresh()->deliveries->pluck('status')->unique()->values()->all());
+        $this->assertDatabaseHas('inbox_messages', ['user_id' => $client->id, 'type' => 'refund']);
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", ['reason' => 'kesalahan_sistem', 'note' => 'x'])->assertUnprocessable();
+        $this->actingAs($admin, 'sanctum')->getJson('/api/admin/refunds')->assertJsonCount(1, 'refunded');
     }
 
-    public function test_other_users_cannot_request_refund(): void
+    public function test_grafolog_late_refund_needs_90_days_and_unlocks_scoring_gate(): void
     {
-        $order = $this->paidOrder(User::factory()->create(['role' => 'user']));
-        $other = User::factory()->create(['role' => 'user']);
-        $this->actingAs($other, 'sanctum')->postJson("/api/orders/{$order->id}/refund-request", ['reason' => 'Bukan pesanan saya.'])
-            ->assertForbidden();
+        $client = User::factory()->create(['role' => 'user']);
+        $order = $this->paidOrder($client);
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $body = ['reason' => 'grafolog_terlambat', 'note' => 'Lebih dari 3 bulan.'];
+
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", $body)->assertUnprocessable();
+        $this->actingAs($admin, 'sanctum')->getJson('/api/admin/refunds')->assertJsonCount(0, 'overdue');
+
+        $order->update(['paid_at' => now()->subDays(91)]);
+        $this->actingAs($admin, 'sanctum')->getJson('/api/admin/refunds')->assertJsonCount(1, 'overdue');
+        $this->assertTrue($order->fresh()->sample->isPaid());
+        $this->actingAs($admin, 'sanctum')->postJson("/api/admin/orders/{$order->id}/refund", $body)->assertOk();
+        $this->assertFalse($order->fresh()->sample->isPaid());
+    }
+
+    public function test_unpaid_order_can_still_be_cancelled(): void
+    {
+        $client = User::factory()->create(['role' => 'user']);
+        $id = $this->actingAs($client, 'sanctum')->postJson('/api/orders', ['product_id' => Product::where('kode', 'master')->value('id')])->json('id');
+        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$id}/cancel")->assertOk();
     }
 }

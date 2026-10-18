@@ -11,7 +11,6 @@ const roleOptions = [
   { value: 'grafolog', label: 'Grafolog' },
   { value: 'hr', label: 'HR' },
   { value: 'administrator', label: 'Administrator' },
-  { value: 'supervisor', label: 'Supervisor' },
 ]
 
 const announcements = ref([])
@@ -73,9 +72,7 @@ async function toggleActive(announcement) {
 
 function roleLabels(targetRoles) {
   if (!targetRoles) return 'Semua role'
-  return targetRoles
-    .map((r) => roleOptions.find((o) => o.value === r)?.label ?? r)
-    .join(', ')
+  return targetRoles.map((r) => roleOptions.find((o) => o.value === r)?.label ?? r).join(', ')
 }
 
 onMounted(loadAnnouncements)
@@ -85,8 +82,8 @@ onMounted(loadAnnouncements)
   <div class="admin-announcements">
     <h1>Kelola Pengumuman</h1>
     <p class="admin-announcements__note">
-      Pengumuman tampil sebagai banner di Dashboard — bisa ditutup pengguna per sesi, muncul lagi
-      di kunjungan berikutnya selama masih aktif.
+      Pengumuman tampil sebagai banner di Dashboard — bisa ditutup pengguna per sesi, muncul lagi di
+      kunjungan berikutnya selama masih aktif.
     </p>
 
     <form class="admin-announcements__form" @submit.prevent="submit">
@@ -130,7 +127,9 @@ onMounted(loadAnnouncements)
     <h2 class="admin-announcements__list-title">Semua Pengumuman</h2>
     <SkeletonLoader v-if="loading" variant="list" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
-    <p v-else-if="announcements.length === 0" class="admin-announcements__empty">Belum ada pengumuman.</p>
+    <p v-else-if="announcements.length === 0" class="admin-announcements__empty">
+      Belum ada pengumuman.
+    </p>
     <ul v-else class="admin-announcements__list">
       <li v-for="a in announcements" :key="a.id" class="admin-announcements__item">
         <div>
@@ -141,7 +140,12 @@ onMounted(loadAnnouncements)
           <span class="badge" :class="a.is_active ? 'badge--active' : 'badge--inactive'">
             {{ a.is_active ? 'Aktif' : 'Nonaktif' }}
           </span>
-          <button type="button" class="btn" :disabled="togglingId === a.id" @click="toggleActive(a)">
+          <button
+            type="button"
+            class="btn"
+            :disabled="togglingId === a.id"
+            @click="toggleActive(a)"
+          >
             {{ a.is_active ? 'Nonaktifkan' : 'Aktifkan' }}
           </button>
         </div>

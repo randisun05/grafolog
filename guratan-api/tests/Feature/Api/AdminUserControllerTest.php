@@ -42,20 +42,26 @@ class AdminUserControllerTest extends TestCase
         $response->assertOk()->assertJsonCount(3, 'data');
     }
 
-    public function test_administrator_can_create_supervisor_account(): void
+    public function test_administrator_can_create_grafolog_account(): void
     {
         $admin = User::factory()->create(['role' => 'administrator']);
 
         $response = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
-            'name' => 'Supervisor Baru',
-            'email' => 'supervisor-new@example.com',
+            'name' => 'Grafolog Baru',
+            'email' => 'grafolog-new@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            'role' => 'supervisor',
+            'role' => 'grafolog',
         ]);
 
-        $response->assertCreated()->assertJsonPath('role', 'supervisor');
-        $this->assertDatabaseHas('users', ['email' => 'supervisor-new@example.com', 'role' => 'supervisor']);
+        $response->assertCreated()->assertJsonPath('role', 'grafolog');
+        $this->assertDatabaseHas('users', ['email' => 'grafolog-new@example.com', 'role' => 'grafolog']);
+
+        // Peran supervisor digabung ke grafolog (2026-10-18) - tidak bisa dibuat lagi.
+        $this->actingAs($admin, 'sanctum')->postJson('/api/admin/users', [
+            'name' => 'X', 'email' => 'sv@example.com', 'password' => 'password123',
+            'password_confirmation' => 'password123', 'role' => 'supervisor',
+        ])->assertUnprocessable();
     }
 
     public function test_administrator_can_create_another_administrator_account(): void

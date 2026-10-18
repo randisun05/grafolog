@@ -24,7 +24,12 @@ const loadError = ref('')
 
 // --- Sindrom -----------------------------------------------------------
 const sindromList = ref([])
-const sindromForm = ref({ kode_romawi: '', nama: '', polaritas_inferred: 'HIJAU', catatan_polaritas: '' })
+const sindromForm = ref({
+  kode_romawi: '',
+  nama: '',
+  polaritas_inferred: 'HIJAU',
+  catatan_polaritas: '',
+})
 const sindromErrors = ref({})
 const sindromSubmitting = ref(false)
 const sindromEditingId = ref(null)
@@ -32,7 +37,12 @@ const sindromEditForm = ref({})
 
 function startEditSindrom(s) {
   sindromEditingId.value = s.id
-  sindromEditForm.value = { kode_romawi: s.kode_romawi, nama: s.nama, polaritas_inferred: s.polaritas_inferred, catatan_polaritas: s.catatan_polaritas ?? '' }
+  sindromEditForm.value = {
+    kode_romawi: s.kode_romawi,
+    nama: s.nama,
+    polaritas_inferred: s.polaritas_inferred,
+    catatan_polaritas: s.catatan_polaritas ?? '',
+  }
 }
 function cancelEditSindrom() {
   sindromEditingId.value = null
@@ -43,7 +53,12 @@ async function createSindrom() {
   try {
     await api.post('/admin/knowledge/sindrom', sindromForm.value)
     toast.push('Sindrom berhasil dibuat.', 'success')
-    sindromForm.value = { kode_romawi: '', nama: '', polaritas_inferred: 'HIJAU', catatan_polaritas: '' }
+    sindromForm.value = {
+      kode_romawi: '',
+      nama: '',
+      polaritas_inferred: 'HIJAU',
+      catatan_polaritas: '',
+    }
     await loadSindrom()
   } catch (e) {
     sindromErrors.value = e.response?.data?.errors ?? {}
@@ -176,7 +191,14 @@ async function loadAspek() {
 }
 
 // --- Indikator (704 baris - paginasi + cari/filter) -----------------------
-const emptyIndikatorForm = () => ({ kode: '', aspek_id: '', posisi: 1, varian: '', nama: '', keterangan: '' })
+const emptyIndikatorForm = () => ({
+  kode: '',
+  aspek_id: '',
+  posisi: 1,
+  varian: '',
+  nama: '',
+  keterangan: '',
+})
 const indikatorList = ref([])
 const indikatorMeta = ref({ currentPage: 1, lastPage: 1, total: 0 })
 const indikatorSearch = ref('')
@@ -201,7 +223,11 @@ async function loadIndikator(page = indikatorMeta.value.currentPage) {
       },
     })
     indikatorList.value = data.data
-    indikatorMeta.value = { currentPage: data.current_page, lastPage: data.last_page, total: data.total }
+    indikatorMeta.value = {
+      currentPage: data.current_page,
+      lastPage: data.last_page,
+      total: data.total,
+    }
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal memuat Indikator.')
   } finally {
@@ -318,7 +344,8 @@ function formatRule(rule) {
   if (rule.rule_type === 'category') {
     return `${rule.variable_a.nama} = "${rule.category_label}"`
   }
-  const kiri = rule.variable_a_value_mode === 'range' ? `Range ${rule.variable_a.nama}` : rule.variable_a.nama
+  const kiri =
+    rule.variable_a_value_mode === 'range' ? `Range ${rule.variable_a.nama}` : rule.variable_a.nama
   const kanan = rule.variable_b ? rule.variable_b.nama : rule.compare_value
   const koef = Number(rule.koefisien) !== 1 ? `${rule.koefisien}× ` : ''
   return `${kiri} ${operatorLabels[rule.operator] ?? rule.operator} ${koef}${kanan}`
@@ -419,7 +446,8 @@ async function saveVariable(id) {
   }
 }
 async function deleteVariable(v) {
-  if (!confirm(`Hapus variabel "${v.nama}"? Semua ${v.kategori.length} kategorinya ikut terhapus.`)) return
+  if (!confirm(`Hapus variabel "${v.nama}"? Semua ${v.kategori.length} kategorinya ikut terhapus.`))
+    return
   try {
     await api.delete(`/admin/knowledge/measurement-variables/${v.id}`)
     toast.push('Variabel ukur dihapus.', 'success')
@@ -430,12 +458,20 @@ async function deleteVariable(v) {
 }
 function toggleExpandVariable(v) {
   expandedVariableId.value = expandedVariableId.value === v.id ? null : v.id
-  categoryForm.value = { kategori: '', rentang: '', unit: '', urutan: (v.kategori?.length ?? 0) + 1 }
+  categoryForm.value = {
+    kategori: '',
+    rentang: '',
+    unit: '',
+    urutan: (v.kategori?.length ?? 0) + 1,
+  }
 }
 async function createCategory(variable) {
   categoryErrors.value = {}
   try {
-    await api.post(`/admin/knowledge/measurement-variables/${variable.id}/categories`, categoryForm.value)
+    await api.post(
+      `/admin/knowledge/measurement-variables/${variable.id}/categories`,
+      categoryForm.value,
+    )
     toast.push('Kategori berhasil ditambahkan.', 'success')
     categoryForm.value = { kategori: '', rentang: '', unit: '', urutan: 1 }
     await loadVariables()
@@ -446,7 +482,12 @@ async function createCategory(variable) {
 }
 function startEditCategory(c) {
   categoryEditingId.value = c.id
-  categoryEditForm.value = { kategori: c.kategori, rentang: c.rentang ?? '', unit: c.unit ?? '', urutan: c.urutan }
+  categoryEditForm.value = {
+    kategori: c.kategori,
+    rentang: c.rentang ?? '',
+    unit: c.unit ?? '',
+    urutan: c.urutan,
+  }
 }
 function cancelEditCategory() {
   categoryEditingId.value = null
@@ -535,7 +576,14 @@ onMounted(async () => {
   loading.value = true
   loadError.value = ''
   try {
-    await Promise.all([loadSindrom(), loadAspek(), loadIndikator(1), loadVariables(), loadBands(), loadIndikatorOptions()])
+    await Promise.all([
+      loadSindrom(),
+      loadAspek(),
+      loadIndikator(1),
+      loadVariables(),
+      loadBands(),
+      loadIndikatorOptions(),
+    ])
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat knowledge base.'
   } finally {
@@ -578,7 +626,13 @@ onMounted(async () => {
           <div class="admin-km__row">
             <label>
               Kode Romawi
-              <input v-model="sindromForm.kode_romawi" type="text" maxlength="5" placeholder="IX" required />
+              <input
+                v-model="sindromForm.kode_romawi"
+                type="text"
+                maxlength="5"
+                placeholder="IX"
+                required
+              />
             </label>
             <label>
               Polaritas
@@ -625,7 +679,9 @@ onMounted(async () => {
                 </td>
                 <td>{{ s.aspek_count }}</td>
                 <td class="admin-km__actions">
-                  <button type="button" class="btn btn--primary" @click="saveSindrom(s.id)">Simpan</button>
+                  <button type="button" class="btn btn--primary" @click="saveSindrom(s.id)">
+                    Simpan
+                  </button>
                   <button type="button" class="btn" @click="cancelEditSindrom">Batal</button>
                 </td>
               </template>
@@ -633,14 +689,19 @@ onMounted(async () => {
                 <td>{{ s.kode_romawi }}</td>
                 <td>{{ s.nama }}</td>
                 <td>
-                  <span class="badge" :class="s.polaritas_inferred === 'HIJAU' ? 'badge--hijau' : 'badge--merah'">
+                  <span
+                    class="badge"
+                    :class="s.polaritas_inferred === 'HIJAU' ? 'badge--hijau' : 'badge--merah'"
+                  >
                     {{ s.polaritas_inferred }}
                   </span>
                 </td>
                 <td>{{ s.aspek_count }}</td>
                 <td class="admin-km__actions">
                   <button type="button" class="btn" @click="startEditSindrom(s)">Ubah</button>
-                  <button type="button" class="btn btn--danger" @click="deleteSindrom(s)">Hapus</button>
+                  <button type="button" class="btn btn--danger" @click="deleteSindrom(s)">
+                    Hapus
+                  </button>
                 </td>
               </template>
             </tr>
@@ -654,13 +715,21 @@ onMounted(async () => {
           <div class="admin-km__row">
             <label>
               Kode
-              <input v-model="aspekForm.kode" type="text" maxlength="10" placeholder="41" required />
+              <input
+                v-model="aspekForm.kode"
+                type="text"
+                maxlength="10"
+                placeholder="41"
+                required
+              />
             </label>
             <label>
               Sindrom
               <select v-model="aspekForm.sindrom_id" required>
                 <option value="" disabled>Pilih Sindrom</option>
-                <option v-for="s in sindromList" :key="s.id" :value="s.id">{{ s.kode_romawi }} — {{ s.nama }}</option>
+                <option v-for="s in sindromList" :key="s.id" :value="s.id">
+                  {{ s.kode_romawi }} — {{ s.nama }}
+                </option>
               </select>
             </label>
           </div>
@@ -670,20 +739,31 @@ onMounted(async () => {
           </label>
           <p v-if="aspekErrors.kode" class="error">{{ aspekErrors.kode[0] }}</p>
           <p v-if="aspekErrors.sindrom_id" class="error">{{ aspekErrors.sindrom_id[0] }}</p>
-          <p class="admin-km__hint">Keterangan umum &amp; 4 level narasi diisi setelah dibuat, lewat "Ubah".</p>
+          <p class="admin-km__hint">
+            Keterangan umum &amp; 4 level narasi diisi setelah dibuat, lewat "Ubah".
+          </p>
           <button type="submit" class="btn btn--primary" :disabled="aspekSubmitting">
             {{ aspekSubmitting ? 'Membuat...' : 'Tambah Aspek' }}
           </button>
         </form>
 
         <div v-for="a in aspekList" :key="a.id" class="admin-km__variable">
-          <div class="admin-km__variable-head" @click="expandedAspekId === a.id ? cancelEditAspek() : startEditAspek(a)">
+          <div
+            class="admin-km__variable-head"
+            @click="expandedAspekId === a.id ? cancelEditAspek() : startEditAspek(a)"
+          >
             <span class="admin-km__variable-kode">{{ a.kode }}</span>
             <span class="admin-km__variable-nama">{{ a.nama }}</span>
-            <span class="admin-km__variable-axis">{{ a.sindrom.kode_romawi }} — {{ a.sindrom.nama }}</span>
+            <span class="admin-km__variable-axis"
+              >{{ a.sindrom.kode_romawi }} — {{ a.sindrom.nama }}</span
+            >
             <span class="admin-km__variable-count">{{ a.indikator_count }} indikator</span>
             <span class="admin-km__actions" @click.stop>
-              <button type="button" class="btn" @click="expandedAspekId === a.id ? cancelEditAspek() : startEditAspek(a)">
+              <button
+                type="button"
+                class="btn"
+                @click="expandedAspekId === a.id ? cancelEditAspek() : startEditAspek(a)"
+              >
                 {{ expandedAspekId === a.id ? 'Tutup' : 'Ubah' }}
               </button>
               <button type="button" class="btn btn--danger" @click="deleteAspek(a)">Hapus</button>
@@ -699,13 +779,16 @@ onMounted(async () => {
               <label>
                 Sindrom
                 <select v-model="aspekEditForm.sindrom_id">
-                  <option v-for="s in sindromList" :key="s.id" :value="s.id">{{ s.kode_romawi }} — {{ s.nama }}</option>
+                  <option v-for="s in sindromList" :key="s.id" :value="s.id">
+                    {{ s.kode_romawi }} — {{ s.nama }}
+                  </option>
                 </select>
               </label>
             </div>
             <p class="admin-km__note">
-              Teks Bahasa Indonesia adalah draf terjemahan dari referensi Inggris — tinjau dan perbaiki di sini.
-              Laporan baru memakai teks terbaru; laporan lama tetap memakai versi saat dibuat.
+              Teks Bahasa Indonesia adalah draf terjemahan dari referensi Inggris — tinjau dan
+              perbaiki di sini. Laporan baru memakai teks terbaru; laporan lama tetap memakai versi
+              saat dibuat.
             </p>
             <div class="admin-km__bilingual">
               <label class="admin-km__field">
@@ -758,7 +841,12 @@ onMounted(async () => {
               </label>
             </div>
             <div class="admin-km__actions">
-              <button type="button" class="btn btn--primary" :disabled="aspekSaving" @click="saveAspek(a.id)">
+              <button
+                type="button"
+                class="btn btn--primary"
+                :disabled="aspekSaving"
+                @click="saveAspek(a.id)"
+              >
                 {{ aspekSaving ? 'Menyimpan...' : 'Simpan' }}
               </button>
               <button type="button" class="btn" @click="cancelEditAspek">Batal</button>
@@ -773,13 +861,21 @@ onMounted(async () => {
           <div class="admin-km__row admin-km__row--3">
             <label>
               Kode
-              <input v-model="indikatorCreateForm.kode" type="text" maxlength="20" placeholder="01-11'" required />
+              <input
+                v-model="indikatorCreateForm.kode"
+                type="text"
+                maxlength="20"
+                placeholder="01-11'"
+                required
+              />
             </label>
             <label>
               Aspek
               <select v-model="indikatorCreateForm.aspek_id" required>
                 <option value="" disabled>Pilih Aspek</option>
-                <option v-for="a in aspekList" :key="a.id" :value="a.id">{{ a.kode }} — {{ a.nama }}</option>
+                <option v-for="a in aspekList" :key="a.id" :value="a.id">
+                  {{ a.kode }} — {{ a.nama }}
+                </option>
               </select>
             </label>
             <label>
@@ -792,7 +888,12 @@ onMounted(async () => {
           <div class="admin-km__row">
             <label>
               Varian (opsional)
-              <input v-model="indikatorCreateForm.varian" type="text" maxlength="5" placeholder="a" />
+              <input
+                v-model="indikatorCreateForm.varian"
+                type="text"
+                maxlength="5"
+                placeholder="a"
+              />
             </label>
             <label>
               Nama
@@ -815,7 +916,9 @@ onMounted(async () => {
           />
           <select v-model="indikatorAspekFilter" @change="onIndikatorFilterChange">
             <option value="">Semua Aspek</option>
-            <option v-for="a in aspekList" :key="a.id" :value="a.id">{{ a.kode }} — {{ a.nama }}</option>
+            <option v-for="a in aspekList" :key="a.id" :value="a.id">
+              {{ a.kode }} — {{ a.nama }}
+            </option>
           </select>
           <span class="admin-km__result-count">{{ indikatorMeta.total }} indikator</span>
         </div>
@@ -823,16 +926,29 @@ onMounted(async () => {
         <SkeletonLoader v-if="indikatorLoading" variant="table" :rows="8" label="Memuat..." />
         <template v-else>
           <div v-for="i in indikatorList" :key="i.id" class="admin-km__variable">
-            <div class="admin-km__variable-head" @click="expandedIndikatorId === i.id ? cancelEditIndikator() : startEditIndikator(i)">
+            <div
+              class="admin-km__variable-head"
+              @click="expandedIndikatorId === i.id ? cancelEditIndikator() : startEditIndikator(i)"
+            >
               <span class="admin-km__variable-kode">{{ i.kode }}</span>
               <span class="admin-km__variable-nama">{{ i.nama }}</span>
               <span class="admin-km__variable-axis">{{ i.aspek.kode }} — {{ i.aspek.nama }}</span>
-              <span class="admin-km__variable-count">posisi {{ i.posisi }}<template v-if="i.varian">{{ i.varian }}</template></span>
+              <span class="admin-km__variable-count"
+                >posisi {{ i.posisi }}<template v-if="i.varian">{{ i.varian }}</template></span
+              >
               <span class="admin-km__actions" @click.stop>
-                <button type="button" class="btn" @click="expandedIndikatorId === i.id ? cancelEditIndikator() : startEditIndikator(i)">
+                <button
+                  type="button"
+                  class="btn"
+                  @click="
+                    expandedIndikatorId === i.id ? cancelEditIndikator() : startEditIndikator(i)
+                  "
+                >
                   {{ expandedIndikatorId === i.id ? 'Tutup' : 'Ubah' }}
                 </button>
-                <button type="button" class="btn btn--danger" @click="deleteIndikator(i)">Hapus</button>
+                <button type="button" class="btn btn--danger" @click="deleteIndikator(i)">
+                  Hapus
+                </button>
               </span>
             </div>
 
@@ -845,7 +961,9 @@ onMounted(async () => {
                 <label>
                   Aspek
                   <select v-model="indikatorEditForm.aspek_id">
-                    <option v-for="a in aspekList" :key="a.id" :value="a.id">{{ a.kode }} — {{ a.nama }}</option>
+                    <option v-for="a in aspekList" :key="a.id" :value="a.id">
+                      {{ a.kode }} — {{ a.nama }}
+                    </option>
                   </select>
                 </label>
                 <label>
@@ -877,7 +995,12 @@ onMounted(async () => {
                 </select>
               </label>
               <div class="admin-km__actions">
-                <button type="button" class="btn btn--primary" :disabled="indikatorSaving" @click="saveIndikator(i.id)">
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  :disabled="indikatorSaving"
+                  @click="saveIndikator(i.id)"
+                >
                   {{ indikatorSaving ? 'Menyimpan...' : 'Simpan' }}
                 </button>
                 <button type="button" class="btn" @click="cancelEditIndikator">Batal</button>
@@ -891,7 +1014,9 @@ onMounted(async () => {
                 <ul v-else class="admin-km__rule-list">
                   <li v-for="r in i.rules" :key="r.id">
                     <span>{{ formatRule(r) }}</span>
-                    <button type="button" class="btn btn--danger" @click="deleteRule(r)">Hapus</button>
+                    <button type="button" class="btn btn--danger" @click="deleteRule(r)">
+                      Hapus
+                    </button>
                   </li>
                 </ul>
 
@@ -901,14 +1026,18 @@ onMounted(async () => {
                     <select v-model="ruleForm.rule_type">
                       <option value="category">Category (variabel = kategori)</option>
                       <option value="comparison">Comparison (bandingkan 2 nilai)</option>
-                      <option value="indikator_checked">Indikator Lain Tercentang (dulu Referensi Silang)</option>
+                      <option value="indikator_checked">
+                        Indikator Lain Tercentang (dulu Referensi Silang)
+                      </option>
                     </select>
                   </label>
                   <label v-if="ruleForm.rule_type !== 'indikator_checked'">
                     Variabel A
                     <select v-model.number="ruleForm.variable_a_id">
                       <option value="" disabled>Pilih Variabel</option>
-                      <option v-for="v in variableList" :key="v.id" :value="v.id">{{ v.kode }} — {{ v.nama }}</option>
+                      <option v-for="v in variableList" :key="v.id" :value="v.id">
+                        {{ v.kode }} — {{ v.nama }}
+                      </option>
                     </select>
                   </label>
                 </div>
@@ -918,12 +1047,14 @@ onMounted(async () => {
                     Bergantung pada Indikator
                     <select v-model.number="ruleForm.depends_on_indikator_id">
                       <option value="" disabled>Pilih Indikator</option>
-                      <option v-for="o in indikatorOptions" :key="o.id" :value="o.id">{{ o.kode }} — {{ o.nama }}</option>
+                      <option v-for="o in indikatorOptions" :key="o.id" :value="o.id">
+                        {{ o.kode }} — {{ o.nama }}
+                      </option>
                     </select>
                   </label>
                   <p class="admin-km__hint">
-                    Indikator ini otomatis tercentang begitu Indikator yang dipilih di atas tercentang
-                    (rantai boleh berlapis - A memicu B, B memicu C, dst).
+                    Indikator ini otomatis tercentang begitu Indikator yang dipilih di atas
+                    tercentang (rantai boleh berlapis - A memicu B, B memicu C, dst).
                   </p>
                 </template>
                 <template v-else-if="ruleForm.rule_type === 'category'">
@@ -931,7 +1062,11 @@ onMounted(async () => {
                     Kategori
                     <select v-model="ruleForm.category_label">
                       <option value="" disabled>Pilih Kategori</option>
-                      <option v-for="c in kategoriOptionsFor(ruleForm.variable_a_id)" :key="c.id" :value="c.kategori">
+                      <option
+                        v-for="c in kategoriOptionsFor(ruleForm.variable_a_id)"
+                        :key="c.id"
+                        :value="c.kategori"
+                      >
                         {{ c.kategori }}
                       </option>
                     </select>
@@ -965,7 +1100,9 @@ onMounted(async () => {
                     Variabel B
                     <select v-model.number="ruleForm.variable_b_id">
                       <option value="" disabled>Pilih Variabel</option>
-                      <option v-for="v in variableList" :key="v.id" :value="v.id">{{ v.kode }} — {{ v.nama }}</option>
+                      <option v-for="v in variableList" :key="v.id" :value="v.id">
+                        {{ v.kode }} — {{ v.nama }}
+                      </option>
                     </select>
                   </label>
                   <label v-else class="admin-km__field">
@@ -973,11 +1110,22 @@ onMounted(async () => {
                     <input v-model.number="ruleForm.compare_value" type="number" step="0.1" />
                   </label>
                 </template>
-                <p v-if="ruleErrors.category_label" class="error">{{ ruleErrors.category_label[0] }}</p>
+                <p v-if="ruleErrors.category_label" class="error">
+                  {{ ruleErrors.category_label[0] }}
+                </p>
                 <p v-if="ruleErrors.operator" class="error">{{ ruleErrors.operator[0] }}</p>
-                <p v-if="ruleErrors.variable_b_id" class="error">{{ ruleErrors.variable_b_id[0] }}</p>
-                <p v-if="ruleErrors.depends_on_indikator_id" class="error">{{ ruleErrors.depends_on_indikator_id[0] }}</p>
-                <button type="button" class="btn btn--primary" :disabled="ruleSubmitting" @click="addRule(i.id)">
+                <p v-if="ruleErrors.variable_b_id" class="error">
+                  {{ ruleErrors.variable_b_id[0] }}
+                </p>
+                <p v-if="ruleErrors.depends_on_indikator_id" class="error">
+                  {{ ruleErrors.depends_on_indikator_id[0] }}
+                </p>
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  :disabled="ruleSubmitting"
+                  @click="addRule(i.id)"
+                >
                   {{ ruleSubmitting ? 'Menambah...' : 'Tambah Aturan' }}
                 </button>
               </div>
@@ -985,7 +1133,12 @@ onMounted(async () => {
           </div>
 
           <div v-if="indikatorMeta.lastPage > 1" class="admin-km__pagination">
-            <button type="button" class="btn" :disabled="indikatorMeta.currentPage <= 1" @click="goToIndikatorPage(indikatorMeta.currentPage - 1)">
+            <button
+              type="button"
+              class="btn"
+              :disabled="indikatorMeta.currentPage <= 1"
+              @click="goToIndikatorPage(indikatorMeta.currentPage - 1)"
+            >
               Sebelumnya
             </button>
             <span>Halaman {{ indikatorMeta.currentPage }} / {{ indikatorMeta.lastPage }}</span>
@@ -1037,7 +1190,9 @@ onMounted(async () => {
                 <option value="horizontal">horizontal</option>
               </select>
               <span class="admin-km__actions" @click.stop>
-                <button type="button" class="btn btn--primary" @click="saveVariable(v.id)">Simpan</button>
+                <button type="button" class="btn btn--primary" @click="saveVariable(v.id)">
+                  Simpan
+                </button>
                 <button type="button" class="btn" @click="cancelEditVariable">Batal</button>
               </span>
             </template>
@@ -1048,7 +1203,9 @@ onMounted(async () => {
               <span class="admin-km__variable-count">{{ v.kategori.length }} kategori</span>
               <span class="admin-km__actions" @click.stop>
                 <button type="button" class="btn" @click="startEditVariable(v)">Ubah</button>
-                <button type="button" class="btn btn--danger" @click="deleteVariable(v)">Hapus</button>
+                <button type="button" class="btn btn--danger" @click="deleteVariable(v)">
+                  Hapus
+                </button>
               </span>
             </template>
           </div>
@@ -1067,12 +1224,18 @@ onMounted(async () => {
               <tbody>
                 <tr v-for="c in v.kategori" :key="c.id">
                   <template v-if="categoryEditingId === c.id">
-                    <td><input v-model.number="categoryEditForm.urutan" type="number" min="1" /></td>
-                    <td><input v-model="categoryEditForm.kategori" type="text" maxlength="50" /></td>
+                    <td>
+                      <input v-model.number="categoryEditForm.urutan" type="number" min="1" />
+                    </td>
+                    <td>
+                      <input v-model="categoryEditForm.kategori" type="text" maxlength="50" />
+                    </td>
                     <td><input v-model="categoryEditForm.rentang" type="text" maxlength="30" /></td>
                     <td><input v-model="categoryEditForm.unit" type="text" maxlength="20" /></td>
                     <td class="admin-km__actions">
-                      <button type="button" class="btn btn--primary" @click="saveCategory(c.id)">Simpan</button>
+                      <button type="button" class="btn btn--primary" @click="saveCategory(c.id)">
+                        Simpan
+                      </button>
                       <button type="button" class="btn" @click="cancelEditCategory">Batal</button>
                     </td>
                   </template>
@@ -1083,7 +1246,9 @@ onMounted(async () => {
                     <td>{{ c.unit ?? '-' }}</td>
                     <td class="admin-km__actions">
                       <button type="button" class="btn" @click="startEditCategory(c)">Ubah</button>
-                      <button type="button" class="btn btn--danger" @click="deleteCategory(c)">Hapus</button>
+                      <button type="button" class="btn btn--danger" @click="deleteCategory(c)">
+                        Hapus
+                      </button>
                     </td>
                   </template>
                 </tr>
@@ -1091,10 +1256,32 @@ onMounted(async () => {
             </table>
 
             <form class="admin-km__category-form" @submit.prevent="createCategory(v)">
-              <input v-model.number="categoryForm.urutan" type="number" min="1" placeholder="Urutan" required />
-              <input v-model="categoryForm.kategori" type="text" maxlength="50" placeholder="Kategori (mis. extremely small)" required />
-              <input v-model="categoryForm.rentang" type="text" maxlength="30" placeholder="Rentang (mis. 0-2)" />
-              <input v-model="categoryForm.unit" type="text" maxlength="20" placeholder="Unit (mis. mm)" />
+              <input
+                v-model.number="categoryForm.urutan"
+                type="number"
+                min="1"
+                placeholder="Urutan"
+                required
+              />
+              <input
+                v-model="categoryForm.kategori"
+                type="text"
+                maxlength="50"
+                placeholder="Kategori (mis. extremely small)"
+                required
+              />
+              <input
+                v-model="categoryForm.rentang"
+                type="text"
+                maxlength="30"
+                placeholder="Rentang (mis. 0-2)"
+              />
+              <input
+                v-model="categoryForm.unit"
+                type="text"
+                maxlength="20"
+                placeholder="Unit (mis. mm)"
+              />
               <button type="submit" class="btn btn--primary">Tambah Kategori</button>
             </form>
             <p v-if="categoryErrors.urutan" class="error">{{ categoryErrors.urutan[0] }}</p>
@@ -1115,12 +1302,24 @@ onMounted(async () => {
             </label>
             <label>
               Rentang Skor
-              <input v-model="bandForm.rentang_skor" type="text" maxlength="10" placeholder="1-3" required />
+              <input
+                v-model="bandForm.rentang_skor"
+                type="text"
+                maxlength="10"
+                placeholder="1-3"
+                required
+              />
             </label>
           </div>
           <label>
             Label
-            <input v-model="bandForm.label" type="text" maxlength="30" placeholder="Nilai Rendah" required />
+            <input
+              v-model="bandForm.label"
+              type="text"
+              maxlength="30"
+              placeholder="Nilai Rendah"
+              required
+            />
           </label>
           <p v-if="bandErrors.label" class="error">{{ bandErrors.label[0] }}</p>
           <button type="submit" class="btn btn--primary" :disabled="bandSubmitting">
@@ -1149,13 +1348,18 @@ onMounted(async () => {
                 <td><input v-model="bandEditForm.label" type="text" maxlength="30" /></td>
                 <td><input v-model="bandEditForm.rentang_skor" type="text" maxlength="10" /></td>
                 <td class="admin-km__actions">
-                  <button type="button" class="btn btn--primary" @click="saveBand(b.id)">Simpan</button>
+                  <button type="button" class="btn btn--primary" @click="saveBand(b.id)">
+                    Simpan
+                  </button>
                   <button type="button" class="btn" @click="cancelEditBand">Batal</button>
                 </td>
               </template>
               <template v-else>
                 <td>
-                  <span class="badge" :class="b.polaritas === 'HIJAU' ? 'badge--hijau' : 'badge--merah'">
+                  <span
+                    class="badge"
+                    :class="b.polaritas === 'HIJAU' ? 'badge--hijau' : 'badge--merah'"
+                  >
                     {{ b.polaritas }}
                   </span>
                 </td>
@@ -1163,7 +1367,9 @@ onMounted(async () => {
                 <td>{{ b.rentang_skor }}</td>
                 <td class="admin-km__actions">
                   <button type="button" class="btn" @click="startEditBand(b)">Ubah</button>
-                  <button type="button" class="btn btn--danger" @click="deleteBand(b)">Hapus</button>
+                  <button type="button" class="btn btn--danger" @click="deleteBand(b)">
+                    Hapus
+                  </button>
                 </td>
               </template>
             </tr>

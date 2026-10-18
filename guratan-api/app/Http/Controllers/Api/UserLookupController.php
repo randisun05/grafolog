@@ -11,6 +11,7 @@ use App\Services\ClientInvitationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class UserLookupController extends Controller
 {
@@ -104,12 +105,15 @@ class UserLookupController extends Controller
      * abort_unless seperti byEmail() di atas - pola baru sejak MGA Fase 05.
      */
     /**
-     * Grafolog terverifikasi + profil & beban kerja - dasar HR memilih grafolog (Fase C,
-     * 2026-10-17). Beban = penugasan sampel belum selesai + layanan pendukung yang masih berjalan.
+     * Grafolog terverifikasi + profil, beban & kalender setahun - dasar HR memilih grafolog.
+     * `?month=YYYY-MM` (default bulan ini, dalam jendela 12 bulan): HR hanya melihat yang bisa
+     * dipesan bulan itu; `calendar` = bulan-bulan yang DIATUR grafolog (catatan ketersediaan setahun).
+     * Admin melihat semua beserta statusnya.
      */
     public function grafologs(Request $request): JsonResponse
     {
-        $month = $request->validate(['month' => ['sometimes', 'date_format:Y-m']])['month'] ?? now()->format('Y-m');
+        $window = GrafologAvailability::window();
+        $month = $request->validate(['month' => ['sometimes', Rule::in($window)]])['month'] ?? $window[0];
         $isHr = $request->user()->isHr();
 
         $list = User::where('role', 'grafolog')
@@ -120,10 +124,17 @@ class UserLookupController extends Controller
                 'serviceDeliveries as active_services' => fn ($q) => $q->whereIn('status', ['ditugaskan', 'dijadwalkan']),
             ])
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'city', 'bio', 'specializations', 'experience_years', 'grafolog_verified_at'])
-            ->map(fn (User $g) => $g->toArray() + ['availability' => GrafologAvailability::forMonth($g, $month)]);
+            ->get(['id', 'name', 'email', 'city', 'bio', 'specializations', 'experience_years', 'grafolog_verified_at']);
 
-        // HR hanya melihat grafolog yang bisa dipesan bulan itu; admin melihat semua beserta statusnya.
+        $rows = GrafologAvailability::whereIn('user_id', $list->pluck('id'))->whereIn('month', $window)
+            ->get(['user_id', 'month', 'status'])->groupBy('user_id');
+
+        $list = $list->map(fn (User $g) => $g->toArray() + [
+            'availability' => GrafologAvailability::forMonth($g, $month),
+            'calendar' => ($rows[$g->id] ?? collect())->sortBy('month')
+                ->map(fn ($r) => ['month' => $r->month, 'status' => $r->status])->values(),
+        ]);
+
         return response()->json($isHr ? $list->filter(fn ($g) => $g['availability']['bookable'])->values() : $list->values());
     }
 }

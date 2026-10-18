@@ -142,7 +142,7 @@ class DashboardControllerTest extends TestCase
         $this->assertSame(1, $kpi['pending_review']['value']);
     }
 
-    public function test_admin_supervisor_and_hr_get_their_own_dashboards(): void
+    public function test_admin_and_hr_get_their_own_dashboards(): void
     {
         $grafolog = User::factory()->create(['role' => 'grafolog']);
         $sample = $this->makeSample($this->makeProject($grafolog, 'grafolog'), User::factory()->create(), $grafolog, 'completed');
@@ -151,10 +151,6 @@ class DashboardControllerTest extends TestCase
         $admin = collect($this->actingAs(User::factory()->create(['role' => 'administrator']), 'sanctum')
             ->getJson('/api/dashboard')->assertJsonPath('role', 'administrator')->json('kpi'))->keyBy('key');
         $this->assertSame(1, $admin['reviews_pending']['value']);
-
-        $this->actingAs(User::factory()->create(['role' => 'supervisor']), 'sanctum')
-            ->getJson('/api/dashboard')->assertJsonPath('role', 'supervisor')
-            ->assertJsonPath('kpi.0.value', 1)->assertJsonCount(1, 'activity');
 
         $this->actingAs(User::factory()->create(['role' => 'hr']), 'sanctum')
             ->getJson('/api/dashboard')->assertJsonPath('role', 'hr')->assertJsonPath('kpi.0.value', 0);

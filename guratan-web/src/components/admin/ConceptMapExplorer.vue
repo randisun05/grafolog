@@ -23,7 +23,9 @@ const aspekRefs = reactive({})
 const indikatorRefs = reactive({})
 const lines = ref([])
 
-const selectedSindrom = computed(() => sindromList.value.find((s) => s.id === selectedSindromId.value) ?? null)
+const selectedSindrom = computed(
+  () => sindromList.value.find((s) => s.id === selectedSindromId.value) ?? null,
+)
 
 onMounted(async () => {
   try {
@@ -106,11 +108,33 @@ async function recomputeLines() {
   const containerRect = mapContainerRef.value.getBoundingClientRect()
   const pts = []
 
-  if (selectedSindromId.value && sindromRefs[selectedSindromId.value] && selectedAspekId.value && aspekRefs[selectedAspekId.value]) {
-    pts.push(edgeLine(sindromRefs[selectedSindromId.value], aspekRefs[selectedAspekId.value], containerRect))
+  if (
+    selectedSindromId.value &&
+    sindromRefs[selectedSindromId.value] &&
+    selectedAspekId.value &&
+    aspekRefs[selectedAspekId.value]
+  ) {
+    pts.push(
+      edgeLine(
+        sindromRefs[selectedSindromId.value],
+        aspekRefs[selectedAspekId.value],
+        containerRect,
+      ),
+    )
   }
-  if (selectedAspekId.value && aspekRefs[selectedAspekId.value] && selectedIndikatorId.value && indikatorRefs[selectedIndikatorId.value]) {
-    pts.push(edgeLine(aspekRefs[selectedAspekId.value], indikatorRefs[selectedIndikatorId.value], containerRect))
+  if (
+    selectedAspekId.value &&
+    aspekRefs[selectedAspekId.value] &&
+    selectedIndikatorId.value &&
+    indikatorRefs[selectedIndikatorId.value]
+  ) {
+    pts.push(
+      edgeLine(
+        aspekRefs[selectedAspekId.value],
+        indikatorRefs[selectedIndikatorId.value],
+        containerRect,
+      ),
+    )
   }
   lines.value = pts
 }
@@ -131,7 +155,13 @@ function formatRule(rule) {
   if (rule.rule_type === 'category') {
     return `${rule.variable_a.nama} = "${rule.category_label}"`
   }
-  const op = { equals: '=', greater_than: '>', less_than: '<', greater_or_equal: '≥', less_or_equal: '≤' }[rule.operator]
+  const op = {
+    equals: '=',
+    greater_than: '>',
+    less_than: '<',
+    greater_or_equal: '≥',
+    less_or_equal: '≤',
+  }[rule.operator]
   const right = rule.variable_b
     ? `${rule.koefisien != 1 ? `${rule.koefisien}× ` : ''}${rule.variable_b.nama}`
     : rule.compare_value
@@ -151,7 +181,14 @@ function formatRule(rule) {
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <div v-else ref="mapContainerRef" class="concept-map__body">
       <svg class="concept-map__lines">
-        <path v-for="(l, i) in lines" :key="i" :d="l.d" fill="none" stroke="var(--color-seal)" stroke-width="1.5" />
+        <path
+          v-for="(l, i) in lines"
+          :key="i"
+          :d="l.d"
+          fill="none"
+          stroke="var(--color-seal)"
+          stroke-width="1.5"
+        />
       </svg>
 
       <div class="concept-map__col">
@@ -201,40 +238,58 @@ function formatRule(rule) {
         >
           <span>{{ ind.kode }} {{ ind.nama }}</span>
           <span class="concept-map__tags">
-            <span v-if="ind.rules_count > 0" class="concept-map__badge concept-map__badge--rule">{{ ind.rules_count }} aturan</span>
-            <span v-if="ind.cross_ref_count > 0" class="concept-map__badge concept-map__badge--ref">{{ ind.cross_ref_count }} referensi</span>
+            <span v-if="ind.rules_count > 0" class="concept-map__badge concept-map__badge--rule"
+              >{{ ind.rules_count }} aturan</span
+            >
+            <span v-if="ind.cross_ref_count > 0" class="concept-map__badge concept-map__badge--ref"
+              >{{ ind.cross_ref_count }} referensi</span
+            >
           </span>
         </button>
       </div>
 
       <div class="concept-map__col concept-map__col--detail">
         <h4>Relasi</h4>
-        <p v-if="!selectedIndikatorId" class="concept-map__empty">Pilih Indikator untuk melihat relasinya.</p>
+        <p v-if="!selectedIndikatorId" class="concept-map__empty">
+          Pilih Indikator untuk melihat relasinya.
+        </p>
         <SkeletonLoader v-else-if="indikatorLoading" variant="text" label="Memuat..." />
         <template v-else-if="indikatorDetail">
-          <p class="concept-map__detail-title">{{ indikatorDetail.indikator.kode }} — {{ indikatorDetail.indikator.nama }}</p>
+          <p class="concept-map__detail-title">
+            {{ indikatorDetail.indikator.kode }} — {{ indikatorDetail.indikator.nama }}
+          </p>
 
           <p class="concept-map__section-label">Aturan Operator (↔ Variabel Ukur)</p>
           <p v-if="indikatorDetail.indikator.rules.length === 0" class="concept-map__empty">
             Tidak ada aturan — dicentang manual berdasar pengamatan.
           </p>
           <ul v-else class="concept-map__relation-list">
-            <li v-for="rule in indikatorDetail.indikator.rules" :key="rule.id">{{ formatRule(rule) }}</li>
+            <li v-for="rule in indikatorDetail.indikator.rules" :key="rule.id">
+              {{ formatRule(rule) }}
+            </li>
           </ul>
 
           <p class="concept-map__section-label">Referensi Silang Keluar (memicu)</p>
-          <p v-if="indikatorDetail.referensi_keluar.length === 0" class="concept-map__empty">Tidak ada.</p>
+          <p v-if="indikatorDetail.referensi_keluar.length === 0" class="concept-map__empty">
+            Tidak ada.
+          </p>
           <ul v-else class="concept-map__relation-list">
             <li v-for="ind in indikatorDetail.referensi_keluar" :key="ind.id">
-              <button type="button" class="concept-map__chip" @click="jumpToIndikator(ind)">{{ ind.kode }} — {{ ind.nama }}</button>
+              <button type="button" class="concept-map__chip" @click="jumpToIndikator(ind)">
+                {{ ind.kode }} — {{ ind.nama }}
+              </button>
             </li>
           </ul>
 
           <p class="concept-map__section-label">Direferensikan Oleh</p>
-          <p v-if="indikatorDetail.referensi_masuk.length === 0" class="concept-map__empty">Tidak ada.</p>
+          <p v-if="indikatorDetail.referensi_masuk.length === 0" class="concept-map__empty">
+            Tidak ada.
+          </p>
           <ul v-else class="concept-map__relation-list">
             <li v-for="ind in indikatorDetail.referensi_masuk" :key="ind.id">
-              <button type="button" class="concept-map__chip" @click="jumpToIndikator(ind)">{{ ind.kode }} — {{ ind.nama }}</button>
+              <button type="button" class="concept-map__chip" @click="jumpToIndikator(ind)">
+                {{ ind.kode }} — {{ ind.nama }}
+              </button>
             </li>
           </ul>
         </template>

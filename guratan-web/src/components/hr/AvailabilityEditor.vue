@@ -15,6 +15,7 @@ async function load() {
     capacity: m.capacity ?? '',
     note: m.note ?? '',
   }))
+  // Bulan ini terbuka, sisanya dilipat supaya setahun tidak memenuhi halaman.
 }
 
 async function save(m) {
@@ -24,6 +25,7 @@ async function save(m) {
       month: m.month,
       status: m.status,
       capacity: m.capacity === '' ? null : Number(m.capacity),
+      supervision: !!m.supervision,
       note: m.note || null,
     })
     Object.assign(m, data, { capacity: data.capacity ?? '', note: data.note ?? '' })
@@ -41,11 +43,14 @@ onMounted(load)
 
 <template>
   <section class="av">
-    <h2>Ketersediaan per bulan</h2>
+    <h2>Jadwal ketersediaan setahun</h2>
     <p class="av__hint">
       Perusahaan hanya bisa memilih Anda di bulan berstatus <strong>Tersedia</strong> atau
-      <strong>Terbatas</strong>. Isi kuota untuk membatasi jumlah pekerjaan aktif; bila kuota habis,
-      Anda otomatis tidak muncul. Bulan yang belum diatur dianggap tersedia.
+      <strong>Terbatas</strong>; bulan-bulan yang Anda atur tampil sebagai catatan di profil Anda.
+      Kuota membatasi jumlah kandidat per bulan layanan - bila habis Anda otomatis tidak muncul.
+      Centang <strong>Bersedia supervisi</strong> bila Anda mau menerima penugasan memvalidasi
+      laporan grafolog lain di bulan itu. Bulan yang belum diatur: tersedia untuk dipesan, belum
+      bersedia supervisi.
     </p>
     <div v-for="m in months" :key="m.month" class="av__row">
       <strong class="av__month">{{ formatBulan(m.month) }}</strong>
@@ -54,6 +59,10 @@ onMounted(load)
           {{ label }}
         </option>
       </select>
+      <label class="av__check"
+        ><input v-model="m.supervision" type="checkbox" :aria-label="`Supervisi ${m.month}`" />
+        Supervisi</label
+      >
       <input
         v-model="m.capacity"
         type="number"
@@ -100,7 +109,7 @@ onMounted(load)
 }
 .av__row {
   display: grid;
-  grid-template-columns: 110px 130px 130px 1fr auto auto;
+  grid-template-columns: 120px 120px auto 110px 1fr auto auto;
   gap: 8px;
   align-items: center;
 }
@@ -122,5 +131,16 @@ onMounted(load)
   .av__row {
     grid-template-columns: 1fr 1fr;
   }
+}
+.av__check {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.av__check input {
+  width: auto;
+  margin: 0;
 }
 </style>

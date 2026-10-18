@@ -44,12 +44,8 @@ async function handleLogout() {
         <RouterLink v-if="auth.isClient" to="/pesan">Pesan Layanan</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
-        <RouterLink v-if="auth.isGrafolog || auth.isSupervisor" to="/token-saya"
-          >Token Saya</RouterLink
-        >
-        <RouterLink v-if="auth.isSupervisor || auth.isAdministrator" to="/supervisor/reviews"
-          >Review Laporan</RouterLink
-        >
+        <RouterLink v-if="auth.isGrafolog" to="/grafolog/supervisi">Supervisi</RouterLink>
+        <RouterLink v-if="auth.isGrafolog" to="/token-saya">Token Saya</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/orders">Pesanan Masuk</RouterLink>
         <details v-if="auth.isAdministrator" ref="adminMenu" class="app-navbar__menu">
           <summary>Admin</summary>
@@ -59,6 +55,7 @@ async function handleLogout() {
             <RouterLink to="/admin/users">Kelola Staf</RouterLink>
             <RouterLink to="/admin/grafolog">Verifikasi Grafolog</RouterLink>
             <RouterLink to="/admin/perusahaan">Verifikasi Perusahaan</RouterLink>
+            <RouterLink to="/admin/validasi">Penugasan Supervisi</RouterLink>
             <RouterLink to="/admin/tokens">Kelola Token</RouterLink>
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
             <RouterLink to="/admin/engagement">Cek Tulisan, Mitra &amp; Artikel</RouterLink>

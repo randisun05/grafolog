@@ -42,6 +42,15 @@ export const STATUS_LAYANAN = {
   dibatalkan: 'Dibatalkan',
 }
 
+export const STATUS_VALIDASI = {
+  menunggu: 'Menunggu keputusan',
+  disetujui: 'Disetujui (menunggu konfirmasi)',
+  perlu_revisi: 'Perlu revisi (menunggu konfirmasi)',
+  selesai: 'Selesai',
+  ditolak: 'Penugasan ditolak',
+  kedaluwarsa: 'Lewat tenggat',
+}
+
 export const EMPLOYEE_RANGES = ['1-10', '11-50', '51-200', '201-1000', '1000+']
 
 export const EDUCATION = ['SMA', 'D3', 'S1', 'S2', 'S3', 'Lainnya']

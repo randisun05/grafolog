@@ -33,7 +33,7 @@ class StoreStaffUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
-            'role' => ['required', 'string', 'in:administrator,supervisor,grafolog,hr'],
+            'role' => ['required', 'string', 'in:administrator,grafolog,hr'],
             'company_id' => [
                 $this->input('role') === 'hr' ? 'required' : 'prohibited',
                 'integer', 'exists:companies,id',

@@ -84,12 +84,13 @@ class B2bOrderController extends Controller
         $grafolog = User::find($data['grafolog_id']);
         abort_unless($grafolog?->isGrafolog(), 422, 'Grafolog yang dipilih tidak terverifikasi.');
 
-        $availability = GrafologAvailability::forMonth($grafolog, now()->format('Y-m'));
-        abort_unless($availability['bookable'], 422, 'Grafolog ini sedang tidak tersedia bulan ini. Pilih grafolog lain.');
+        $month = $data['month'] ?? now()->format('Y-m');
+        $availability = GrafologAvailability::forMonth($grafolog, $month);
+        abort_unless($availability['bookable'], 422, 'Grafolog ini tidak tersedia pada bulan layanan yang dipilih. Pilih grafolog atau bulan lain.');
         abort_if(
             $availability['slots_left'] !== null && count($data['candidate_ids']) > $availability['slots_left'],
             422,
-            "Kuota grafolog ini bulan ini tinggal {$availability['slots_left']} kandidat.",
+            "Kuota grafolog ini untuk bulan tersebut tinggal {$availability['slots_left']} kandidat.",
         );
 
         $profiles = CandidateProfile::where('company_id', $hr->company_id)
@@ -108,7 +109,7 @@ class B2bOrderController extends Controller
             ], 422);
         }
 
-        $batch = $this->orders->createBatch($hr->company, $hr, $product, $profiles->pluck('user'), $data['discount_code'] ?? null, $grafolog);
+        $batch = $this->orders->createBatch($hr->company, $hr, $product, $profiles->pluck('user'), $data['discount_code'] ?? null, $grafolog, $month);
         AuditLog::record('pesan_b2b', OrderBatch::class, $batch->id, $hr->id, $request->ip());
 
         return response()->json($batch->load(['product:id,kode,nama', 'grafolog:id,name', 'orders:id,batch_id,user_id,status']), 201);

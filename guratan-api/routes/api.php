@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\Admin\SelfCheckAdminController;
 use App\Http\Controllers\Api\Admin\SindromController as AdminSindromController;
 use App\Http\Controllers\Api\Admin\TokenCostController;
 use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceController;
+use App\Http\Controllers\Api\Admin\ValidationIndexController;
 use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\ArticleController;
@@ -52,7 +53,6 @@ use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReportController;
-use App\Http\Controllers\Api\ReportReviewController;
 use App\Http\Controllers\Api\ReportValidationController;
 use App\Http\Controllers\Api\SampleController;
 use App\Http\Controllers\Api\SampleImageController;
@@ -113,7 +113,6 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::post('/orders/{order}/payment', [OrderController::class, 'pay']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
-    Route::post('/orders/{order}/refund-request', [OrderController::class, 'requestRefund']);
     Route::get('/service-deliveries', [ServiceDeliveryController::class, 'index']);
     Route::get('/service-deliveries/{delivery}', [ServiceDeliveryController::class, 'show']);
     Route::post('/service-deliveries/{delivery}/assign', [ServiceDeliveryController::class, 'assign']);
@@ -122,9 +121,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/announcements', [AnnouncementController::class, 'index']);
 
     Route::get('/tokens/price', [TokenController::class, 'price']);
-    // Supervisor juga punya dompet: menerima token dari validasi laporan (Fase D).
-    Route::middleware('role:grafolog,supervisor')->get('/tokens/wallet', [TokenController::class, 'wallet']);
     Route::middleware('role:grafolog')->group(function () {
+        Route::get('/tokens/wallet', [TokenController::class, 'wallet']);
         Route::post('/tokens/preview', [TokenController::class, 'preview']);
         Route::post('/tokens/purchase', [TokenPurchaseController::class, 'store']);
     });
@@ -159,15 +157,17 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/grafolog/availability', [GrafologAvailabilityController::class, 'index']);
         Route::put('/grafolog/availability', [GrafologAvailabilityController::class, 'update']);
         Route::get('/report-validation/fee', [ReportValidationController::class, 'fee']);
+        Route::get('/report-validation/validators', [ReportValidationController::class, 'validators']);
+        Route::get('/validations', [ReportValidationController::class, 'index']);
+        Route::post('/validations/{validation}/decide', [ReportValidationController::class, 'decide']);
+        Route::post('/validations/{validation}/decline', [ReportValidationController::class, 'decline']);
+        Route::post('/validations/{validation}/confirm', [ReportValidationController::class, 'confirm']);
         Route::post('/reports/{report}/publish', [ReportValidationController::class, 'publish']);
         Route::post('/reports/{report}/request-validation', [ReportValidationController::class, 'request']);
     });
+    Route::get('/reports/{report}/validations', [ReportValidationController::class, 'forReport']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
-    Route::middleware('role:supervisor,administrator')->group(function () {
-        Route::get('/reviews', [ReportReviewController::class, 'index']);
-        Route::post('/reports/{report}/review', [ReportReviewController::class, 'store']);
-    });
     Route::patch('/reports/{report}/aspek/{kode}/narasi', [ReportController::class, 'updateNarasi']);
     Route::get('/reports/{report}/revisions', [ReportController::class, 'revisions']);
     Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);
@@ -194,8 +194,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/grafolog-applications/{user}/certificate', [GrafologVerificationController::class, 'certificate']);
         Route::post('/grafolog-applications/{user}/decision', [GrafologVerificationController::class, 'decide']);
         Route::get('/company-applications', [CompanyVerificationController::class, 'index']);
+        Route::get('/validations', [ValidationIndexController::class, 'index']);
         Route::get('/refunds', [RefundController::class, 'index']);
-        Route::post('/orders/{order}/refund', [RefundController::class, 'decide']);
+        Route::post('/orders/{order}/refund', [RefundController::class, 'refund']);
         Route::get('/self-check', [SelfCheckAdminController::class, 'index']);
         Route::post('/self-check/questions', [SelfCheckAdminController::class, 'storeQuestion']);
         Route::put('/self-check/questions/{question}', [SelfCheckAdminController::class, 'updateQuestion']);

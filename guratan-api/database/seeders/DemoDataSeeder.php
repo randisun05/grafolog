@@ -9,6 +9,7 @@ use App\Models\Assignment;
 use App\Models\CandidateProfile;
 use App\Models\Company;
 use App\Models\DiscountCode;
+use App\Models\GrafologAvailability;
 use App\Models\HandwritingSample;
 use App\Models\JobPosition;
 use App\Models\Order;
@@ -18,6 +19,7 @@ use App\Models\PersonalityReport;
 use App\Models\Product;
 use App\Models\Project;
 use App\Models\ReportAspekScore;
+use App\Models\ReportValidation;
 use App\Models\SampleConsultation;
 use App\Models\SampleImage;
 use App\Models\TokenCost;
@@ -69,7 +71,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $users = $this->createUsers();
-        $this->createCommerceData($users['admin'], [$users['ani'], $users['bima']]);
+        $this->createCommerceData($users['admin'], [$users['ani'], $users['bima'], $users['supervisor']]);
 
         $ani = $users['ani'];
         $bima = $users['bima'];
@@ -84,8 +86,7 @@ class DemoDataSeeder extends Seeder
         $citra = $this->clientOrder($users['citra'], 'master', paid: true, daysAgo: 8);
         $this->assign($citra, $ani, $users['admin']);
         // Citra: diterbitkan mandiri oleh grafolog (validasi supervisor opsional, Fase D).
-        $this->report($engine, $citra, $ani, 'sosial', PersonalityReport::REVIEW_APPROVED, $ani, daysAgo: 6)
-            ->update(['validation' => PersonalityReport::VALIDATION_SELF, 'validation_requested_at' => null]);
+        $this->report($engine, $citra, $ani, 'sosial', PersonalityReport::REVIEW_APPROVED, $ani, daysAgo: 6);
         SampleConsultation::create([
             'sample_id' => $citra->id,
             'scheduled_at' => now('Asia/Jakarta')->addDays(3)->setTime(10, 0)->utc(),
@@ -102,7 +103,7 @@ class DemoDataSeeder extends Seeder
 
         // 5. Fajar - klien walk-in Bima, laporan menunggu review supervisor.
         $fajar = $this->walkIn($users['fajar'], $bima, 'master', daysAgo: 3);
-        $this->report($engine, $fajar, $bima, 'analitis', PersonalityReport::REVIEW_PENDING, null, daysAgo: 1);
+        $this->report($engine, $fajar, $bima, 'analitis', PersonalityReport::REVIEW_PENDING, $spv, daysAgo: 1);
 
         // 6. Gita - klien walk-in Ani, dikembalikan supervisor untuk revisi.
         $gita = $this->walkIn($users['gita'], $ani, 'master', daysAgo: 5);
@@ -152,7 +153,11 @@ class DemoDataSeeder extends Seeder
 
         return [
             'admin' => $make('Admin Demo', 'admin.demo@guratan.test', 'administrator'),
-            'supervisor' => $make('Sari Supervisor', 'supervisor@guratan.test', 'supervisor'),
+            'supervisor' => $make('Sari Grafolog', 'sari.grafolog@guratan.test', 'grafolog', [
+                'grafolog_status' => 'verified', 'city' => 'Surabaya', 'experience_years' => 15,
+                'specializations' => ['Supervisi laporan', 'Pengembangan karier'],
+                'bio' => 'Grafolog senior yang bersedia memvalidasi laporan sesama grafolog.',
+            ]),
             'ani' => $ani,
             'bima' => $bima,
             'hr' => $make('Rina HR', 'hr@majujaya.test', 'hr', ['company_id' => $company->id]),
@@ -186,6 +191,14 @@ class DemoDataSeeder extends Seeder
         TokenCost::setTokensFor(ReportValidationService::COST_KEY, 2, $admin);
         foreach ($grafologs as $g) {
             app(TokenWalletService::class)->credit($g, 10);
+            // Jadwal setahun: semua bulan tersedia; Sari & Bima bersedia supervisi.
+            foreach (GrafologAvailability::window() as $i => $month) {
+                GrafologAvailability::create([
+                    'user_id' => $g->id, 'month' => $month, 'status' => $i === 7 ? 'libur' : 'tersedia',
+                    'supervision' => in_array($g->email, ['sari.grafolog@guratan.test', 'bima.grafolog@guratan.test'], true),
+                    'note' => $i === 7 ? 'Cuti' : null,
+                ]);
+            }
         }
         DiscountCode::create([
             'code' => 'DEMO20', 'type' => 'percentage', 'value' => 20, 'applicable_tiers' => ['master'],
@@ -307,6 +320,8 @@ class DemoDataSeeder extends Seeder
             ])->all();
 
         $generatedAt = $this->ago($daysAgo);
+        $selfPublished = $reviewer?->id === $grafolog->id;
+        $decided = in_array($reviewStatus, [PersonalityReport::REVIEW_APPROVED, PersonalityReport::REVIEW_REVISION], true);
         $report = PersonalityReport::create([
             'sample_id' => $sample->id,
             'tier' => $sample->tier,
@@ -314,11 +329,27 @@ class DemoDataSeeder extends Seeder
             'data' => $engine->generate($skor),
             'generated_at' => $generatedAt,
             'review_status' => $reviewStatus,
-            'reviewed_by' => $reviewer?->id,
-            'reviewed_at' => $reviewer ? $generatedAt->copy()->addHours(3) : null,
-            'validation' => PersonalityReport::VALIDATION_SUPERVISOR,
-            'validation_requested_at' => $generatedAt,
+            'reviewed_by' => $decided ? $reviewer?->id : null,
+            'reviewed_at' => $decided && $reviewer ? $generatedAt->copy()->addHours(3) : null,
+            'validation' => $selfPublished ? PersonalityReport::VALIDATION_SELF
+                : ($reviewStatus === PersonalityReport::REVIEW_APPROVED ? PersonalityReport::VALIDATION_SUPERVISOR : null),
         ]);
+
+        // Supervisi antar-grafolog (2026-10-18): satu penugasan per laporan yang melewati validator.
+        if ($reviewer && ! $selfPublished && $reviewStatus !== PersonalityReport::REVIEW_DRAFT) {
+            $report->validations()->create([
+                'requester_id' => $grafolog->id, 'validator_id' => $reviewer->id, 'fee' => 2, 'deadline_days' => 7,
+                'status' => match ($reviewStatus) {
+                    PersonalityReport::REVIEW_PENDING => ReportValidation::WAITING,
+                    default => ReportValidation::DONE,
+                },
+                'due_at' => $generatedAt->copy()->addDays(7),
+                'note' => $reviewStatus === PersonalityReport::REVIEW_REVISION ? 'Cek ulang skor Stress Vulnerability.' : null,
+                'decided_at' => $decided ? $generatedAt->copy()->addHours(3) : null,
+                'confirmed_at' => $decided ? $generatedAt->copy()->addHours(5) : null,
+                'paid_at' => $decided ? $generatedAt->copy()->addHours(5) : null,
+            ]);
+        }
 
         $aspekIds = Aspek::pluck('id', 'kode');
         foreach ($skor as $kode => $nilai) {

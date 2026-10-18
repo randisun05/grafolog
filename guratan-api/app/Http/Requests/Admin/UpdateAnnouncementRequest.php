@@ -28,7 +28,7 @@ class UpdateAnnouncementRequest extends FormRequest
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'body' => ['sometimes', 'required', 'string', 'max:2000'],
             'target_roles' => ['nullable', 'array'],
-            'target_roles.*' => ['string', 'in:user,grafolog,hr,administrator,supervisor'],
+            'target_roles.*' => ['string', 'in:user,grafolog,hr,administrator'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'is_active' => ['sometimes', 'boolean'],

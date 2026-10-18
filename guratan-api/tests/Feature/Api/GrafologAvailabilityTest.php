@@ -4,13 +4,12 @@ namespace Tests\Feature\Api;
 
 use App\Models\Company;
 use App\Models\GrafologAvailability;
-use App\Models\HandwritingSample;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-/** Ketersediaan grafolog per bulan menentukan siapa yang bisa dipilih HR (2026-10-18). */
+/** Ketersediaan grafolog setahun menentukan siapa yang bisa dipilih HR & dipakai sebagai validator. */
 class GrafologAvailabilityTest extends TestCase
 {
     use RefreshDatabase;
@@ -25,48 +24,52 @@ class GrafologAvailabilityTest extends TestCase
         return User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'verified']);
     }
 
-    public function test_grafolog_sets_availability_per_month(): void
+    public function test_grafolog_sets_a_year_of_availability_with_supervision_flag(): void
     {
         $g = $this->grafolog();
         $thisMonth = now()->format('Y-m');
-        $next = now()->startOfMonth()->addMonth()->format('Y-m');
+        $far = now()->startOfMonth()->addMonths(11)->format('Y-m');
 
         $res = $this->actingAs($g, 'sanctum')->getJson('/api/grafolog/availability')->assertOk();
-        $this->assertCount(6, $res->json());
+        $this->assertCount(12, $res->json());
         $this->assertSame('tersedia', $res->json('0.status'));
+        $this->assertFalse($res->json('0.supervision'));
         $this->assertFalse($res->json('0.configured'));
 
-        $this->actingAs($g, 'sanctum')->putJson('/api/grafolog/availability', ['month' => $next, 'status' => 'libur', 'note' => 'Cuti'])
-            ->assertOk()->assertJsonPath('status', 'libur')->assertJsonPath('bookable', false);
-        $this->actingAs($g, 'sanctum')->putJson('/api/grafolog/availability', ['month' => $thisMonth, 'status' => 'terbatas', 'capacity' => 3])
-            ->assertOk()->assertJsonPath('slots_left', 3)->assertJsonPath('bookable', true);
+        $this->actingAs($g, 'sanctum')->putJson('/api/grafolog/availability', ['month' => $far, 'status' => 'libur', 'note' => 'Cuti'])
+            ->assertOk()->assertJsonPath('status', 'libur')->assertJsonPath('bookable', false)->assertJsonPath('supervisable', false);
+        $this->actingAs($g, 'sanctum')->putJson('/api/grafolog/availability', ['month' => $thisMonth, 'status' => 'terbatas', 'capacity' => 3, 'supervision' => true])
+            ->assertOk()->assertJsonPath('slots_left', 3)->assertJsonPath('bookable', true)->assertJsonPath('supervisable', true);
 
-        // Di luar jendela 6 bulan / status asing ditolak; non-grafolog tidak boleh.
-        $this->actingAs($g, 'sanctum')->putJson('/api/grafolog/availability', ['month' => '2020-01', 'status' => 'libur'])->assertUnprocessable();
+        $beyond = now()->startOfMonth()->addMonths(12)->format('Y-m');
+        $this->actingAs($g, 'sanctum')->putJson('/api/grafolog/availability', ['month' => $beyond, 'status' => 'libur'])->assertUnprocessable();
         $this->actingAs($g, 'sanctum')->putJson('/api/grafolog/availability', ['month' => $thisMonth, 'status' => 'xx'])->assertUnprocessable();
         $this->actingAs($this->hr(), 'sanctum')->getJson('/api/grafolog/availability')->assertForbidden();
     }
 
-    public function test_hr_only_sees_bookable_grafologs_while_admin_sees_all(): void
+    public function test_hr_filters_by_month_and_sees_yearly_calendar_note(): void
     {
         $open = $this->grafolog();
         $off = $this->grafolog();
-        $full = $this->grafolog();
-        $m = now()->format('Y-m');
-        GrafologAvailability::create(['user_id' => $off->id, 'month' => $m, 'status' => 'libur']);
-        GrafologAvailability::create(['user_id' => $full->id, 'month' => $m, 'status' => 'tersedia', 'capacity' => 1]);
-        $full->assignments()->create(['sample_id' => HandwritingSample::create(['user_id' => User::factory()->create()->id, 'created_by' => $full->id, 'tier' => 'master', 'status' => 'pending'])->id, 'assigned_by' => $full->id, 'status' => 'assigned']);
+        $next = now()->startOfMonth()->addMonth()->format('Y-m');
+        $now = now()->format('Y-m');
+        GrafologAvailability::create(['user_id' => $off->id, 'month' => $now, 'status' => 'libur']);
+        GrafologAvailability::create(['user_id' => $off->id, 'month' => $next, 'status' => 'tersedia']);
 
-        $ids = collect($this->actingAs($this->hr(), 'sanctum')->getJson('/api/grafologs')->assertOk()->json())->pluck('id');
-        $this->assertEquals([$open->id], $ids->all());
+        $hr = $this->hr();
+        $this->assertEquals([$open->id], collect($this->actingAs($hr, 'sanctum')->getJson('/api/grafologs')->json())->pluck('id')->all());
 
+        $res = $this->actingAs($hr, 'sanctum')->getJson("/api/grafologs?month={$next}")->assertOk();
+        $this->assertEqualsCanonicalizing([$open->id, $off->id], collect($res->json())->pluck('id')->all());
+        $calendar = collect($res->json())->firstWhere('id', $off->id)['calendar'];
+        $this->assertSame([['month' => $now, 'status' => 'libur'], ['month' => $next, 'status' => 'tersedia']], $calendar);
+
+        $this->actingAs($hr, 'sanctum')->getJson('/api/grafologs?month=2020-01')->assertUnprocessable();
         $admin = User::factory()->create(['role' => 'administrator']);
-        $all = $this->actingAs($admin, 'sanctum')->getJson('/api/grafologs')->json();
-        $this->assertCount(3, $all);
-        $this->assertSame('libur', collect($all)->firstWhere('id', $off->id)['availability']['status']);
+        $this->assertCount(2, $this->actingAs($admin, 'sanctum')->getJson('/api/grafologs')->json());
     }
 
-    public function test_b2b_order_rejects_unavailable_or_overbooked_grafolog(): void
+    public function test_b2b_order_checks_chosen_month_and_capacity_per_service_month(): void
     {
         Http::fake();
         config(['payment.bypass' => true]);
@@ -78,16 +81,20 @@ class GrafologAvailabilityTest extends TestCase
                 'name' => $n, 'email' => "$n@example.com", 'consent_confirmed' => true,
             ])->json('id');
         }
+        $now = now()->format('Y-m');
+        $next = now()->startOfMonth()->addMonth()->format('Y-m');
         $body = ['product' => 'paket-rekrutmen', 'candidate_ids' => $ids, 'grafolog_id' => $g->id];
 
-        GrafologAvailability::create(['user_id' => $g->id, 'month' => now()->format('Y-m'), 'status' => 'libur']);
+        GrafologAvailability::create(['user_id' => $g->id, 'month' => $now, 'status' => 'libur']);
         $this->actingAs($hr, 'sanctum')->postJson('/api/hr/orders', $body)->assertUnprocessable();
 
         GrafologAvailability::where('user_id', $g->id)->update(['status' => 'terbatas', 'capacity' => 1]);
         $this->actingAs($hr, 'sanctum')->postJson('/api/hr/orders', $body)->assertUnprocessable()
-            ->assertJsonPath('message', 'Kuota grafolog ini bulan ini tinggal 1 kandidat.');
+            ->assertJsonPath('message', 'Kuota grafolog ini untuk bulan tersebut tinggal 1 kandidat.');
 
-        GrafologAvailability::where('user_id', $g->id)->update(['capacity' => 2]);
-        $this->actingAs($hr, 'sanctum')->postJson('/api/hr/orders', $body)->assertCreated();
+        // Bulan depan belum diatur -> tersedia; kuota bulan ini tidak ikut terpakai.
+        $this->actingAs($hr, 'sanctum')->postJson('/api/hr/orders', $body + ['month' => $next])->assertCreated()->assertJsonPath('service_month', $next);
+        $this->assertSame(2, GrafologAvailability::forMonth($g, $next)['workload']);
+        $this->assertSame(0, GrafologAvailability::forMonth($g, $now)['workload']);
     }
 }

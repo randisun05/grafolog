@@ -24,6 +24,9 @@ class Order extends Model
     /** Dana dikembalikan setelah admin menyetujui permintaan refund (SOP Fase E). */
     public const STATUS_REFUNDED = 'dikembalikan';
 
+    /** Refund hanya oleh admin: kesalahan sistem, atau pesanan belum selesai setelah sekian hari. */
+    public const REFUND_OVERDUE_DAYS = 90;
+
     protected $fillable = [
         'batch_id', 'user_id', 'product_id', 'sample_id', 'grafolog_id', 'status', 'base_amount', 'amount', 'discount_code_id',
         'source', 'created_by', 'paid_at', 'completed_at', 'cancelled_at', 'cancel_reason',
@@ -89,18 +92,11 @@ class Order extends Model
         return $this->paid_at !== null;
     }
 
-    /**
-     * SOP refund: boleh diajukan selama pesanan diproses dan BELUM ada hasil yang diserahkan
-     * (laporan grafologi belum terbit, belum ada layanan yang selesai).
-     */
-    public function isRefundable(): bool
+    /** Pesanan dibayar & belum selesai lebih dari 90 hari - bisa di-refund admin (grafolog terlambat). */
+    public function isOverdueForRefund(): bool
     {
-        if ($this->status !== self::STATUS_PROCESSING || $this->refund_status === 'diajukan') {
-            return false;
-        }
-        $reportReleased = $this->sample_id
-            && $this->sample?->reports()->where('review_status', PersonalityReport::REVIEW_APPROVED)->exists();
-
-        return ! $reportReleased && $this->deliveries()->where('status', 'selesai')->doesntExist();
+        return $this->status === self::STATUS_PROCESSING
+            && $this->paid_at !== null
+            && $this->paid_at->lt(now()->subDays(self::REFUND_OVERDUE_DAYS));
     }
 }

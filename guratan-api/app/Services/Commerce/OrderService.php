@@ -90,17 +90,18 @@ class OrderService
      *
      * @param  Collection<int, User>  $candidates
      */
-    public function createBatch(Company $company, User $hr, Product $product, Collection $candidates, ?string $code, ?User $grafolog): OrderBatch
+    public function createBatch(Company $company, User $hr, Product $product, Collection $candidates, ?string $code, ?User $grafolog, ?string $serviceMonth = null): OrderBatch
     {
         abort_unless($product->is_active, 422, 'Produk ini sedang tidak dijual.');
         $quote = $this->quote($product, $code);
         $n = $candidates->count();
 
-        return DB::transaction(function () use ($company, $hr, $product, $candidates, $quote, $grafolog, $n) {
+        return DB::transaction(function () use ($company, $hr, $product, $candidates, $quote, $grafolog, $n, $serviceMonth) {
             $batch = OrderBatch::create([
                 'company_id' => $company->id,
                 'product_id' => $product->id,
                 'grafolog_id' => $grafolog?->id,
+                'service_month' => $serviceMonth ?? now()->format('Y-m'),
                 'base_amount' => $quote['base'] * $n,
                 'amount' => $quote['amount'] * $n,
                 'discount_code_id' => $quote['discount']?->id,

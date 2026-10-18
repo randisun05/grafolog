@@ -91,7 +91,9 @@ class HandwritingSample extends Model
             || $this->created_by === $user->id
             || $this->assignment?->grafolog_id === $user->id
             || $user->isAdministrator()
-            || $user->isSupervisor();
+            || ReportValidation::whereIn('status', [...ReportValidation::ACTIVE, ReportValidation::DONE])
+                ->where('validator_id', $user->id)
+                ->whereHas('report', fn ($q) => $q->where('sample_id', $this->id))->exists();
     }
 
     /**

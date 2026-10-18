@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class OrderBatch extends Model
 {
     protected $fillable = [
-        'company_id', 'product_id', 'grafolog_id', 'status', 'base_amount', 'amount',
+        'company_id', 'product_id', 'grafolog_id', 'service_month', 'status', 'base_amount', 'amount',
         'discount_code_id', 'created_by', 'paid_at',
     ];
 

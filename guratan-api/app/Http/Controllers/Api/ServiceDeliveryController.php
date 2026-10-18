@@ -27,7 +27,7 @@ class ServiceDeliveryController extends Controller
         $status = $request->validate(['status' => ['sometimes', Rule::in(ServiceDelivery::STATUS)]])['status'] ?? null;
 
         $q = ServiceDelivery::with(['component', 'user:id,name,email', 'assignee:id,name', 'order.product:id,kode,nama'])->latest();
-        if ($user->isAdministrator() || $user->isSupervisor()) {
+        if ($user->isAdministrator()) {
             // semua
         } elseif ($user->isGrafolog()) {
             $q->where('assigned_to', $user->id);

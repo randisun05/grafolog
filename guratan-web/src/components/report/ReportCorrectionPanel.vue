@@ -34,7 +34,9 @@ function onMeasurementsSaved() {
 }
 
 const totalAspek = computed(() => sindromList.value.reduce((n, s) => n + s.aspek.length, 0))
-const scoredCount = computed(() => Object.values(scores.value).filter((s) => Number.isInteger(s?.skor)).length)
+const scoredCount = computed(
+  () => Object.values(scores.value).filter((s) => Number.isInteger(s?.skor)).length,
+)
 const isComplete = computed(() => totalAspek.value > 0 && scoredCount.value === totalAspek.value)
 
 onMounted(async () => {
@@ -84,7 +86,8 @@ async function submitCorrection() {
     <div v-if="open" class="report-correction__panel">
       <p class="report-correction__warning">
         ⚠ Ini mengubah laporan yang sudah selesai. Versi sebelumnya tetap tersimpan di Riwayat
-        Perubahan di bawah, tapi laporan aktif yang dilihat klien akan langsung berubah begitu disimpan.
+        Perubahan di bawah, tapi laporan aktif yang dilihat klien akan langsung berubah begitu
+        disimpan.
       </p>
       <SkeletonLoader v-if="loading" variant="form" :rows="5" label="Memuat form skor..." />
       <template v-else>
@@ -96,7 +99,12 @@ async function submitCorrection() {
           <textarea v-model="catatan" placeholder="Mis. salah input skor Aspek 07 sebelumnya" />
         </label>
         <p v-if="submitError" class="error">{{ submitError }}</p>
-        <button type="button" class="btn btn--primary" :disabled="!isComplete || submitting" @click="submitCorrection">
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="!isComplete || submitting"
+          @click="submitCorrection"
+        >
           {{ submitting ? 'Menyimpan...' : 'Simpan Koreksi & Generate Ulang' }}
         </button>
       </template>

@@ -24,7 +24,7 @@ class StoreAnnouncementRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:2000'],
             'target_roles' => ['nullable', 'array'],
-            'target_roles.*' => ['string', 'in:user,grafolog,hr,administrator,supervisor'],
+            'target_roles.*' => ['string', 'in:user,grafolog,hr,administrator'],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
         ];

@@ -35,7 +35,12 @@ async function load() {
 defineExpose({ load })
 onMounted(load)
 
-const sumberLabel = { auto: 'Auto', cascade: 'Terkait', ciri_bersama: 'Ciri sama', manual: 'Manual' }
+const sumberLabel = {
+  auto: 'Auto',
+  cascade: 'Terkait',
+  ciri_bersama: 'Ciri sama',
+  manual: 'Manual',
+}
 
 async function toggleIndikator(indikator, checked) {
   const result = await postToggle(indikator.id, checked)
@@ -49,12 +54,22 @@ async function toggleIndikator(indikator, checked) {
     // dialognya" dari "belum pernah ditanya sama sekali" (bug ditemukan
     // lewat review 2026-08-08: sebelum ada flag ini, menolak cascade selalu
     // memicu ulang prompt yang sama karena keduanya sama-sama array kosong).
-    await postToggle(indikator.id, checked, ikutUncheck ? result.cascade_candidates.map((c) => c.id) : [], true)
+    await postToggle(
+      indikator.id,
+      checked,
+      ikutUncheck ? result.cascade_candidates.map((c) => c.id) : [],
+      true,
+    )
   }
   await load()
 }
 
-async function postToggle(indikatorId, checked, alsoUncheckCascaded = undefined, confirmed = false) {
+async function postToggle(
+  indikatorId,
+  checked,
+  alsoUncheckCascaded = undefined,
+  confirmed = false,
+) {
   const { data } = await api.post(`/samples/${props.sampleId}/checklist/toggle`, {
     indikator_id: indikatorId,
     checked,
@@ -84,10 +99,10 @@ function applyTally() {
       </button>
     </div>
     <p class="indikator-checklist__hint">
-      Indikator bertanda <strong>Auto</strong>/<strong>Terkait</strong>/<strong>Ciri sama</strong> tercentang
-      otomatis dari hasil ukur, referensi silang, atau indikator bernama sama di aspek lain - alasannya
-      ditampilkan di bawah tiap Indikator. Indikator tanpa aturan
-      (mayoritas) dicentang manual berdasar pengamatan langsung.
+      Indikator bertanda <strong>Auto</strong>/<strong>Terkait</strong>/<strong>Ciri sama</strong>
+      tercentang otomatis dari hasil ukur, referensi silang, atau indikator bernama sama di aspek
+      lain - alasannya ditampilkan di bawah tiap Indikator. Indikator tanpa aturan (mayoritas)
+      dicentang manual berdasar pengamatan langsung.
     </p>
 
     <SkeletonLoader v-if="loading" variant="list" :rows="6" label="Memuat checklist..." />
@@ -100,13 +115,12 @@ function applyTally() {
           <div v-for="aspek in sindrom.aspek" :key="aspek.id" class="indikator-checklist__aspek">
             <div class="indikator-checklist__aspek-head">
               <span>{{ aspek.kode }} - {{ aspek.nama }}</span>
-              <span class="indikator-checklist__tally">{{ aspek.posisi_tercentang }}/{{ aspek.total_posisi }} posisi (skor {{ aspek.skor }})</span>
+              <span class="indikator-checklist__tally"
+                >{{ aspek.posisi_tercentang }}/{{ aspek.total_posisi }} posisi (skor
+                {{ aspek.skor }})</span
+              >
             </div>
-            <label
-              v-for="ind in aspek.indikator"
-              :key="ind.id"
-              class="indikator-checklist__row"
-            >
+            <label v-for="ind in aspek.indikator" :key="ind.id" class="indikator-checklist__row">
               <input
                 type="checkbox"
                 :checked="ind.checked"
@@ -115,7 +129,10 @@ function applyTally() {
               <span class="indikator-checklist__row-main">
                 <span class="indikator-checklist__kode">{{ ind.kode }}</span>
                 {{ ind.nama }}
-                <span v-if="ind.checked && ind.sumber !== 'manual'" class="indikator-checklist__badge">
+                <span
+                  v-if="ind.checked && ind.sumber !== 'manual'"
+                  class="indikator-checklist__badge"
+                >
                   {{ sumberLabel[ind.sumber] }}
                 </span>
               </span>
@@ -132,7 +149,12 @@ function applyTally() {
           <input v-model="reviewedAcknowledged" type="checkbox" />
           Saya sudah meninjau seluruh checklist di atas
         </label>
-        <button type="button" class="btn btn--primary" :disabled="!reviewedAcknowledged" @click="applyTally">
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="!reviewedAcknowledged"
+          @click="applyTally"
+        >
           Terapkan Skor Checklist ke Form
         </button>
       </div>

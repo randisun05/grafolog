@@ -679,6 +679,15 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   `HrOrdersPanel` kartu grafolog menampilkan status bulan ini + sisa kuota (daftar sudah difilter
   backend). `lib/format.js`: `STATUS_KETERSEDIAAN`, `formatBulan`.
 
+## Supervisi antar-grafolog & jadwal setahun — 2026-10-18
+
+- `ReportValidationPanel` (menggantikan `ReportReviewPanel`): terbit mandiri / tugaskan supervisi
+  (pilih grafolog + tenggat), validator setujui/revisi/tolak, pembuat konfirmasi. `ValidationTasksView`
+  (`/grafolog/supervisi`), `AdminValidationsView` (`/admin/validasi`). `SupervisorReviewView` &
+  `auth.isSupervisor` dihapus. `AvailabilityEditor`: 12 bulan + "Supervisi". `HrOrdersPanel`: pilih
+  bulan layanan, kalender setahun per grafolog. Refund: `AdminRefundQueue` (>90 hari + refund
+  kesalahan sistem), klien tidak bisa ajukan; `OrderView` wajib centang T&C "tidak dapat dibatalkan".
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

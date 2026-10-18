@@ -85,7 +85,7 @@ const router = createRouter({
       path: '/token-saya',
       name: 'token-wallet',
       component: () => import('../views/TokenWalletView.vue'),
-      meta: { requiresAuth: true, role: ['grafolog', 'supervisor'] },
+      meta: { requiresAuth: true, role: 'grafolog' },
     },
     {
       path: '/reports/:id',
@@ -169,10 +169,16 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
-      path: '/supervisor/reviews',
-      name: 'supervisor-reviews',
-      component: () => import('../views/SupervisorReviewView.vue'),
-      meta: { requiresAuth: true, role: ['supervisor', 'administrator'] },
+      path: '/grafolog/supervisi',
+      name: 'validation-tasks',
+      component: () => import('../views/ValidationTasksView.vue'),
+      meta: { requiresAuth: true, role: 'grafolog' },
+    },
+    {
+      path: '/admin/validasi',
+      name: 'admin-validations',
+      component: () => import('../views/AdminValidationsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
     },
     {
       path: '/hr/candidates',

@@ -21,7 +21,6 @@ class DashboardController extends Controller
         return response()->json(match (true) {
             $user->isGrafolog() => $this->grafologDashboard($user),
             $user->isAdministrator() => $this->adminDashboard(),
-            $user->isSupervisor() => $this->supervisorDashboard($user),
             $user->isHr() => $this->hrDashboard($user),
             default => $this->clientDashboard($user),
         });
@@ -66,43 +65,6 @@ class DashboardController extends Controller
                 ],
             ],
             'activity' => $this->recentActivity(HandwritingSample::pluck('id')),
-        ];
-    }
-
-    private function supervisorDashboard(User $user): array
-    {
-        $queue = PersonalityReport::where('status', 'completed')
-            ->where('review_status', PersonalityReport::REVIEW_PENDING);
-
-        return [
-            'role' => 'supervisor',
-            'kpi' => [
-                ['key' => 'reviews_pending', 'label' => 'Menunggu Review', 'value' => (clone $queue)->count()],
-                [
-                    'key' => 'reviews_revision',
-                    'label' => 'Dikembalikan ke Grafolog',
-                    'value' => PersonalityReport::where('review_status', PersonalityReport::REVIEW_REVISION)->count(),
-                ],
-                [
-                    'key' => 'token_balance',
-                    'label' => 'Token dari Validasi',
-                    'value' => $user->token_balance,
-                ],
-                [
-                    'key' => 'approved_by_me_this_month',
-                    'label' => 'Saya Setujui Bulan Ini',
-                    'value' => PersonalityReport::where('reviewed_by', $user->id)
-                        ->where('review_status', PersonalityReport::REVIEW_APPROVED)
-                        ->whereBetween('reviewed_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
-                ],
-            ],
-            'activity' => $queue->oldest('generated_at')->take(5)->get(['id', 'tier', 'review_status', 'generated_at'])
-                ->map(fn (PersonalityReport $report) => [
-                    'id' => $report->id,
-                    'label' => "Laporan #{$report->id} ({$report->tier}) menunggu review",
-                    'status' => $report->review_status,
-                    'occurred_at' => $report->generated_at,
-                ])->all(),
         ];
     }
 

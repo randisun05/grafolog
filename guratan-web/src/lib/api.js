@@ -19,7 +19,15 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('guratan_token')
       localStorage.removeItem('guratan_user')
-      const onPublicPage = ['/', '/login', '/register', '/lupa-password', '/reset-password', '/privasi', '/syarat'].includes(window.location.pathname)
+      const onPublicPage = [
+        '/',
+        '/login',
+        '/register',
+        '/lupa-password',
+        '/reset-password',
+        '/privasi',
+        '/syarat',
+      ].includes(window.location.pathname)
       if (!onPublicPage) {
         window.location.assign(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)
       }

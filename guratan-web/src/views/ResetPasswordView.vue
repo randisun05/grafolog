@@ -72,8 +72,12 @@ async function submit() {
         {{ loading ? 'Menyimpan...' : isInvitation ? 'Aktifkan Akun' : 'Simpan Kata Sandi' }}
       </button>
     </form>
-    <RouterLink v-if="!isInvitation" to="/lupa-password" class="auth-form__link">Minta tautan baru</RouterLink>
-    <p v-else class="auth-form__hint">Tautan kedaluwarsa? Minta grafolog Anda mengirim ulang undangan.</p>
+    <RouterLink v-if="!isInvitation" to="/lupa-password" class="auth-form__link"
+      >Minta tautan baru</RouterLink
+    >
+    <p v-else class="auth-form__hint">
+      Tautan kedaluwarsa? Minta grafolog Anda mengirim ulang undangan.
+    </p>
   </div>
 </template>
 

@@ -27,18 +27,14 @@ const commands = computed(() => {
     items.push({ label: 'Portal Grafolog', to: { name: 'portal-grafolog' } })
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
     items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
-  }
-  if (auth.isSupervisor) {
-    items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
-  }
-  if (auth.isSupervisor || auth.isAdministrator) {
-    items.push({ label: 'Review Laporan', to: { name: 'supervisor-reviews' } })
+    items.push({ label: 'Supervisi Laporan', to: { name: 'validation-tasks' } })
   }
   if (auth.isAdministrator) {
     items.push({ label: 'Pesanan Masuk', to: { name: 'admin-orders' } })
     items.push({ label: 'Kelola Staf', to: { name: 'admin-users' } })
     items.push({ label: 'Verifikasi Grafolog', to: { name: 'admin-grafolog' } })
     items.push({ label: 'Verifikasi Perusahaan', to: { name: 'admin-companies' } })
+    items.push({ label: 'Penugasan Supervisi', to: { name: 'admin-validations' } })
     items.push({ label: 'Kelola Produk & Harga', to: { name: 'admin-products' } })
     items.push({ label: 'Kelola Diskon', to: { name: 'admin-discounts' } })
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })

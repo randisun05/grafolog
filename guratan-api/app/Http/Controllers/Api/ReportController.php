@@ -50,6 +50,11 @@ class ReportController extends Controller
         $bahasa = $this->bahasa($request);
         $payload = $report->load('sample.consultation', 'aspekScores.aspek', 'reviewer:id,name')->toArray();
         $payload['data'] = $report->data ? $this->localizer->localize($report->data, $bahasa) : null;
+        // Sinyal UI: apakah pemakai ini grafolog penanganan (boleh edit/terbit/tugaskan supervisi)
+        // dan/atau validator yang ditugaskan. Otorisasi sungguhan tetap di endpoint masing-masing.
+        $user = $request->user();
+        $payload['can_handle'] = $user->isGrafolog() && $report->sample->isScorableBy($user);
+        $payload['is_validator'] = $user->isGrafolog() && $report->isValidatedBy($user);
 
         return response()->json($payload);
     }
@@ -91,6 +96,7 @@ class ReportController extends Controller
         abort_unless($user->isGrafolog(), 403, 'Hanya grafolog yang dapat mengedit narasi laporan.');
         abort_unless($report->sample->isScorableBy($user), 403, 'Anda bukan grafolog yang menangani sample ini.');
         abort_if($report->status !== 'completed', 422, 'Laporan belum selesai dibuat.');
+        abort_if($report->hasActiveValidation(), 422, 'Laporan sedang dalam proses supervisi - tidak bisa diedit sampai selesai.');
 
         $report = DB::transaction(function () use ($report, $kode, $request, $user) {
             $this->reportRevisions->snapshotBeforeChange($report, 'edit_manual', $user, $request->input('catatan'));

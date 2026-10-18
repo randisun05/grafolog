@@ -32,7 +32,12 @@ const fields = [
   { key: 'landing_pricing_subtext', label: 'Subteks Harga', type: 'textarea' },
 
   { key: 'landing_honesty_quote', label: 'Kutipan "Kejujuran Kami"', type: 'textarea' },
-  { key: 'landing_honesty_points', label: 'Poin Kejujuran - 3 poin', type: 'list-object', count: 3 },
+  {
+    key: 'landing_honesty_points',
+    label: 'Poin Kejujuran - 3 poin',
+    type: 'list-object',
+    count: 3,
+  },
 
   { key: 'landing_signup_heading', label: 'Judul Section Cara Daftar', type: 'text' },
 
@@ -68,7 +73,8 @@ async function loadContent() {
       } catch {
         parsed = null
       }
-      listValues.value[field.key] = Array.isArray(parsed) && parsed.length === field.count ? parsed : emptyListValue(field)
+      listValues.value[field.key] =
+        Array.isArray(parsed) && parsed.length === field.count ? parsed : emptyListValue(field)
     }
   } catch (e) {
     loadError.value = e.response?.data?.message ?? 'Gagal memuat konten.'
@@ -117,7 +123,12 @@ onMounted(loadContent)
           v-model="values[field.key]"
           rows="3"
         ></textarea>
-        <input v-else-if="field.type === 'text'" :id="field.key" v-model="values[field.key]" type="text" />
+        <input
+          v-else-if="field.type === 'text'"
+          :id="field.key"
+          v-model="values[field.key]"
+          type="text"
+        />
 
         <div v-else-if="field.type === 'list-string'" class="admin-content__list">
           <input
@@ -136,7 +147,12 @@ onMounted(loadContent)
           </div>
         </div>
 
-        <button type="button" class="btn btn--primary" :disabled="saving[field.key]" @click="save(field)">
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="saving[field.key]"
+          @click="save(field)"
+        >
           {{ saving[field.key] ? 'Menyimpan...' : 'Simpan' }}
         </button>
       </div>

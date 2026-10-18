@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportCorrectionPanel from '@/components/report/ReportCorrectionPanel.vue'
 import ReportRevisionHistory from '@/components/report/ReportRevisionHistory.vue'
-import ReportReviewPanel from '@/components/report/ReportReviewPanel.vue'
+import ReportValidationPanel from '@/components/report/ReportValidationPanel.vue'
 import ConsultationPanel from '@/components/report/ConsultationPanel.vue'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
@@ -31,12 +31,13 @@ const BAHASA = [
 // ditugaskan) - pengecekan sungguhan tetap di backend (isScorableBy), ini
 // cuma sinyal UI supaya tombolnya tidak muncul ke grafolog lain yang pasti
 // akan ditolak 403 kalau mencoba.
-const canEdit = computed(() => auth.isGrafolog && report.value)
-const canReview = computed(() => auth.isSupervisor || auth.isAdministrator)
-const isStaff = computed(() => canEdit.value || canReview.value)
+const canEdit = computed(() => !!report.value?.can_handle)
+const showValidationPanel = computed(
+  () => canEdit.value || !!report.value?.is_validator || auth.isAdministrator,
+)
 
-function onReviewed(updated) {
-  report.value = { ...report.value, ...updated }
+async function reloadReport() {
+  await load()
 }
 
 function onConsultationSaved(consultation) {
@@ -143,18 +144,17 @@ function onNarasiUpdated(updatedReport) {
         hukum, finansial). Lihat <RouterLink to="/syarat">Syarat Layanan</RouterLink>.
       </p>
 
-      <ReportReviewPanel
-        v-if="isStaff"
+      <ReportValidationPanel
+        v-if="showValidationPanel"
         :report="report"
-        :can-review="canReview"
         :can-publish="canEdit"
-        @reviewed="onReviewed"
+        @changed="reloadReport"
       />
       <p v-else-if="report.validation" class="report-view__validation">
         {{
           report.validation === 'supervisor'
-            ? '✓ Laporan ini telah divalidasi supervisor Guratan.'
-            : 'Laporan ini diterbitkan langsung oleh grafolog Anda (tanpa validasi supervisor).'
+            ? '✓ Laporan ini telah divalidasi oleh grafolog lain (supervisi).'
+            : 'Laporan ini diterbitkan langsung oleh grafolog Anda (tanpa validasi supervisi).'
         }}
       </p>
 

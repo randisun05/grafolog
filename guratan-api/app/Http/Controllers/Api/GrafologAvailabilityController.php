@@ -9,36 +9,33 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-/** Grafolog mengatur ketersediaannya per bulan (bulan ini s.d. 5 bulan ke depan). */
+/** Grafolog mengatur ketersediaannya per bulan (jadwal setahun: bulan ini + 11 bulan). */
 class GrafologAvailabilityController extends Controller
 {
-    public const MONTHS_AHEAD = 5;
-
-    public static function months(): array
-    {
-        return collect(range(0, self::MONTHS_AHEAD))->map(fn ($i) => now()->startOfMonth()->addMonths($i)->format('Y-m'))->all();
-    }
-
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
 
-        return response()->json(collect(self::months())->map(fn ($m) => GrafologAvailability::forMonth($user, $m))->values());
+        return response()->json(collect(GrafologAvailability::window())->map(fn ($m) => GrafologAvailability::forMonth($user, $m))->values());
     }
 
     public function update(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'month' => ['required', Rule::in(self::months())],
+            'month' => ['required', Rule::in(GrafologAvailability::window())],
             'status' => ['required', Rule::in(GrafologAvailability::STATUSES)],
             'capacity' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'supervision' => ['sometimes', 'boolean'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
         $user = $request->user();
 
         GrafologAvailability::updateOrCreate(
             ['user_id' => $user->id, 'month' => $data['month']],
-            ['status' => $data['status'], 'capacity' => $data['capacity'] ?? null, 'note' => $data['note'] ?? null],
+            [
+                'status' => $data['status'], 'capacity' => $data['capacity'] ?? null,
+                'supervision' => $data['supervision'] ?? false, 'note' => $data['note'] ?? null,
+            ],
         );
         AuditLog::record('atur_ketersediaan', GrafologAvailability::class, $user->id, $user->id, $request->ip());
 

@@ -2,12 +2,9 @@
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
-import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
-// Supervisor hanya menerima token (pendapatan validasi), tidak membeli.
-const auth = useAuthStore()
 
 const wallet = ref(null)
 const loading = ref(true)
@@ -25,7 +22,8 @@ const buyError = ref('')
 const typeLabel = {
   purchase: 'Pembelian',
   consumption: 'Pemakaian',
-  biaya_validasi: 'Biaya validasi supervisor',
+  biaya_validasi: 'Token ditahan - supervisi',
+  pengembalian_validasi: 'Pengembalian supervisi',
   pendapatan_validasi: 'Pendapatan validasi',
 }
 
@@ -119,14 +117,11 @@ onMounted(loadWallet)
 <template>
   <div class="token-wallet">
     <h1>Token Saya</h1>
-    <p v-if="auth.isSupervisor" class="token-wallet__note">
-      Token masuk dari setiap validasi laporan yang Anda tinjau (dibayar grafolog yang meminta
-      validasi). Pencairan diatur administrator.
-    </p>
-    <p v-else class="token-wallet__note">
+    <p class="token-wallet__note">
       Setiap laporan yang berhasil dibuat memotong sejumlah token dari saldo Anda (sesuai tier,
-      diatur admin), begitu juga permintaan validasi supervisor. Beli token di sini untuk menambah
-      saldo.
+      diatur admin), begitu juga penugasan supervisi ke grafolog lain (token ditahan sampai
+      selesai). Anda juga menerima token saat memvalidasi laporan grafolog lain. Beli token di sini
+      untuk menambah saldo.
     </p>
 
     <SkeletonLoader v-if="loading" variant="form" :rows="2" label="Memuat..." />
@@ -137,7 +132,7 @@ onMounted(loadWallet)
         <strong>{{ wallet.balance }} token</strong>
       </div>
 
-      <section v-if="!auth.isSupervisor" class="token-wallet__buy">
+      <section class="token-wallet__buy">
         <h2>Beli Token</h2>
         <p v-if="!wallet.price_per_token" class="error">
           Harga token belum diatur administrator — pembelian belum bisa dilakukan.

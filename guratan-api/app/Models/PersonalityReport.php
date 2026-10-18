@@ -56,7 +56,7 @@ class PersonalityReport extends Model
 
         return $this->isApproved()
             || $user->isAdministrator()
-            || $user->isSupervisor()
+            || $this->isValidatedBy($user)
             || ($user->isGrafolog() && $this->sample->isScorableBy($user));
     }
 
@@ -66,21 +66,36 @@ class PersonalityReport extends Model
      */
     public function sendBackToReview(): void
     {
-        // Validasi supervisor sudah dibayar -> kembali ke antrean supervisor (tanpa biaya baru).
-        // Terbit mandiri -> kembali ke draf; grafolog memutuskan ulang terbit/validasi.
-        $supervised = $this->validation === self::VALIDATION_SUPERVISOR;
-
+        // Isi berubah -> validasi/terbitan sebelumnya tidak berlaku lagi. Grafolog memutuskan ulang
+        // (terbit mandiri atau minta validasi baru dengan biaya baru).
         $this->update([
-            'review_status' => $supervised ? self::REVIEW_PENDING : self::REVIEW_DRAFT,
-            'validation' => $supervised ? self::VALIDATION_SUPERVISOR : null,
+            'review_status' => self::REVIEW_DRAFT,
+            'validation' => null,
             'reviewed_by' => null,
             'reviewed_at' => null,
         ]);
     }
 
-    public function isSupervisorValidated(): bool
+    public function validations(): HasMany
     {
-        return $this->isApproved() && $this->validation === self::VALIDATION_SUPERVISOR;
+        return $this->hasMany(ReportValidation::class, 'report_id');
+    }
+
+    public function activeValidation(): ?ReportValidation
+    {
+        return $this->validations()->whereIn('status', ReportValidation::ACTIVE)->latest('id')->first();
+    }
+
+    public function hasActiveValidation(): bool
+    {
+        return $this->validations()->whereIn('status', ReportValidation::ACTIVE)->exists();
+    }
+
+    /** Validator yang ditugaskan (belum menolak/kedaluwarsa) boleh membaca laporan & sampelnya. */
+    public function isValidatedBy(User $user): bool
+    {
+        return $this->validations()->where('validator_id', $user->id)
+            ->whereIn('status', [...ReportValidation::ACTIVE, ReportValidation::DONE])->exists();
     }
 
     public function reviewer(): BelongsTo

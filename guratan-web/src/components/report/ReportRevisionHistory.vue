@@ -60,13 +60,16 @@ async function viewRevision(revision) {
           <button type="button" class="revision-history__toggle" @click="viewRevision(r)">
             <span class="revision-history__jenis">{{ jenisLabel[r.jenis] ?? r.jenis }}</span>
             <span class="revision-history__meta">
-              {{ r.actor?.name ?? 'Tidak diketahui' }} &middot; {{ new Date(r.created_at).toLocaleString('id-ID') }}
+              {{ r.actor?.name ?? 'Tidak diketahui' }} &middot;
+              {{ new Date(r.created_at).toLocaleString('id-ID') }}
             </span>
           </button>
           <p v-if="r.catatan" class="revision-history__catatan">"{{ r.catatan }}"</p>
 
           <div v-if="openRevisionId === r.id" class="revision-history__snapshot">
-            <p class="revision-history__snapshot-label">Isi laporan pada versi ini (sebelum diubah):</p>
+            <p class="revision-history__snapshot-label">
+              Isi laporan pada versi ini (sebelum diubah):
+            </p>
             <ReportDocument v-if="revisionData[r.id]" :data="revisionData[r.id]" />
             <SkeletonLoader v-else variant="report" :rows="2" label="Memuat..." />
           </div>

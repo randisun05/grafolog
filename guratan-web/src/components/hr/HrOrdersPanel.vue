@@ -22,6 +22,19 @@ const candidates = ref([])
 const batches = ref([])
 const loading = ref(true)
 
+// Bulan layanan: jendela 12 bulan mulai bulan ini. Grafolog di daftar = yang bisa dipesan bulan itu.
+const months = Array.from({ length: 12 }, (_, i) => {
+  const d = new Date(new Date().getFullYear(), new Date().getMonth() + i, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+})
+const month = ref(months[0])
+
+async function loadGrafologs() {
+  grafologs.value = (await api.get('/grafologs', { params: { month: month.value } })).data
+  if (grafologId.value && !grafologs.value.some((g) => g.id === grafologId.value))
+    grafologId.value = null
+}
+
 const productKode = ref('')
 const chosen = ref([])
 const grafologId = ref(null)
@@ -35,7 +48,7 @@ async function load() {
   try {
     const [p, g, c, b] = await Promise.all([
       api.get('/hr/products'),
-      api.get('/grafologs'),
+      api.get('/grafologs', { params: { month: month.value } }),
       api.get('/hr/candidates'),
       api.get('/hr/orders'),
     ])
@@ -91,6 +104,7 @@ async function submit() {
       candidate_ids: chosen.value,
       grafolog_id: grafologId.value,
       discount_code: code.value || null,
+      month: month.value,
     })
     toast.push('Pesanan dibuat. Lanjutkan pembayaran.', 'success')
     chosen.value = []
@@ -178,10 +192,16 @@ onMounted(load)
       </section>
 
       <section class="hro__card">
-        <h2>3. Pilih grafolog</h2>
+        <h2>3. Pilih bulan layanan & grafolog</h2>
+        <label class="hro__month"
+          >Bulan layanan
+          <select v-model="month" aria-label="Bulan layanan" @change="loadGrafologs">
+            <option v-for="m in months" :key="m" :value="m">{{ formatBulan(m) }}</option>
+          </select>
+        </label>
         <p class="hro__sub">
-          Hanya grafolog terverifikasi yang tersedia bulan ini. Beban = sampel & layanan yang sedang
-          dikerjakan.
+          Hanya grafolog terverifikasi yang tersedia di bulan layanan terpilih. Beban = sampel &
+          layanan yang sedang dikerjakan.
         </p>
         <div class="hro__grafologs">
           <label
@@ -205,6 +225,17 @@ onMounted(load)
                 >· sisa kuota {{ g.availability.slots_left }}</template
               ><template v-if="g.availability.note"> · {{ g.availability.note }}</template></span
             >
+            <span v-if="g.calendar?.length" class="hro__tags">
+              <span
+                v-for="c in g.calendar"
+                :key="c.month"
+                :class="[
+                  'hro__tag',
+                  { 'hro__tag--off': !['tersedia', 'terbatas'].includes(c.status) },
+                ]"
+                >{{ formatBulan(c.month) }}: {{ STATUS_KETERSEDIAAN[c.status] }}</span
+              >
+            </span>
             <span class="hro__sub"
               >Beban aktif: {{ workload(g) }} · Selesai: {{ g.completed_assignments ?? 0 }}</span
             >
@@ -408,5 +439,14 @@ onMounted(load)
 .hro__status {
   font-size: 12.5px;
   font-weight: 600;
+}
+.hro__month {
+  font-size: 13px;
+  color: var(--color-text-soft);
+  max-width: 260px;
+}
+.hro__tag--off {
+  background: var(--color-border);
+  color: var(--color-text-soft);
 }
 </style>

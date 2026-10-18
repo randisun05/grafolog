@@ -26,6 +26,7 @@ const previewLoading = ref(false)
 const previewError = ref('')
 
 const paying = ref(false)
+const agreed = ref(false)
 const payError = ref('')
 
 const MAX_PHOTOS = 5
@@ -111,7 +112,7 @@ function usePromo(code) {
 }
 
 async function pay() {
-  if (!selected.value || (needsPhotos.value && !photos.value.length)) return
+  if (!agreed.value || !selected.value || (needsPhotos.value && !photos.value.length)) return
   paying.value = true
   payError.value = ''
   try {
@@ -268,10 +269,19 @@ onMounted(load)
         </div>
 
         <p v-if="payError" class="error">{{ payError }}</p>
+        <label class="order__toc">
+          <input v-model="agreed" type="checkbox" />
+          <span>
+            Saya memahami bahwa pesanan yang <strong>sudah dibayar tidak dapat dibatalkan</strong>.
+            Refund hanya dilakukan administrator bila terjadi kesalahan sistem atau pesanan belum
+            selesai lebih dari 90 hari.
+            <RouterLink to="/kebijakan-transaksi" target="_blank">Baca kebijakan</RouterLink>
+          </span>
+        </label>
         <button
           type="button"
           class="btn btn--primary order__pay-btn"
-          :disabled="paying || (needsPhotos && !photos.length)"
+          :disabled="paying || !agreed || (needsPhotos && !photos.length)"
           @click="pay"
         >
           {{ paying ? 'Menyiapkan pembayaran...' : 'Bayar Sekarang' }}
@@ -488,5 +498,16 @@ onMounted(load)
 .order__pay-btn {
   width: 100%;
   padding: 12px;
+}
+.order__toc {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  margin: 10px 0;
+}
+.order__toc input {
+  width: auto;
+  margin-top: 3px;
 }
 </style>
