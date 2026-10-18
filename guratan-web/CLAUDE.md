@@ -711,7 +711,7 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 ## CV — 2026-10-19
 
-`components/cv/CvForm.vue` (prop `userId` kosong = CV sendiri; mode baca/edit dari server). Dipakai di `/cv-saya` (klien & kandidat), tombol "CV" di `HrCandidatesPanel`, dan `<details>` di `ReportView` (grafolog penangani, baca saja). Admin: `/admin/cv` (`AdminCvView`).
+`components/cv/CvForm.vue` (prop `userId` kosong = CV sendiri; mode baca/edit dari server). Dipakai di `/cv-saya` (klien & kandidat), tombol "CV" di `HrCandidatesPanel`, `<details>` di `ReportView` (grafolog: CV subjek; klien/HR: "Profil grafolog pemeriksa"), tombol "Profil grafolog" di HrCandidatesPanel. Grafolog mengisi CV-nya sendiri di `/cv-saya`. Admin: `/admin/cv` (`AdminCvView`).
 
 ## Stack
 

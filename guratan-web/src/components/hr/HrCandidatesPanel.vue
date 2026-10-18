@@ -19,6 +19,7 @@ const toast = useToast()
 
 const candidates = ref([])
 const cvOpenFor = ref(null)
+const cvGrafologFor = ref(null)
 const loading = ref(true)
 const filter = ref({ position_id: '', stage: '' })
 const selected = ref([])
@@ -379,6 +380,14 @@ onMounted(load)
                   CV
                 </button>
                 <button
+                  v-if="latest(c)?.grafolog_id"
+                  type="button"
+                  class="btn"
+                  @click="cvGrafologFor = cvGrafologFor === c.id ? null : c.id"
+                >
+                  Profil grafolog
+                </button>
+                <button
                   v-if="c.user.acquisition_source === 'b2b'"
                   type="button"
                   class="btn"
@@ -392,6 +401,11 @@ onMounted(load)
                   class="btn"
                   >Laporan</RouterLink
                 >
+              </td>
+            </tr>
+            <tr v-if="cvGrafologFor === c.id">
+              <td colspan="6">
+                <CvForm :user-id="latest(c).grafolog_id" />
               </td>
             </tr>
             <tr v-if="cvOpenFor === c.id">

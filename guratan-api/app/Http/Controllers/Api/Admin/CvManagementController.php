@@ -118,7 +118,8 @@ class CvManagementController extends Controller
             'options.*' => ['string', 'max:100'],
             'help' => ['nullable', 'string', 'max:255'],
             'required' => ['sometimes', 'boolean'],
-            'visible_to' => ['sometimes', Rule::in(CvField::VISIBILITY)],
+            'applies_to' => ['sometimes', Rule::in(CvField::APPLIES_TO)],
+            'is_hidden' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
         $type = $data['type'] ?? $request->route('field')?->type;

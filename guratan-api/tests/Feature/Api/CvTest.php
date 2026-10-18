@@ -20,7 +20,7 @@ class CvTest extends TestCase
     {
         return CvField::create($extra + [
             'cv_group_id' => $g->id, 'key' => str($label)->slug('_')->toString(), 'label' => $label,
-            'type' => $type, 'visible_to' => $vis,
+            'type' => $type, 'applies_to' => $vis,
         ]);
     }
 
@@ -29,7 +29,7 @@ class CvTest extends TestCase
         $admin = User::factory()->create(['role' => 'administrator']);
         $gid = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/cv/groups', ['name' => 'Orang Tua'])->assertCreated()->json('id');
         $f = $this->actingAs($admin, 'sanctum')->postJson('/api/admin/cv/fields', [
-            'cv_group_id' => $gid, 'label' => 'Pekerjaan Ayah', 'type' => 'select', 'options' => ['PNS', 'Swasta'], 'visible_to' => 'grafolog',
+            'cv_group_id' => $gid, 'label' => 'Pekerjaan Ayah', 'type' => 'select', 'options' => ['PNS', 'Swasta'], 'applies_to' => 'client', 'is_hidden' => true,
         ])->assertCreated()->assertJsonPath('key', 'pekerjaan_ayah')->json();
         $this->actingAs($admin, 'sanctum')->postJson('/api/admin/cv/fields', ['cv_group_id' => $gid, 'label' => 'X', 'type' => 'select'])->assertStatus(422);
         $this->actingAs($admin, 'sanctum')->postJson('/api/admin/cv/fields', ['cv_group_id' => $gid, 'label' => 'Pekerjaan Ayah', 'type' => 'text'])->assertCreated()->assertJsonPath('key', 'pekerjaan_ayah_2');
@@ -69,12 +69,13 @@ class CvTest extends TestCase
         $this->assertDatabaseMissing('cv_values', ['value' => 'x']);
     }
 
-    public function test_visibility_tags_filter_by_viewer_role(): void
+    public function test_applies_to_and_hidden_control_who_sees_what(): void
     {
-        $g = CvGroup::create(['name' => 'Keluarga']);
-        $this->field($g, 'Umum', 'text', 'all');
-        $this->field($g, 'Untuk Klien', 'text', 'client');
-        $this->field($g, 'Untuk Grafolog', 'text', 'grafolog');
+        $g = CvGroup::create(['name' => 'Umum']);
+        $this->field($g, 'Semua', 'text', 'all');
+        $this->field($g, 'Khusus Klien', 'text', 'client');
+        $this->field($g, 'Khusus Grafolog', 'text', 'grafolog');
+        $this->field($g, 'Rahasia', 'text', 'all', ['is_hidden' => true]);
 
         $company = Company::create(['name' => 'PT Uji']);
         $hr = User::factory()->create(['role' => 'hr', 'company_id' => $company->id]);
@@ -86,21 +87,31 @@ class CvTest extends TestCase
         HandwritingSample::create(['user_id' => $candidate->id, 'created_by' => $grafolog->id, 'tier' => 'comprehensive', 'status' => 'pending']);
         $admin = User::factory()->create(['role' => 'administrator']);
 
-        // HR mengisi untuk kandidatnya.
-        $this->actingAs($hr, 'sanctum')->putJson("/api/cv/users/{$candidate->id}", ['values' => [
-            'umum' => 'a', 'untuk_klien' => 'b', 'untuk_grafolog' => 'c',
-        ]])->assertOk();
+        $keys = fn (User $viewer, User $subject) => collect($this->actingAs($viewer, 'sanctum')->getJson("/api/cv/users/{$subject->id}")->assertOk()->json('groups.0.fields'))->pluck('key')->all();
+        $put = fn (User $viewer, User $subject, array $v) => $this->actingAs($viewer, 'sanctum')->putJson("/api/cv/users/{$subject->id}", ['values' => $v]);
 
-        $keys = fn (User $u) => collect($this->actingAs($u, 'sanctum')->getJson("/api/cv/users/{$candidate->id}")->assertOk()->json('groups.0.fields'))->pluck('key')->all();
-        $this->assertSame(['umum', 'untuk_klien', 'untuk_grafolog'], $keys($candidate));
-        $this->assertSame(['umum', 'untuk_klien'], $keys($hr));
-        $this->assertSame(['umum', 'untuk_grafolog'], $keys($grafolog));
-        $this->assertSame(['umum', 'untuk_klien', 'untuk_grafolog'], $keys($admin));
-
+        // CV kandidat (klien): variabel 'client'/'all'; HR mengisi tapi tidak bisa menyentuh yang tersembunyi.
+        $put($hr, $candidate, ['semua' => 'a', 'khusus_klien' => 'b', 'khusus_grafolog' => 'x', 'rahasia' => 'x'])->assertOk();
+        $this->assertDatabaseMissing('cv_values', ['value' => 'x']);
+        $this->actingAs($candidate, 'sanctum')->putJson('/api/cv', ['values' => ['rahasia' => 'r']])->assertOk();
+        $this->assertSame(['semua', 'khusus_klien', 'rahasia'], $keys($candidate, $candidate));
+        $this->assertSame(['semua', 'khusus_klien'], $keys($hr, $candidate));
+        $this->assertSame(['semua', 'khusus_klien'], $keys($grafolog, $candidate));
+        $this->assertSame(['semua', 'khusus_klien', 'rahasia'], $keys($admin, $candidate));
         $this->actingAs($outsiderHr, 'sanctum')->getJson("/api/cv/users/{$candidate->id}")->assertForbidden();
         $this->actingAs($otherGrafolog, 'sanctum')->getJson("/api/cv/users/{$candidate->id}")->assertForbidden();
-        // Grafolog & admin hanya membaca.
-        $this->actingAs($grafolog, 'sanctum')->putJson("/api/cv/users/{$candidate->id}", ['values' => ['umum' => 'z']])->assertForbidden();
-        $this->actingAs($outsiderHr, 'sanctum')->putJson("/api/cv/users/{$candidate->id}", ['values' => ['umum' => 'z']])->assertForbidden();
+        $put($grafolog, $candidate, ['semua' => 'z'])->assertForbidden();
+
+        // CV grafolog: variabel 'grafolog'/'all'; klien & HR yang diperiksa grafolog ini boleh melihat (tanpa tersembunyi).
+        $this->actingAs($grafolog, 'sanctum')->putJson('/api/cv', ['values' => ['khusus_grafolog' => 'g', 'rahasia' => 'r2']])->assertOk();
+        $this->assertSame(['semua', 'khusus_grafolog', 'rahasia'], $keys($grafolog, $grafolog));
+        $this->assertSame(['semua', 'khusus_grafolog'], $keys($candidate, $grafolog));
+        $this->assertSame(['semua', 'khusus_grafolog'], $keys($hr, $grafolog));
+        $this->assertSame(['semua', 'khusus_grafolog', 'rahasia'], $keys($admin, $grafolog));
+        $this->actingAs($outsiderHr, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
+        $this->actingAs($otherGrafolog, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
+        $stranger = User::factory()->create(['role' => 'user']);
+        $this->actingAs($stranger, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
+        $put($candidate, $grafolog, ['semua' => 'z'])->assertForbidden();
     }
 }

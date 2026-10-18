@@ -7,6 +7,7 @@ use App\Http\Requests\Reporting\UpdateNarasiOverrideRequest;
 use App\Models\AuditLog;
 use App\Models\PersonalityReport;
 use App\Models\ReportRevision;
+use App\Models\User;
 use App\Services\Reporting\ReportLocalizer;
 use App\Services\Reporting\ReportPdfService;
 use App\Services\Reporting\ReportRevisionService;
@@ -54,6 +55,9 @@ class ReportController extends Controller
         // dan/atau validator yang ditugaskan. Otorisasi sungguhan tetap di endpoint masing-masing.
         $user = $request->user();
         $payload['can_handle'] = $user->isGrafolog() && $report->sample->isScorableBy($user);
+        // Grafolog pemeriksa (untuk menampilkan CV-nya ke klien/HR): yang ditugaskan, atau pembuat sampel bila grafolog.
+        $payload['examiner_id'] = $report->sample->assignment?->grafolog_id
+            ?? (User::whereKey($report->sample->created_by)->where('role', 'grafolog')->value('id'));
         $payload['is_validator'] = $user->isGrafolog() && $report->isValidatedBy($user);
 
         return response()->json($payload);

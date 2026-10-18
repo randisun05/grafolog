@@ -23,3 +23,4 @@
 - [Legal 1.0](project_notifications_activity.md) — 2026-10-18: ToS/Privacy/SOP ditulis ulang (UU PDP, scan PDF, AI anonim, log 90 hari, no-cancel, refund admin-only); sisa placeholder [ENTITAS] wajib diisi + review penasihat hukum
 - [CV] — 2026-10-19: variabel CV diatur admin (grup/field/tipe/tag all|client|grafolog), isi oleh pemilik/HR; token supervisi = kredit non-cashable
 - [Promo per saluran] — 2026-10-19: discount_codes.audiences client|grafolog|b2b, editable admin; per-metode-bayar belum
+- [CV revisi] — 2026-10-19: applies_to (client|grafolog|all) + is_hidden (hanya pemilik+admin); CV saling terlihat klien/HR ↔ grafolog pemeriksa

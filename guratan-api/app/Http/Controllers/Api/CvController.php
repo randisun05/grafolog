@@ -43,7 +43,7 @@ class CvController extends Controller
     {
         $relation = $this->cv->relation($request->user(), $user);
         abort_unless($this->cv->canEdit($relation), 403, 'Anda tidak berhak mengubah CV ini.');
-        $this->cv->save($user, (array) $request->input('values', []));
+        $this->cv->save($user, $relation, (array) $request->input('values', []));
         AuditLog::record('ubah_cv', User::class, $user->id, $request->user()->id, $request->ip());
 
         return $this->show($request, $user);

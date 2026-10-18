@@ -1844,7 +1844,9 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 ## Manajemen CV — 2026-10-19
 
 - Tabel `cv_groups` → `cv_fields` (key slug unik, `type` text|textarea|number|date|select|boolean|email|phone, `options` utk select, `required`, `visible_to` all|client|grafolog) → `cv_values` (user_id × field, nilai string). Admin atur lewat `/admin/cv*` (CRUD, reorder); tipe terkunci bila sudah ada data, hapus field berdata = nonaktif.
-- `CvService`: relasi pembaca (self/admin/hr/grafolog). Pemilik melihat & mengisi semua; HR (kandidat perusahaannya) lihat+isi tag all|client; grafolog penangani (pembuat/assignment sample subjek) hanya BACA tag all|grafolog; admin baca semua. Validasi nilai per tipe (`CvField::rules`). Akses selain diri sendiri tercatat audit `lihat_cv`/`ubah_cv`.
+- `cv_fields.applies_to` (all|client|grafolog) = CV siapa yang memuat variabel (klien/kandidat vs grafolog); `is_hidden` = hanya pemilik (isi) + administrator (lihat semua), tak tampil ke pihak lain termasuk HR (HR tak bisa isi/lihat field tersembunyi).
+- `CvService::relation`: self | admin | hr (kandidat perusahaannya) | examiner (grafolog yang menangani sampel subjek) | subject (klien/HR yang sampelnya ditangani grafolog tsb → boleh BACA CV grafolog). Pemilik CV grafolog juga mengisi lewat `/cv`. Edit hanya self & hr. Akses non-self diaudit.
+- `ReportController::show` menambah `examiner_id`; `/hr/candidates` orders menambah `grafolog_id` (untuk menampilkan profil grafolog).
 - Endpoint: `GET|PUT /cv`, `GET /cv/users/{user}`, `PUT /cv/users/{user}` (hr).
 - Token supervisi dikreditkan ke saldo validator, TIDAK bisa diuangkan (ToS pasal 8).
 

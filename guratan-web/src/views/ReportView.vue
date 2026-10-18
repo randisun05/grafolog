@@ -159,6 +159,10 @@ function onNarasiUpdated(updatedReport) {
         }}
       </p>
 
+      <details v-if="!canEdit && report.examiner_id" class="report-view__cv">
+        <summary>Profil grafolog pemeriksa</summary>
+        <CvForm :user-id="report.examiner_id" />
+      </details>
       <details v-if="canEdit && report.sample?.user_id" class="report-view__cv">
         <summary>CV subjek (data diri)</summary>
         <CvForm :user-id="report.sample.user_id" />

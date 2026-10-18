@@ -196,7 +196,7 @@ const router = createRouter({
       path: '/cv-saya',
       name: 'cv',
       component: () => import('../views/CvView.vue'),
-      meta: { requiresAuth: true, role: 'user' },
+      meta: { requiresAuth: true, role: ['user', 'grafolog'] },
     },
     {
       path: '/admin/cv',

@@ -19,11 +19,12 @@ const TYPES = {
   email: 'Email',
   phone: 'Telepon',
 }
-const TAGS = { all: 'Semua', client: 'Klien/HR', grafolog: 'Grafolog' }
+const TAGS = { all: 'Klien & grafolog', client: 'Klien/kandidat', grafolog: 'Grafolog' }
 const blank = () => ({
   label: '',
   type: 'text',
-  visible_to: 'all',
+  applies_to: 'all',
+  is_hidden: false,
   required: false,
   optionsText: '',
   help: '',
@@ -71,7 +72,8 @@ const addField = (g) =>
       cv_group_id: g.id,
       label: d.label,
       type: d.type,
-      visible_to: d.visible_to,
+      applies_to: d.applies_to,
+      is_hidden: d.is_hidden,
       required: d.required,
       help: d.help || null,
       options:
@@ -104,9 +106,10 @@ onMounted(load)
   <div class="acv">
     <h1>Manajemen CV</h1>
     <p class="acv__hint">
-      Atur variabel yang muncul di CV pengguna. <strong>Tag tampil</strong> menentukan siapa selain
-      pemilik yang bisa membaca isiannya: <em>Semua</em>, <em>Klien/HR</em> (grafolog tidak
-      melihat), atau <em>Grafolog</em> (HR tidak melihat). Pemilik selalu bisa mengisi semuanya.
+      Atur variabel CV. <strong>Muncul di CV</strong> menentukan CV siapa yang memuat variabel:
+      klien/kandidat, grafolog, atau keduanya. CV saling terlihat: klien &amp; HR melihat CV
+      grafolog yang memeriksa mereka, grafolog melihat CV subjeknya. <strong>Sembunyikan</strong> =
+      hanya diisi pemilik dan hanya administrator yang bisa melihatnya (tidak tampil ke pihak lain).
     </p>
     <form class="acv__new" @submit.prevent="addGroup">
       <input v-model="newGroup" placeholder="Nama grup baru (mis. Pasangan)" required />
@@ -146,7 +149,8 @@ onMounted(load)
           <tr>
             <th>Variabel</th>
             <th>Tipe</th>
-            <th>Tampil</th>
+            <th>Muncul di CV</th>
+            <th>Sembunyikan</th>
             <th>Wajib</th>
             <th>Aktif</th>
             <th />
@@ -161,12 +165,20 @@ onMounted(load)
             <td>{{ TYPES[f.type] }}</td>
             <td>
               <select
-                :value="f.visible_to"
+                :value="f.applies_to"
                 :aria-label="`Tag ${f.label}`"
-                @change="patchField(f, { visible_to: $event.target.value })"
+                @change="patchField(f, { applies_to: $event.target.value })"
               >
                 <option v-for="(l, k) in TAGS" :key="k" :value="k">{{ l }}</option>
               </select>
+            </td>
+            <td>
+              <input
+                type="checkbox"
+                :checked="f.is_hidden"
+                :aria-label="`Sembunyikan ${f.label}`"
+                @change="patchField(f, { is_hidden: $event.target.checked })"
+              />
             </td>
             <td>
               <input
@@ -217,9 +229,12 @@ onMounted(load)
           placeholder="Opsi, pisahkan koma"
           required
         />
-        <select v-model="drafts[g.id].visible_to" aria-label="Tag tampil">
+        <select v-model="drafts[g.id].applies_to" aria-label="Muncul di CV">
           <option v-for="(l, k) in TAGS" :key="k" :value="k">{{ l }}</option>
         </select>
+        <label class="acv__chk"
+          ><input v-model="drafts[g.id].is_hidden" type="checkbox" /> Sembunyikan</label
+        >
         <label class="acv__chk"
           ><input v-model="drafts[g.id].required" type="checkbox" /> Wajib</label
         >

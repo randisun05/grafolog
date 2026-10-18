@@ -53,6 +53,7 @@ class CandidateController extends Controller
                 'status' => $o->status,
                 'product' => $o->product?->nama,
                 'grafolog' => $o->grafolog?->name,
+                'grafolog_id' => $o->grafolog?->id,
                 'sample_id' => $o->sample_id,
                 'sample_status' => $o->sample?->status,
                 'image_count' => $o->sample?->images_count ?? 0,

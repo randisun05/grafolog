@@ -6,8 +6,9 @@ import CvForm from '@/components/cv/CvForm.vue'
   <div class="cvv">
     <h1>CV Saya</h1>
     <p class="cvv__hint">
-      Data diri ini membantu grafolog memahami konteks Anda. Siapa yang dapat melihat tiap isian
-      diatur sistem; isian tidak wajib kecuali bertanda *.
+      CV ini membantu pihak yang memeriksa dan diperiksa saling mengenal (klien melihat profil
+      grafolog pemeriksa, begitu pula HR). Isian bertanda 🔒 hanya terlihat oleh Anda dan
+      administrator.
     </p>
     <CvForm />
   </div>

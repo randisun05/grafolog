@@ -7,21 +7,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Variabel CV. `visible_to` mengatur siapa SELAIN pemilik yang boleh membaca isinya:
- * all = semua pihak berwenang, client = pemilik + HR perusahaan (grafolog tidak melihat),
- * grafolog = pemilik + grafolog yang menangani (HR tidak melihat). Pemilik selalu melihat & mengisi semuanya.
+ * Variabel CV. `applies_to` = CV siapa yang memuat variabel ini: client (klien & kandidat),
+ * grafolog, atau all. `is_hidden` = tidak ditampilkan ke pihak lain (HR, klien, grafolog lain);
+ * hanya pemilik yang mengisi dan administrator yang melihat semuanya.
  */
 class CvField extends Model
 {
     public const TYPES = ['text', 'textarea', 'number', 'date', 'select', 'boolean', 'email', 'phone'];
 
-    public const VISIBILITY = ['all', 'client', 'grafolog'];
+    public const APPLIES_TO = ['all', 'client', 'grafolog'];
 
-    protected $fillable = ['cv_group_id', 'key', 'label', 'type', 'options', 'help', 'required', 'visible_to', 'sort_order', 'is_active'];
+    protected $fillable = ['cv_group_id', 'key', 'label', 'type', 'options', 'help', 'required', 'is_hidden', 'applies_to', 'sort_order', 'is_active'];
 
     protected function casts(): array
     {
-        return ['options' => 'array', 'required' => 'boolean', 'is_active' => 'boolean'];
+        return ['options' => 'array', 'required' => 'boolean', 'is_hidden' => 'boolean', 'is_active' => 'boolean'];
     }
 
     public function group(): BelongsTo

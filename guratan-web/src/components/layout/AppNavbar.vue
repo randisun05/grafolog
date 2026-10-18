@@ -74,7 +74,7 @@ async function handleLogout() {
           <RouterLink to="/riwayat">Riwayat</RouterLink>
         </template>
         <RouterLink v-if="auth.isClient" to="/pesan">Pesan Layanan</RouterLink>
-        <RouterLink v-if="auth.isClient || auth.isCandidate" to="/cv-saya">CV Saya</RouterLink>
+        <RouterLink v-if="auth.isClient || auth.isCandidate || auth.isGrafolog" to="/cv-saya">CV Saya</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/supervisi">Supervisi</RouterLink>

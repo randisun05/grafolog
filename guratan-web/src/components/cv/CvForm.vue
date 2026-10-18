@@ -68,7 +68,8 @@ watch(() => props.userId, load)
         <p v-if="g.description" class="cv__hint">{{ g.description }}</p>
         <div v-for="f in g.fields" :key="f.id" class="cv__row">
           <label :for="`cv-${f.key}`"
-            >{{ f.label }}<span v-if="f.required && editable" class="cv__req"> *</span></label
+            >{{ f.label }}<span v-if="f.required && editable" class="cv__req"> *</span
+            ><span v-if="f.is_hidden" class="cv__hid"> 🔒 tersembunyi</span></label
           >
           <template v-if="editable">
             <textarea
@@ -134,6 +135,10 @@ watch(() => props.userId, load)
 .cv__check {
   width: auto;
   align-self: flex-start;
+}
+.cv__hid {
+  font-size: 11.5px;
+  color: var(--color-text-soft);
 }
 .cv__req {
   color: var(--color-seal);
