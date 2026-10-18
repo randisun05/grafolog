@@ -27,7 +27,7 @@ class ProductController extends Controller
             ->filter(fn (DiscountCode $c) => $c->isCurrentlyUsable() && $c->appliesToAudience($audience))
             ->map(fn (DiscountCode $c) => [
                 'code' => $c->code, 'description' => $c->description, 'type' => $c->type, 'value' => $c->value,
-                'products' => $c->applicable_tiers, 'valid_until' => $c->valid_until,
+                'products' => $c->applicable_tiers, 'payment_methods' => $c->payment_methods, 'valid_until' => $c->valid_until,
             ])->values();
 
         $featured = Product::forClients()->where('is_featured', true)->with('components')->orderBy('sort')->get()

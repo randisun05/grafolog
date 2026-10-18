@@ -1,4 +1,5 @@
 <script setup>
+import PaymentMethodPicker from '@/components/shared/PaymentMethodPicker.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
@@ -42,6 +43,7 @@ const code = ref('')
 const quote = ref(null)
 const submitting = ref(false)
 const agreed = ref(false)
+const paymentMethod = ref('')
 const paying = ref(null)
 
 async function load() {
@@ -123,7 +125,9 @@ async function submit() {
 async function pay(batch) {
   paying.value = batch.id
   try {
-    const { data } = await api.post(`/hr/orders/${batch.id}/payment`)
+    const { data } = await api.post(`/hr/orders/${batch.id}/payment`, {
+      payment_method: paymentMethod.value || undefined,
+    })
     if (data.paid) {
       toast.push(
         'Pembayaran tercatat. Grafolog sudah ditugaskan - unggah scan tulisan kandidat.',
@@ -259,6 +263,7 @@ onMounted(load)
           >
           <strong>{{ formatRupiah(quote.final_total) }}</strong>
         </div>
+        <PaymentMethodPicker v-model="paymentMethod" :allowed="quote?.code_payment_methods" />
         <label class="hro__toc">
           <input v-model="agreed" type="checkbox" />
           <span>

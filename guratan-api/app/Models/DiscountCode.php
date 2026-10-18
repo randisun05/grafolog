@@ -12,7 +12,7 @@ class DiscountCode extends Model
     public const AUDIENCES = ['client', 'grafolog', 'b2b'];
 
     protected $fillable = [
-        'code', 'type', 'value', 'applicable_tiers', 'audiences', 'max_uses',
+        'code', 'type', 'value', 'applicable_tiers', 'audiences', 'payment_methods', 'max_uses',
         'used_count', 'valid_from', 'valid_until', 'is_active', 'is_public', 'description', 'created_by',
     ];
 
@@ -33,6 +33,7 @@ class DiscountCode extends Model
         return [
             'applicable_tiers' => 'array',
             'audiences' => 'array',
+            'payment_methods' => 'array',
             'is_public' => 'boolean',
             'valid_from' => 'datetime',
             'valid_until' => 'datetime',

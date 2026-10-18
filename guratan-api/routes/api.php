@@ -71,6 +71,7 @@ use App\Http\Controllers\Api\SindromController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\TokenPurchaseController;
 use App\Http\Controllers\Api\UserLookupController;
+use App\Services\Payment\PaymentMethods;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:20,1')->group(function () {
@@ -93,6 +94,7 @@ Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentContr
 Route::get('/pricing', [PricingController::class, 'index']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/promos', [ProductController::class, 'promos']);
+Route::get('/payment-methods', fn () => response()->json(PaymentMethods::groups()));
 Route::get('/content', [ContentController::class, 'index']);
 
 // Fase E (2026-10-17): cek tulisan terpandu (lead magnet), afiliasi, artikel, kuis - publik.

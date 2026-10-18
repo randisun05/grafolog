@@ -61,6 +61,7 @@ class B2bOrderController extends Controller
             'final_total' => $quote['amount'] * $data['count'],
             'code_valid' => ($data['discount_code'] ?? null) ? $message === null : null,
             'code_message' => $message,
+            'code_payment_methods' => $quote['discount']?->payment_methods,
         ]);
     }
 
@@ -120,7 +121,7 @@ class B2bOrderController extends Controller
         abort_unless($batch->company_id === $request->user()->company_id, 404);
 
         try {
-            return response()->json($this->orders->startBatchPayment($batch, $request->user(), $request->ip()), 201);
+            return response()->json($this->orders->startBatchPayment($batch, $request->user(), $request->ip(), $this->method($request)), 201);
         } catch (RuntimeException $e) {
             if ($e instanceof HttpExceptionInterface) {
                 throw $e;

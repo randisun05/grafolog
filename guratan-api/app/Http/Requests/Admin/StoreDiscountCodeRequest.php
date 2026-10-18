@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Product;
+use App\Services\Payment\PaymentMethods;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -37,6 +38,8 @@ class StoreDiscountCodeRequest extends FormRequest
             }],
             'audiences' => ['nullable', 'array'],
             'audiences.*' => ['string', 'in:client,grafolog,b2b'],
+            'payment_methods' => ['nullable', 'array'],
+            'payment_methods.*' => ['string', 'in:'.implode(',', PaymentMethods::keys())],
             'is_public' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:255'],
             'max_uses' => ['nullable', 'integer', 'min:1'],

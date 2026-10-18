@@ -52,6 +52,7 @@ class PricingController extends Controller
             'base_price' => $basePrice,
             'code' => $codeInput,
             'code_valid' => $codeValid,
+            'code_payment_methods' => $codeValid ? $discount->payment_methods : null,
             'code_message' => $codeMessage,
             'discount_amount' => $discountAmount,
             'final_price' => $basePrice - $discountAmount,

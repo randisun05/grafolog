@@ -55,6 +55,7 @@ class OrderController extends Controller
             'discount_amount' => $quote['base'] - $quote['amount'],
             'code_valid' => ($data['discount_code'] ?? null) ? $valid : null,
             'code_message' => $message,
+            'code_payment_methods' => $quote['discount']?->payment_methods,
         ]);
     }
 
@@ -75,7 +76,7 @@ class OrderController extends Controller
         abort_unless($order->user_id === $request->user()->id && ! $order->batch_id, 403);
 
         try {
-            return response()->json($this->orders->startPayment($order, $request->user(), $request->ip()), 201);
+            return response()->json($this->orders->startPayment($order, $request->user(), $request->ip(), $this->method($request)), 201);
         } catch (RuntimeException $e) {
             // abort() (422 sudah dibayar/dibatalkan) juga RuntimeException - teruskan apa adanya.
             if ($e instanceof HttpExceptionInterface) {

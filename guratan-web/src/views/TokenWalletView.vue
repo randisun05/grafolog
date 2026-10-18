@@ -1,4 +1,5 @@
 <script setup>
+import PaymentMethodPicker from '@/components/shared/PaymentMethodPicker.vue'
 import { ref, onMounted, computed } from 'vue'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
@@ -17,6 +18,7 @@ const previewLoading = ref(false)
 const previewError = ref('')
 
 const buying = ref(false)
+const paymentMethod = ref('')
 const buyError = ref('')
 
 const typeLabel = {
@@ -95,6 +97,7 @@ async function buy() {
   try {
     const body = { quantity: quantity.value }
     if (previewResult.value?.code_valid) body.discount_code = discountCode.value
+    if (paymentMethod.value) body.payment_method = paymentMethod.value
     const { data } = await api.post('/tokens/purchase', body)
     // Mode uji (akun DOKU belum ada): token langsung masuk saldo.
     if (data.paid) {
@@ -120,9 +123,9 @@ onMounted(loadWallet)
     <p class="token-wallet__note">
       Setiap laporan yang berhasil dibuat memotong sejumlah token dari saldo Anda (sesuai tier,
       diatur admin), begitu juga penugasan supervisi ke grafolog lain (token ditahan sampai
-      selesai). Anda juga menerima kredit token saat memvalidasi laporan grafolog lain. Token
-      adalah kredit di dalam Guratan dan <strong>tidak dapat diuangkan kembali</strong>. Beli token
-      di sini untuk menambah saldo.
+      selesai). Anda juga menerima kredit token saat memvalidasi laporan grafolog lain. Token adalah
+      kredit di dalam Guratan dan <strong>tidak dapat diuangkan kembali</strong>. Beli token di sini
+      untuk menambah saldo.
     </p>
 
     <SkeletonLoader v-if="loading" variant="form" :rows="2" label="Memuat..." />
@@ -174,6 +177,10 @@ onMounted(loadWallet)
             <strong>{{ formatRupiah(finalAmount) }}</strong>
           </div>
 
+          <PaymentMethodPicker
+            v-model="paymentMethod"
+            :allowed="previewResult?.code_valid ? previewResult.code_payment_methods : null"
+          />
           <p v-if="buyError" class="error">{{ buyError }}</p>
           <button
             type="button"

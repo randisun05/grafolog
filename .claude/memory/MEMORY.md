@@ -24,3 +24,4 @@
 - [CV] — 2026-10-19: variabel CV diatur admin (grup/field/tipe/tag all|client|grafolog), isi oleh pemilik/HR; token supervisi = kredit non-cashable
 - [Promo per saluran] — 2026-10-19: discount_codes.audiences client|grafolog|b2b, editable admin; per-metode-bayar belum
 - [CV revisi] — 2026-10-19: applies_to (client|grafolog|all) + is_hidden (hanya pemilik+admin); CV saling terlihat klien/HR ↔ grafolog pemeriksa
+- [Promo metode bayar] — 2026-10-19: discount_codes.payment_methods + PaymentMethods::resolve → payment_method_types DOKU; picker di checkout

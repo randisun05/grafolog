@@ -9,6 +9,7 @@ use App\Models\DiscountCode;
 use App\Models\TokenPrice;
 use App\Models\TokenPurchase;
 use App\Services\Payment\DokuService;
+use App\Services\Payment\PaymentMethods;
 use App\Services\Payment\PaymentMode;
 use App\Services\TokenWalletService;
 use Illuminate\Http\JsonResponse;
@@ -44,6 +45,8 @@ class TokenPurchaseController extends Controller
             $amount = $baseAmount - $discountCode->amountOff($baseAmount);
         }
 
+        $methodTypes = PaymentMethods::resolve($discountCode, $request->validated('payment_method'));
+
         $purchase = TokenPurchase::create([
             'user_id' => $user->id,
             'quantity' => $quantity,
@@ -76,6 +79,7 @@ class TokenPurchaseController extends Controller
                 $purchase->currency,
                 $user->name,
                 $user->email,
+                $methodTypes,
             );
         } catch (RuntimeException $e) {
             Log::error('DOKU checkout token gagal dibuat', ['token_purchase_id' => $purchase->id, 'error' => $e->getMessage()]);

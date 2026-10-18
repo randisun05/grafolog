@@ -17,6 +17,7 @@ const form = ref({
   value: '',
   tiers: [], // kosong = berlaku semua produk
   audiences: [], // kosong = aktif di semua saluran
+  payment_methods: [], // kosong = semua metode bayar
   max_uses: '',
   valid_until: '',
   is_public: false,
@@ -53,6 +54,7 @@ async function submit() {
       value: Number(form.value.value),
       applicable_tiers: form.value.tiers.length ? form.value.tiers : null,
       audiences: form.value.audiences.length ? form.value.audiences : null,
+      payment_methods: form.value.payment_methods.length ? form.value.payment_methods : null,
       max_uses: form.value.max_uses ? Number(form.value.max_uses) : null,
       valid_until: form.value.valid_until || null,
       is_public: form.value.is_public,
@@ -65,6 +67,7 @@ async function submit() {
       value: '',
       tiers: [],
       audiences: [],
+      payment_methods: [],
       max_uses: '',
       valid_until: '',
       is_public: false,
@@ -90,6 +93,32 @@ async function toggleActive(discount) {
     await loadCodes()
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal mengubah status kode.')
+  } finally {
+    togglingId.value = null
+  }
+}
+
+const METODE = [
+  { key: 'va', label: 'Virtual Account' },
+  { key: 'ewallet', label: 'E-Wallet' },
+  { key: 'qris', label: 'QRIS' },
+  { key: 'card', label: 'Kartu Kredit' },
+  { key: 'retail', label: 'Gerai Retail' },
+]
+const metodeAktif = (d, key) => !d.payment_methods?.length || d.payment_methods.includes(key)
+
+async function toggleMetode(d, key) {
+  const now = new Set(d.payment_methods?.length ? d.payment_methods : METODE.map((m) => m.key))
+  now.has(key) ? now.delete(key) : now.add(key)
+  if (!now.size) return toast.push('Pilih minimal satu metode.')
+  togglingId.value = d.id
+  try {
+    await api.patch(`/admin/discount-codes/${d.id}`, {
+      payment_methods: now.size === METODE.length ? null : [...now],
+    })
+    await loadCodes()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah metode.')
   } finally {
     togglingId.value = null
   }
@@ -202,6 +231,15 @@ onMounted(loadCodes)
             >
           </span>
         </label>
+        <label class="admin-discounts__checkboxes">
+          Berlaku untuk metode bayar (kosongkan = semua)
+          <span>
+            <label v-for="m in METODE" :key="m.key"
+              ><input v-model="form.payment_methods" type="checkbox" :value="m.key" />
+              {{ m.label }}</label
+            >
+          </span>
+        </label>
         <label>
           Kuota pemakaian (opsional)
           <input v-model="form.max_uses" type="number" min="1" placeholder="Tanpa batas" />
@@ -243,6 +281,7 @@ onMounted(loadCodes)
           <th>Nilai</th>
           <th>Produk</th>
           <th>Saluran</th>
+          <th>Metode bayar</th>
           <th>Pemakaian</th>
           <th>Status</th>
           <th></th>
@@ -262,6 +301,17 @@ onMounted(loadCodes)
                 @change="toggleAudience(d, a.key)"
               />
               {{ a.label }}</label
+            >
+          </td>
+          <td class="admin-discounts__channels">
+            <label v-for="m in METODE" :key="m.key"
+              ><input
+                type="checkbox"
+                :checked="metodeAktif(d, m.key)"
+                :disabled="togglingId === d.id"
+                @change="toggleMetode(d, m.key)"
+              />
+              {{ m.label }}</label
             >
           </td>
           <td>{{ d.used_count }}{{ d.max_uses ? ` / ${d.max_uses}` : '' }}</td>

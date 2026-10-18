@@ -12,6 +12,7 @@ use App\Models\PricingPlan;
 use App\Models\TokenPurchase;
 use App\Services\Commerce\OrderService;
 use App\Services\Payment\DokuService;
+use App\Services\Payment\PaymentMethods;
 use App\Services\Payment\PaymentMode;
 use App\Services\TokenWalletService;
 use Illuminate\Http\JsonResponse;
@@ -50,6 +51,8 @@ class PaymentController extends Controller
             $amount = $baseAmount - $discountCode->amountOff($baseAmount);
         }
 
+        $methodTypes = PaymentMethods::resolve($discountCode, $request->validated('payment_method'));
+
         $payment = Payment::create([
             'sample_id' => $sample->id,
             'invoice_number' => 'INV-'.now()->format('Ymd').'-'.$sample->id.'-'.Str::upper(Str::random(6)),
@@ -83,6 +86,7 @@ class PaymentController extends Controller
                 $payment->currency,
                 $user->name,
                 $user->email,
+                $methodTypes,
             );
         } catch (RuntimeException $e) {
             Log::error('DOKU checkout gagal dibuat', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);

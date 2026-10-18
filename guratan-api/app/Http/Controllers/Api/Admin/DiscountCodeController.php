@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreDiscountCodeRequest;
 use App\Models\AuditLog;
 use App\Models\DiscountCode;
+use App\Services\Payment\PaymentMethods;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -48,16 +49,21 @@ class DiscountCodeController extends Controller
             // Saluran aktif boleh diubah kapan saja (null/kosong = semua saluran).
             'audiences' => ['sometimes', 'nullable', 'array'],
             'audiences.*' => ['string', 'in:client,grafolog,b2b'],
+            'payment_methods' => ['sometimes', 'nullable', 'array'],
+            'payment_methods.*' => ['string', 'in:'.implode(',', PaymentMethods::keys())],
         ]);
         abort_if($data === [], 422, 'Tidak ada perubahan.');
         if (array_key_exists('audiences', $data)) {
             $data['audiences'] = $data['audiences'] ? array_values(array_unique($data['audiences'])) : null;
         }
+        if (array_key_exists('payment_methods', $data)) {
+            $data['payment_methods'] = $data['payment_methods'] ? array_values(array_unique($data['payment_methods'])) : null;
+        }
 
         $discountCode->update($data);
 
         $aksi = match (true) {
-            array_key_exists('audiences', $data) => 'ubah_saluran_kode_diskon',
+            array_key_exists('audiences', $data), array_key_exists('payment_methods', $data) => 'ubah_saluran_kode_diskon',
             array_key_exists('is_active', $data) => $data['is_active'] ? 'aktifkan_kode_diskon' : 'nonaktifkan_kode_diskon',
             default => $data['is_public'] ? 'tampilkan_promo' : 'sembunyikan_promo',
         };

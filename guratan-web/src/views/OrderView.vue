@@ -1,4 +1,5 @@
 <script setup>
+import PaymentMethodPicker from '@/components/shared/PaymentMethodPicker.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/lib/api'
@@ -20,6 +21,7 @@ const loading = ref(true)
 const loadError = ref('')
 
 const selected = ref(null)
+const paymentMethod = ref('')
 const discountCode = ref(route.query.kode ?? '')
 const previewResult = ref(null)
 const previewLoading = ref(false)
@@ -129,7 +131,9 @@ async function pay() {
       await api.post(`/samples/${createdOrder.value.sample_id}/images`, formData)
       photosUploaded.value = true
     }
-    const { data: payment } = await api.post(`/orders/${createdOrder.value.id}/payment`)
+    const { data: payment } = await api.post(`/orders/${createdOrder.value.id}/payment`, {
+      payment_method: paymentMethod.value || undefined,
+    })
     // Mode uji (akun DOKU belum ada): backend langsung menandai lunas.
     if (payment.paid) {
       toast.push('Mode uji: pembayaran dinonaktifkan, pesanan langsung dianggap lunas.')
@@ -269,6 +273,10 @@ onMounted(load)
         </div>
 
         <p v-if="payError" class="error">{{ payError }}</p>
+        <PaymentMethodPicker
+          v-model="paymentMethod"
+          :allowed="previewResult?.code_valid ? previewResult.code_payment_methods : null"
+        />
         <label class="order__toc">
           <input v-model="agreed" type="checkbox" />
           <span>

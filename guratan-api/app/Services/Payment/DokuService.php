@@ -49,6 +49,7 @@ class DokuService
         string $currency,
         string $customerName,
         string $customerEmail,
+        ?array $methodTypes = null,
     ): array {
         $this->ensureConfigured();
 
@@ -65,6 +66,9 @@ class DokuService
                 'email' => $customerEmail,
             ],
         ];
+        if ($methodTypes) {
+            $body['payment'] = ['payment_method_types' => array_values($methodTypes)];
+        }
 
         $response = $this->post(self::CHECKOUT_PATH, $body);
 
