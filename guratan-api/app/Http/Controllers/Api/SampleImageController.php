@@ -7,6 +7,7 @@ use App\Http\Requests\Sample\StoreSampleImagesRequest;
 use App\Models\AuditLog;
 use App\Models\HandwritingSample;
 use App\Models\SampleImage;
+use App\Support\PdfScan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,20 +30,21 @@ class SampleImageController extends Controller
     public function store(StoreSampleImagesRequest $request, HandwritingSample $sample): JsonResponse
     {
         $user = $request->user();
-        abort_unless($sample->acceptsImagesFrom($user), 403, 'Anda tidak dapat menambah foto untuk sample ini.');
+        abort_unless($sample->acceptsImagesFrom($user), 403, 'Anda tidak dapat menambah scan untuk sample ini.');
 
         $files = $request->file('images');
         abort_if(
             $sample->images()->count() + count($files) > SampleImage::MAX_PER_SAMPLE,
             422,
-            'Maksimal '.SampleImage::MAX_PER_SAMPLE.' foto per sample.'
+            'Maksimal '.SampleImage::MAX_PER_SAMPLE.' berkas scan per sample.'
         );
 
         $images = DB::transaction(fn () => collect($files)->map(function ($file) use ($sample, $user) {
-            [$width, $height] = getimagesize($file->getRealPath());
+            $scan = PdfScan::inspect($file->getRealPath());
             $image = $sample->images()->create([
-                'width' => $width,
-                'height' => $height,
+                'page_count' => $scan['pages'],
+                'page_width_mm' => $scan['width_mm'],
+                'page_height_mm' => $scan['height_mm'],
                 'path' => $file->store("samples/{$sample->id}", SampleImage::DISK),
                 'original_name' => mb_substr($file->getClientOriginalName(), 0, 255),
                 'mime_type' => $file->getMimeType(),

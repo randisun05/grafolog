@@ -112,7 +112,7 @@ onMounted(() => Promise.all([loadOrders(), loadGrafologs()]))
                 class="admin-orders__link"
                 @click="expanded = expanded === o.id ? null : o.id"
               >
-                {{ o.images_count }} foto
+                {{ o.images_count }} scan
               </button>
             </span>
           </div>

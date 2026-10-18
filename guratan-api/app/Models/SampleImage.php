@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Foto tulisan tangan untuk satu sample. Disimpan di disk privat 'local'
+ * Berkas scan tulisan tangan (PDF; data lama berupa foto) untuk satu sample. Disimpan di disk privat 'local'
  * (bukan 'public') - hanya bisa diambil lewat SampleImageController::show
  * yang mengecek otorisasi dan mencatat audit log.
  */
@@ -16,15 +16,11 @@ class SampleImage extends Model
 
     public const MAX_PER_SAMPLE = 10;
 
-    /** Batas unggah (KB). Hasil scan resolusi tinggi bisa besar - semakin jelas semakin baik. */
+    /** Batas unggah (KB). PDF hasil scan 300 dpi bisa besar - semakin jelas semakin baik. */
     public const MAX_KB = 30720;
 
-    /** Resolusi minimum: sisi panjang >= 1920 px dan sisi pendek >= 1080 px (FHD, orientasi bebas). */
-    public const MIN_LONG_SIDE = 1920;
-
-    public const MIN_SHORT_SIDE = 1080;
-
-    protected $fillable = ['sample_id', 'path', 'original_name', 'mime_type', 'size_bytes', 'uploaded_by', 'width', 'height'];
+    protected $fillable = ['sample_id', 'path', 'original_name', 'mime_type', 'size_bytes', 'uploaded_by', 'width', 'height',
+        'page_count', 'page_width_mm', 'page_height_mm'];
 
     protected $hidden = ['path'];
 

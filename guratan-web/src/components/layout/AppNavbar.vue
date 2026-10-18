@@ -37,6 +37,7 @@ async function handleLogout() {
         <RouterLink v-else-if="auth.isPendingHr" to="/status-perusahaan"
           >Status Pendaftaran</RouterLink
         >
+        <RouterLink v-else-if="auth.isCandidate" to="/tugas-asesmen">Tugas Asesmen</RouterLink>
         <template v-else>
           <RouterLink to="/dashboard">Dashboard</RouterLink>
           <RouterLink to="/riwayat">Riwayat</RouterLink>

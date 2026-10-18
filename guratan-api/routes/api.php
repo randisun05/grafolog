@@ -32,7 +32,9 @@ use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\Auth\CompanyRegistrationController;
 use App\Http\Controllers\Api\Auth\GrafologRegistrationController;
+use App\Http\Controllers\Api\Auth\PasswordChangeController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CandidateTaskController;
 use App\Http\Controllers\Api\ChecklistController;
 use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ContentController;
@@ -101,6 +103,8 @@ Route::middleware('throttle:30,1')->get('/games/quiz', [GameController::class, '
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::middleware('throttle:10,1')->put('/auth/change-password', [PasswordChangeController::class, 'update']);
+    Route::middleware('role:user')->get('/candidate/tasks', [CandidateTaskController::class, 'index']);
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
 
@@ -283,6 +287,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/candidates', [CandidateController::class, 'index']);
         Route::post('/candidates', [CandidateController::class, 'store']);
         Route::put('/candidates/{candidate}', [CandidateController::class, 'update']);
+        Route::post('/candidates/{candidate}/reset-password', [CandidateController::class, 'resetPassword']);
         Route::get('/products', [B2bOrderController::class, 'products']);
         Route::post('/orders/preview', [B2bOrderController::class, 'preview']);
         Route::get('/orders', [B2bOrderController::class, 'index']);

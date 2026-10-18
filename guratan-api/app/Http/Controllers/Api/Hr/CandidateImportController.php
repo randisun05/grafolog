@@ -50,14 +50,18 @@ class CandidateImportController extends Controller
             return response()->json(['message' => 'CSV tidak berisi kandidat yang valid.'], 422);
         }
 
-        $profiles = DB::transaction(fn () => collect($candidates)
+        $results = DB::transaction(fn () => collect($candidates)
             ->map(fn (array $row) => $this->registrar->register($row + ['job_position_id' => $positionId], $user)));
+        $profiles = $results->map(fn ($r) => $r[0]);
 
         AuditLog::record('impor_kandidat', JobPosition::class, $positionId, $user->id, $request->ip());
 
         return response()->json([
             'imported' => $profiles->count(),
             'candidates' => $profiles->map(fn ($p) => ['id' => $p->id, 'user_id' => $p->user_id, 'stage' => $p->stage]),
+            // Password sementara akun BARU - hanya tampil sekali, tidak diemail (HR yang menyerahkan).
+            'credentials' => $results->filter(fn ($r) => $r[1] !== null)
+                ->map(fn ($r) => ['name' => $r[0]->user->name, 'email' => $r[0]->user->email, 'password' => $r[1]])->values(),
         ], 201);
     }
 

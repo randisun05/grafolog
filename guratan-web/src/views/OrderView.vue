@@ -236,7 +236,7 @@ onMounted(load)
 
         <div v-if="needsPhotos" class="order__photos">
           <span class="order__photos-title"
-            >Foto/scan tulisan tangan ({{ photos.length }}/{{ MAX_PHOTOS }})</span
+            >Scan tulisan tangan - PDF ({{ photos.length }}/{{ MAX_PHOTOS }})</span
           >
           <p class="order__photos-hint">
             Tulis minimal satu halaman tangan di kertas polos tanpa garis dan tanda tangani di

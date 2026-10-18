@@ -23,6 +23,19 @@ function revokePreviews() {
   previews.value = {}
 }
 
+const isImage = (img) => (img.mime_type ?? '').startsWith('image/')
+
+async function openPdf(image) {
+  try {
+    const { data } = await api.get(`/samples/${props.sampleId}/images/${image.id}`, {
+      responseType: 'blob',
+    })
+    window.open(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), '_blank')
+  } catch {
+    toast.push('Gagal membuka berkas scan.')
+  }
+}
+
 async function loadPreview(image) {
   const { data } = await api.get(`/samples/${props.sampleId}/images/${image.id}`, {
     responseType: 'blob',
@@ -36,9 +49,9 @@ async function load() {
   try {
     const { data } = await api.get(`/samples/${props.sampleId}/images`)
     images.value = data
-    await Promise.all(data.map(loadPreview))
+    await Promise.all(data.filter(isImage).map(loadPreview))
   } catch {
-    toast.push('Gagal memuat foto tulisan tangan.')
+    toast.push('Gagal memuat berkas scan.')
   } finally {
     loading.value = false
   }
@@ -56,7 +69,7 @@ async function onFiles(event) {
     const formData = new FormData()
     files.forEach((f) => formData.append('images[]', f))
     await api.post(`/samples/${props.sampleId}/images`, formData)
-    toast.push('Foto berhasil diunggah.', 'success')
+    toast.push('Scan berhasil diunggah.', 'success')
     await load()
     emit('changed', images.value.length)
   } catch (e) {
@@ -64,7 +77,7 @@ async function onFiles(event) {
     toast.push(
       errors
         ? Object.values(errors).flat()[0]
-        : (e.response?.data?.message ?? 'Gagal mengunggah foto.'),
+        : (e.response?.data?.message ?? 'Gagal mengunggah scan.'),
     )
   } finally {
     uploading.value = false
@@ -77,7 +90,7 @@ async function remove(image) {
     await load()
     emit('changed', images.value.length)
   } catch (e) {
-    toast.push(e.response?.data?.message ?? 'Gagal menghapus foto.')
+    toast.push(e.response?.data?.message ?? 'Gagal menghapus scan.')
   }
 }
 
@@ -88,16 +101,29 @@ onBeforeUnmount(revokePreviews)
 
 <template>
   <div class="sample-images">
-    <SkeletonLoader v-if="loading" variant="text" :rows="2" label="Memuat foto..." />
-    <p v-else-if="!images.length" class="sample-images__note">Belum ada foto tulisan tangan.</p>
+    <SkeletonLoader v-if="loading" variant="text" :rows="2" label="Memuat berkas scan..." />
+    <p v-else-if="!images.length" class="sample-images__note">
+      Belum ada berkas scan tulisan tangan.
+    </p>
     <div v-else class="sample-images__grid">
       <figure v-for="img in images" :key="img.id" class="sample-images__item">
-        <button type="button" class="sample-images__thumb" @click="viewing = img">
+        <button
+          type="button"
+          class="sample-images__thumb"
+          @click="isImage(img) ? (viewing = img) : openPdf(img)"
+        >
           <img
-            v-if="previews[img.id]"
+            v-if="isImage(img) && previews[img.id]"
             :src="previews[img.id]"
             :alt="img.original_name ?? 'Foto tulisan tangan'"
           />
+          <span v-else-if="!isImage(img)" class="sample-images__pdf"
+            >PDF<small
+              >{{ img.page_count ?? '?' }} hlm<template v-if="img.page_width_mm">
+                · {{ img.page_width_mm }}×{{ img.page_height_mm }} mm</template
+              ></small
+            ></span
+          >
         </button>
         <figcaption>
           <span>{{ img.original_name }}</span>
@@ -110,7 +136,7 @@ onBeforeUnmount(revokePreviews)
 
     <p v-if="canUpload" class="sample-images__note">{{ PHOTO_HINT }}</p>
     <label v-if="canUpload" class="btn sample-images__upload">
-      {{ uploading ? 'Mengunggah...' : 'Tambah Foto' }}
+      {{ uploading ? 'Mengunggah...' : 'Tambah Scan (PDF)' }}
       <input
         type="file"
         :accept="PHOTO_ACCEPT"
@@ -196,5 +222,21 @@ onBeforeUnmount(revokePreviews)
 .sample-images__lightbox img {
   max-width: 100%;
   max-height: 100%;
+}
+.sample-images__pdf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-weight: 700;
+  color: var(--color-seal);
+  gap: 2px;
+}
+.sample-images__pdf small {
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--color-text-soft);
+  text-align: center;
 }
 </style>

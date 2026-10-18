@@ -31,7 +31,7 @@ class CandidateController extends Controller
         $profiles = CandidateProfile::where('company_id', $companyId)
             ->when($filters['position_id'] ?? null, fn ($q, $id) => $q->where('job_position_id', $id))
             ->when($filters['stage'] ?? null, fn ($q, $s) => $q->where('stage', $s))
-            ->with(['user:id,name,email,phone', 'position:id,title'])
+            ->with(['user:id,name,email,phone,must_change_password,acquisition_source', 'position:id,title'])
             ->latest()
             ->get();
 
@@ -74,10 +74,32 @@ class CandidateController extends Controller
             return response()->json(['message' => $rejection, 'errors' => ['email' => [$rejection]]], 422);
         }
 
-        $profile = DB::transaction(fn () => $this->registrar->register($data, $hr));
+        [$profile, $temp] = DB::transaction(fn () => $this->registrar->register($data, $hr));
         AuditLog::record('tambah_kandidat', CandidateProfile::class, $profile->id, $hr->id, $request->ip());
 
-        return response()->json($profile->load(['user:id,name,email,phone', 'position:id,title']), 201);
+        return response()->json(
+            $profile->load(['user:id,name,email,phone', 'position:id,title'])->toArray() + ['temp_password' => $temp],
+            201,
+        );
+    }
+
+    /**
+     * Buat password sementara baru untuk akun kandidat yang dibuat lewat B2B (kandidat lupa / HR
+     * menyerahkan ulang). Tidak diemail; semua sesi login kandidat dicabut. Akun klien mandiri
+     * (bukan dibuat HR) tidak boleh disentuh HR.
+     */
+    public function resetPassword(Request $request, CandidateProfile $candidate): JsonResponse
+    {
+        abort_unless($candidate->company_id === $request->user()->company_id, 404);
+        $user = $candidate->user;
+        abort_unless($user->acquisition_source === 'b2b', 403, 'Akun ini bukan akun yang dibuat perusahaan - kandidat memakai fitur lupa password sendiri.');
+
+        $temp = CandidateRegistrar::tempPassword();
+        $user->update(['password' => $temp, 'must_change_password' => true]);
+        $user->tokens()->delete();
+        AuditLog::record('reset_password_kandidat', CandidateProfile::class, $candidate->id, $request->user()->id, $request->ip());
+
+        return response()->json(['email' => $user->email, 'temp_password' => $temp]);
     }
 
     public function update(StoreCandidateRequest $request, CandidateProfile $candidate): JsonResponse

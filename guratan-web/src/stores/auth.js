@@ -21,7 +21,11 @@ export const useAuthStore = defineStore('auth', () => {
   const isPendingHr = computed(
     () => isHr.value && !!user.value?.company && user.value.company.status !== 'verified',
   )
-  const isClient = computed(() => user.value?.role === 'user')
+  // Kandidat B2B: akun dibuat perusahaan - hanya mengunggah scan, tidak berbelanja.
+  const isCandidate = computed(
+    () => user.value?.role === 'user' && user.value?.acquisition_source === 'b2b',
+  )
+  const isClient = computed(() => user.value?.role === 'user' && !isCandidate.value)
 
   function persist(newUser, newToken) {
     user.value = newUser
@@ -87,6 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     isHr,
     isPendingHr,
     isClient,
+    isCandidate,
     register,
     registerGrafolog,
     registerCompany,

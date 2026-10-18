@@ -688,6 +688,15 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   bulan layanan, kalender setahun per grafolog. Refund: `AdminRefundQueue` (>90 hari + refund
   kesalahan sistem), klien tidak bisa ajukan; `OrderView` wajib centang T&C "tidak dapat dibatalkan".
 
+## Scan PDF & kandidat — 2026-10-18
+
+- `lib/handwritingPhoto.js` kini cek PDF (≤30MB, MediaBox A4/F4); `SampleImages` menampilkan
+  kartu PDF (halaman, mm) dan membuka PDF lewat blob; foto lama tetap pratinjau.
+- `auth.isCandidate` (user + `acquisition_source=b2b`): navbar hanya "Tugas Asesmen", router
+  mengalihkan dashboard/riwayat/pesan → `CandidateTasksView` (`/tugas-asesmen`); `must_change_password`
+  → `ChangePasswordView` (`/ganti-password`, `PasswordChangeForm` juga di Profil). `HrCandidatesPanel`:
+  banner kredensial sekali-tampil (+ unduh CSV), "Reset sandi", "Belum login pertama".
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

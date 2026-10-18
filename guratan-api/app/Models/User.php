@@ -17,7 +17,7 @@ use Laravel\Sanctum\HasApiTokens;
     'name', 'email', 'phone', 'password', 'role', 'company_id', 'token_balance', 'consented_at', 'consent_source', 'consent_version',
     'acquisition_source', 'referred_by', 'grafolog_status', 'certificate_number', 'certificate_path',
     'grafolog_verified_at', 'grafolog_verified_by', 'grafolog_review_note',
-    'city', 'bio', 'specializations', 'experience_years', 'birth_date', 'gender', 'education', 'occupation',
+    'must_change_password', 'city', 'bio', 'specializations', 'experience_years', 'birth_date', 'gender', 'education', 'occupation',
 ])]
 #[Hidden(['password', 'remember_token', 'certificate_path'])]
 class User extends Authenticatable
@@ -100,6 +100,7 @@ class User extends Authenticatable
             'specializations' => 'array',
             'birth_date' => 'date:Y-m-d',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
         ];
     }
 }

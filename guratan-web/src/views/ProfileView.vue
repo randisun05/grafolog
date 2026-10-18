@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { EDUCATION, EMPLOYEE_RANGES } from '@/lib/format'
 import AvailabilityEditor from '@/components/hr/AvailabilityEditor.vue'
+import PasswordChangeForm from '@/components/shared/PasswordChangeForm.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -208,6 +209,10 @@ onMounted(async () => {
       </button>
     </form>
     <AvailabilityEditor v-if="!loading && role === 'grafolog'" />
+    <section v-if="!loading" class="profile__pass">
+      <h2>Ganti kata sandi</h2>
+      <PasswordChangeForm />
+    </section>
   </div>
 </template>
 
@@ -267,5 +272,15 @@ onMounted(async () => {
 }
 .profile .btn {
   align-self: flex-start;
+}
+.profile__pass {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.profile__pass h2 {
+  font-size: 16px;
+  margin: 0 0 4px;
 }
 </style>

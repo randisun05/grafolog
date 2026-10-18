@@ -363,7 +363,7 @@ function viewReport() {
             </p>
           </div>
           <div class="assessment-workspace__card">
-            <h3>Foto Tulisan Tangan</h3>
+            <h3>Scan Tulisan Tangan (PDF)</h3>
             <SampleImages :sample-id="sample.id" can-upload />
           </div>
         </aside>

@@ -46,6 +46,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/ganti-password',
+      name: 'change-password',
+      component: () => import('../views/ChangePasswordView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/tugas-asesmen',
+      name: 'candidate-tasks',
+      component: () => import('../views/CandidateTasksView.vue'),
+      meta: { requiresAuth: true, role: 'user' },
+    },
+    {
       path: '/profil',
       name: 'profile',
       component: () => import('../views/ProfileView.vue'),
@@ -260,6 +272,16 @@ router.beforeEach((to) => {
   // Grafolog yang belum diverifikasi hanya boleh melihat halaman statusnya.
   if (to.meta.requiresAuth && auth.isPendingGrafolog && to.name !== 'grafolog-status') {
     return { name: 'grafolog-status' }
+  }
+
+  // Password sementara (kandidat dibuat perusahaan): wajib diganti dulu.
+  if (to.meta.requiresAuth && auth.user?.must_change_password && to.name !== 'change-password') {
+    return { name: 'change-password' }
+  }
+
+  // Kandidat B2B tidak punya dashboard/pembelian - hanya tugas asesmen.
+  if (auth.isCandidate && ['dashboard', 'order', 'riwayat'].includes(to.name)) {
+    return { name: 'candidate-tasks' }
   }
 
   // HR perusahaan yang belum diverifikasi hanya boleh melihat status perusahaannya.

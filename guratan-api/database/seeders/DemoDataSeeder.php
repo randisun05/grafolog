@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Services\Reporting\ReportValidationService;
 use App\Services\Scoring\ScoringEngineService;
 use App\Services\TokenWalletService;
+use App\Support\MinimalPdf;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -364,31 +365,14 @@ class DemoDataSeeder extends Seeder
 
     private function attachPhoto(HandwritingSample $sample, User $subject, User $uploader): void
     {
-        // Minimal FHD, sama seperti aturan unggah (StoreSampleImagesRequest).
-        $img = imagecreatetruecolor(1920, 1080);
-        imagefill($img, 0, 0, imagecolorallocate($img, 250, 248, 240));
-        $ink = imagecolorallocate($img, 30, 40, 110);
-        $lines = [
-            'Contoh tulisan tangan (DATA DUMMY)',
-            "Nama: {$subject->name}",
-            'Saya menulis kalimat ini di atas kertas polos tanpa garis.',
-            'Huruf, spasi, kemiringan, dan tekanan pena akan diukur grafolog.',
-            'Tanggal: '.now()->format('d-m-Y'),
-        ];
-        foreach ($lines as $i => $line) {
-            imagestring($img, 5, 120 + $i * 12, 180 + $i * 160, $line, $ink);
-        }
-        ob_start();
-        imagejpeg($img, null, 85);
-        $bytes = ob_get_clean();
-        imagedestroy($img);
-
-        $path = "samples/{$sample->id}/demo-tulisan.jpg";
+        // PDF A4 minimal (aturan unggah: PDF hasil scan A4/F4) - isinya hanya teks penanda DATA DUMMY.
+        $bytes = MinimalPdf::make("Contoh scan tulisan tangan (DATA DUMMY) - {$subject->name}");
+        $path = "samples/{$sample->id}/demo-scan.pdf";
         Storage::disk(SampleImage::DISK)->put($path, $bytes);
         $sample->images()->create([
-            'path' => $path, 'original_name' => 'tulisan-tangan.jpg', 'mime_type' => 'image/jpeg',
+            'path' => $path, 'original_name' => 'scan-tulisan-tangan.pdf', 'mime_type' => 'application/pdf',
             'size_bytes' => strlen($bytes), 'uploaded_by' => $uploader->id,
-            'width' => 1920, 'height' => 1080,
+            'page_count' => 1, 'page_width_mm' => 210, 'page_height_mm' => 297,
         ]);
     }
 

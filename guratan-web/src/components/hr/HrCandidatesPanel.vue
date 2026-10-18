@@ -41,6 +41,8 @@ const file = ref(null)
 const importPosition = ref('')
 const importConsent = ref(false)
 const importErrors = ref([])
+// Kredensial sementara tampil SEKALI (tidak diemail, tidak disimpan di server) - HR menyerahkannya ke kandidat.
+const credentials = ref([])
 const importing = ref(false)
 
 async function load() {
@@ -71,7 +73,7 @@ async function addCandidate() {
   formErrors.value = {}
   try {
     const f = form.value
-    await api.post('/hr/candidates', {
+    const { data } = await api.post('/hr/candidates', {
       ...f,
       phone: f.phone || null,
       job_position_id: f.job_position_id || null,
@@ -80,6 +82,10 @@ async function addCandidate() {
       notes: f.notes || null,
     })
     toast.push(`${f.name} ditambahkan.`, 'success')
+    if (data.temp_password)
+      credentials.value = [
+        { name: data.user.name, email: data.user.email, password: data.temp_password },
+      ]
     form.value = blank()
     panel.value = null
     await load()
@@ -104,6 +110,7 @@ async function submitImport() {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     toast.push(`${data.imported} kandidat diimpor.`, 'success')
+    credentials.value = data.credentials ?? []
     file.value = null
     panel.value = null
     await load()
@@ -115,6 +122,35 @@ async function submitImport() {
   } finally {
     importing.value = false
   }
+}
+
+async function resetPassword(c) {
+  if (
+    !window.confirm(
+      `Buat kata sandi sementara baru untuk ${c.user.name}? Kata sandi lama tidak berlaku.`,
+    )
+  )
+    return
+  try {
+    const { data } = await api.post(`/hr/candidates/${c.id}/reset-password`)
+    credentials.value = [{ name: c.user.name, email: data.email, password: data.temp_password }]
+    await load()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mereset kata sandi.')
+  }
+}
+
+function downloadCredentials() {
+  const rows = [
+    'nama,email,kata_sandi_sementara',
+    ...credentials.value.map((c) => `"${c.name}",${c.email},${c.password}`),
+  ]
+  const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'akun-kandidat.csv'
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 async function setStage(c, stage) {
@@ -156,6 +192,27 @@ onMounted(load)
       >
         Pesan asesmen ({{ selected.length }})
       </button>
+    </div>
+
+    <div v-if="credentials.length" class="hrc__cred" role="status">
+      <strong>Akun kandidat - catat sekarang, tidak ditampilkan lagi</strong>
+      <p class="hrc__hint">
+        Kata sandi sementara ini tidak diemail. Serahkan ke kandidat; mereka wajib menggantinya saat
+        login pertama dan bisa mengunggah scan sendiri. Lupa? Gunakan "Reset sandi".
+      </p>
+      <table>
+        <tr v-for="c in credentials" :key="c.email">
+          <td>{{ c.name }}</td>
+          <td>{{ c.email }}</td>
+          <td>
+            <code>{{ c.password }}</code>
+          </td>
+        </tr>
+      </table>
+      <div class="hrc__cred-actions">
+        <button type="button" class="btn" @click="downloadCredentials">Unduh CSV</button>
+        <button type="button" class="btn" @click="credentials = []">Sudah dicatat</button>
+      </div>
     </div>
 
     <form v-if="panel === 'add'" class="hrc__form" @submit.prevent="addCandidate">
@@ -274,6 +331,7 @@ onMounted(load)
               <td>
                 <span class="hrc__name">{{ c.user.name }}</span>
                 <span class="hrc__sub">{{ c.user.email }}</span>
+                <span v-if="c.user.must_change_password" class="hrc__sub">Belum login pertama</span>
                 <span v-if="c.education || c.experience_years !== null" class="hrc__sub"
                   >{{ c.education || '-' }} · {{ c.experience_years ?? '-' }} th</span
                 >
@@ -310,6 +368,14 @@ onMounted(load)
                   @click="photosOpenFor = photosOpenFor === c.id ? null : c.id"
                 >
                   {{ latest(c).image_count }} scan
+                </button>
+                <button
+                  v-if="c.user.acquisition_source === 'b2b'"
+                  type="button"
+                  class="btn"
+                  @click="resetPassword(c)"
+                >
+                  Reset sandi
                 </button>
                 <RouterLink
                   v-if="latest(c)?.report_id"
@@ -449,5 +515,31 @@ onMounted(load)
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+.hrc__cred {
+  padding: 14px 16px;
+  border: 1px solid var(--color-gold);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: var(--color-gold-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+.hrc__cred table {
+  border-collapse: collapse;
+}
+.hrc__cred td {
+  padding: 3px 14px 3px 0;
+}
+.hrc__cred code {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.hrc__cred-actions {
+  display: flex;
+  gap: 8px;
 }
 </style>

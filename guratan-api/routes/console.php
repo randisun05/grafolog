@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Reporting\ReportValidationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -9,3 +10,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
+Schedule::call(fn () => app(ReportValidationService::class)->sweep())
+    ->hourly()->name('supervisi-sweep');

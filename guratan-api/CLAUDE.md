@@ -1799,6 +1799,24 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - `Services\Notifications\Notifier`, tabel `inbox_messages`/`broadcasts`/`activity_logs` sudah ada
   (UI/endpoint menyusul di tahap berikutnya). 487 test.
 
+## Scan PDF & akun kandidat B2B — 2026-10-18
+
+- **Unggahan tulisan tangan = PDF hasil scan** (bukan foto): `StoreSampleImagesRequest` hanya
+  `mimes:pdf` ≤30MB; isi diperiksa `App\Support\PdfScan::inspect()` (tanpa pustaka: baca `%PDF-`,
+  jumlah halaman, `/MediaBox` halaman pertama → mm, ObjStm terkompresi dibongkar). Ukuran terbaca
+  tetapi bukan A4/F4 (±4%, portrait/landscape) → 422 (foto dibungkus PDF ditolak). Kolom
+  `sample_images.page_count/page_width_mm/page_height_mm`; data foto lama tetap bisa dilihat
+  (`mime_type` image/*). `App\Support\MinimalPdf` membuat PDF demo/tes.
+- **Akun kandidat**: `CandidateRegistrar::register()` → `[profil, password sementara]`; akun BARU
+  memakai password sementara acak (`tempPassword()`), `users.must_change_password=true`, dikembalikan
+  SEKALI ke HR (`temp_password` di `POST /hr/candidates`, `credentials[]` di impor CSV) - tidak
+  diemail. `POST /hr/candidates/{c}/reset-password` (hanya akun `acquisition_source=b2b`, token dicabut).
+  `PUT /auth/change-password` (throttle 10/mnt; cabut sesi lain; wajib bagi password sementara).
+- **Jalur 2 unggah**: `GET /candidate/tasks` (role user) = pesanan batch kandidat; kandidat unggah
+  scan ke sampel sendiri lewat endpoint images yang sama (`acceptsImagesFrom`). HR/grafolog tetap
+  bisa mengunggah. Kandidat tidak melihat pesanan/laporan. CV tidak ada (belum diminta jelas).
+- 493 test (baru `Hr/CandidateAccessTest`).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.
