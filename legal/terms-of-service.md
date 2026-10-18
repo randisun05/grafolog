@@ -93,9 +93,11 @@ adalah perkiraan, bukan jaminan, tetapi tunduk pada batas 90 hari di pasal 6.
 
 ## 8. Token Grafolog
 
-Token adalah saldo internal grafolog untuk layanan supervisi; **bukan uang elektronik**,
-tidak dapat diperjualbelikan antar-pengguna di luar sistem, dan pencairannya diatur
-terpisah oleh Guratan.
+Token adalah saldo kredit internal grafolog untuk layanan di dalam Guratan (mis. biaya
+supervisi); **bukan uang elektronik dan tidak dapat diuangkan kembali** (tidak ada
+penarikan ke rekening/e-wallet). Imbalan supervisi dikreditkan ke saldo token supervisor
+setelah pembuat laporan mengonfirmasi hasilnya, dan hanya dapat dipakai untuk layanan di
+Guratan. Token tidak dapat dipindahtangankan di luar sistem.
 
 ## 9. Supervisi Antar-Grafolog
 

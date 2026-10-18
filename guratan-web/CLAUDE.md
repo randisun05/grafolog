@@ -709,6 +709,10 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 - Lonceng di `AppNavbar` (unread dari `composables/useInbox.js`, refresh tiap ganti route + polling 60 dtk) → `/kotak-masuk` (`InboxView`: filter belum dibaca, tandai semua, klik → `url` pesan).
 - Admin: `/admin/broadcast` (`AdminBroadcastView`, konfirmasi sebelum kirim) dan `/admin/log-aktivitas` (`AdminActivityView`, filter + paginasi). Ada di menu Admin & CommandPalette.
 
+## CV — 2026-10-19
+
+`components/cv/CvForm.vue` (prop `userId` kosong = CV sendiri; mode baca/edit dari server). Dipakai di `/cv-saya` (klien & kandidat), tombol "CV" di `HrCandidatesPanel`, dan `<details>` di `ReportView` (grafolog penangani, baca saja). Admin: `/admin/cv` (`AdminCvView`).
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

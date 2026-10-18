@@ -133,7 +133,7 @@ class ReportValidationService
         ]);
         AuditLog::record($approve ? 'supervisi_disetujui' : 'supervisi_minta_revisi', ReportValidation::class, $v->id, $validator->id, $ip);
         $this->notifier->send($v->requester, 'supervisi_selesai', 'Hasil supervisi laporan siap',
-            "{$validator->name} ".($approve ? 'menyetujui' : 'meminta revisi')." laporan #{$v->report_id}. Konfirmasi hasilnya untuk mencairkan token.",
+            "{$validator->name} ".($approve ? 'menyetujui' : 'meminta revisi')." laporan #{$v->report_id}. Konfirmasi hasilnya untuk mengkreditkan token ke validator.",
             "/reports/{$v->report_id}");
 
         return $v;

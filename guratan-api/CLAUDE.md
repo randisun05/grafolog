@@ -1841,6 +1841,13 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Endpoint: `GET /inbox`, `/inbox/unread-count`, `POST /inbox/read-all`, `/inbox/{id}/read`; admin: `GET|POST /admin/broadcasts` (target_roles kosong = semua, `send_email` opsional), `GET /admin/activity-logs` (q/event/user_id/from/to, 50/halaman).
 - Log aktivitas ringan: middleware `LogActivity` (terminable, grup `api`) → tabel `activity_logs` (metadata saja: user, event request/login/login_gagal/logout, method, path, route, status, ip, UA; tanpa body). Konfigurasi `config/activity.php` (enabled, log_reads=false, retensi 90 hari, skip list). `activity:prune` harian.
 
+## Manajemen CV — 2026-10-19
+
+- Tabel `cv_groups` → `cv_fields` (key slug unik, `type` text|textarea|number|date|select|boolean|email|phone, `options` utk select, `required`, `visible_to` all|client|grafolog) → `cv_values` (user_id × field, nilai string). Admin atur lewat `/admin/cv*` (CRUD, reorder); tipe terkunci bila sudah ada data, hapus field berdata = nonaktif.
+- `CvService`: relasi pembaca (self/admin/hr/grafolog). Pemilik melihat & mengisi semua; HR (kandidat perusahaannya) lihat+isi tag all|client; grafolog penangani (pembuat/assignment sample subjek) hanya BACA tag all|grafolog; admin baca semua. Validasi nilai per tipe (`CvField::rules`). Akses selain diri sendiri tercatat audit `lihat_cv`/`ubah_cv`.
+- Endpoint: `GET|PUT /cv`, `GET /cv/users/{user}`, `PUT /cv/users/{user}` (hr).
+- Token supervisi dikreditkan ke saldo validator, TIDAK bisa diuangkan (ToS pasal 8).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

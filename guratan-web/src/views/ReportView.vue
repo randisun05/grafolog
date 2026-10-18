@@ -5,6 +5,7 @@ import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportCorrectionPanel from '@/components/report/ReportCorrectionPanel.vue'
 import ReportRevisionHistory from '@/components/report/ReportRevisionHistory.vue'
 import ReportValidationPanel from '@/components/report/ReportValidationPanel.vue'
+import CvForm from '@/components/cv/CvForm.vue'
 import ConsultationPanel from '@/components/report/ConsultationPanel.vue'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
@@ -158,6 +159,11 @@ function onNarasiUpdated(updatedReport) {
         }}
       </p>
 
+      <details v-if="canEdit && report.sample?.user_id" class="report-view__cv">
+        <summary>CV subjek (data diri)</summary>
+        <CvForm :user-id="report.sample.user_id" />
+      </details>
+
       <ConsultationPanel
         v-if="report.tier === 'master'"
         :sample-id="report.sample_id"
@@ -235,6 +241,13 @@ function onNarasiUpdated(updatedReport) {
 }
 .report-view__header h1 {
   font-size: 22px;
+}
+.report-view__cv {
+  margin: 0 0 16px;
+}
+.report-view__cv summary {
+  cursor: pointer;
+  font-size: 14px;
 }
 .report-view__validation {
   font-size: 13px;

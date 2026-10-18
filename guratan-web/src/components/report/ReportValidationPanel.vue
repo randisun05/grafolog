@@ -94,7 +94,7 @@ const decline = () =>
 const confirm = () =>
   run(
     () => api.post(`/validations/${active.value.id}/confirm`),
-    'Dikonfirmasi. Token dicairkan ke validator.',
+    'Dikonfirmasi. Token dikreditkan ke saldo token validator.',
   )
 
 const statusLabel = {
@@ -165,8 +165,8 @@ onMounted(load)
         <strong>{{ active.validator.name }}</strong> memutuskan:
         <strong>{{ active.status === 'disetujui' ? 'Setuju' : 'Perlu revisi' }}</strong>
         <template v-if="active.note"> - “{{ active.note }}”</template>. Konfirmasi untuk
-        {{ active.status === 'disetujui' ? 'menerbitkan laporan dan ' : '' }}mencairkan
-        {{ active.fee }} token ke validator (otomatis dalam 3 hari).
+        {{ active.status === 'disetujui' ? 'menerbitkan laporan dan ' : '' }}mengkreditkan
+        {{ active.fee }} token ke saldo validator (otomatis dalam 3 hari).
       </p>
       <button type="button" class="btn btn--primary" :disabled="submitting" @click="confirm">
         Konfirmasi hasil

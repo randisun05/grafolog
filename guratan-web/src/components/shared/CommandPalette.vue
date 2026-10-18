@@ -40,6 +40,7 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })
     items.push({ label: 'Cek Tulisan, Mitra & Artikel', to: { name: 'admin-engagement' } })
     items.push({ label: 'Pengumuman', to: { name: 'admin-announcements' } })
+    items.push({ label: 'Manajemen CV', to: { name: 'admin-cv' } })
     items.push({ label: 'Broadcast Kotak Masuk', to: { name: 'admin-broadcast' } })
     items.push({ label: 'Log Aktivitas', to: { name: 'admin-activity' } })
     items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })

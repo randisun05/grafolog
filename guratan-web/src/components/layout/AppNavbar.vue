@@ -74,6 +74,7 @@ async function handleLogout() {
           <RouterLink to="/riwayat">Riwayat</RouterLink>
         </template>
         <RouterLink v-if="auth.isClient" to="/pesan">Pesan Layanan</RouterLink>
+        <RouterLink v-if="auth.isClient || auth.isCandidate" to="/cv-saya">CV Saya</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/portal-grafolog">Portal Grafolog</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/supervisi">Supervisi</RouterLink>
@@ -98,6 +99,7 @@ async function handleLogout() {
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
             <RouterLink to="/admin/engagement">Cek Tulisan, Mitra &amp; Artikel</RouterLink>
             <RouterLink to="/admin/announcements">Pengumuman</RouterLink>
+            <RouterLink to="/admin/cv">Manajemen CV</RouterLink>
             <RouterLink to="/admin/broadcast">Broadcast Kotak Masuk</RouterLink>
             <RouterLink to="/admin/log-aktivitas">Log Aktivitas</RouterLink>
             <RouterLink to="/admin/knowledge">Knowledge Base</RouterLink>

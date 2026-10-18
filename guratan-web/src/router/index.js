@@ -193,6 +193,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/cv-saya',
+      name: 'cv',
+      component: () => import('../views/CvView.vue'),
+      meta: { requiresAuth: true, role: 'user' },
+    },
+    {
+      path: '/admin/cv',
+      name: 'admin-cv',
+      component: () => import('../views/AdminCvView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/kotak-masuk',
       name: 'inbox',
       component: () => import('../views/InboxView.vue'),

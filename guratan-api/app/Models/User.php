@@ -58,6 +58,11 @@ class User extends Authenticatable
         return $this->role === 'administrator';
     }
 
+    public function samples(): HasMany
+    {
+        return $this->hasMany(HandwritingSample::class, 'user_id');
+    }
+
     public function isHr(): bool
     {
         return $this->role === 'hr';

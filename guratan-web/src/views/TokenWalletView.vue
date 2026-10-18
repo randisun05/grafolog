@@ -120,8 +120,9 @@ onMounted(loadWallet)
     <p class="token-wallet__note">
       Setiap laporan yang berhasil dibuat memotong sejumlah token dari saldo Anda (sesuai tier,
       diatur admin), begitu juga penugasan supervisi ke grafolog lain (token ditahan sampai
-      selesai). Anda juga menerima token saat memvalidasi laporan grafolog lain. Beli token di sini
-      untuk menambah saldo.
+      selesai). Anda juga menerima kredit token saat memvalidasi laporan grafolog lain. Token
+      adalah kredit di dalam Guratan dan <strong>tidak dapat diuangkan kembali</strong>. Beli token
+      di sini untuk menambah saldo.
     </p>
 
     <SkeletonLoader v-if="loading" variant="form" :rows="2" label="Memuat..." />
