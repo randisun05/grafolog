@@ -53,3 +53,18 @@ export const TAHAP_KANDIDAT = {
   lanjut: 'Lanjut',
   tidak_lanjut: 'Tidak lanjut',
 }
+
+export const STATUS_KETERSEDIAAN = {
+  tersedia: 'Tersedia',
+  terbatas: 'Terbatas',
+  penuh: 'Penuh',
+  libur: 'Libur',
+}
+
+export function formatBulan(ym) {
+  const [y, m] = ym.split('-')
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('id-ID', {
+    month: 'long',
+    year: 'numeric',
+  })
+}

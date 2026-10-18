@@ -3,7 +3,14 @@ import { computed, onMounted, ref, watch } from 'vue'
 import api from '@/lib/api'
 import { useToast } from '@/composables/useToast'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
-import { formatRupiah, formatTanggal, STATUS_PESANAN, TIPE_LAYANAN } from '@/lib/format'
+import {
+  formatBulan,
+  formatRupiah,
+  formatTanggal,
+  STATUS_KETERSEDIAAN,
+  STATUS_PESANAN,
+  TIPE_LAYANAN,
+} from '@/lib/format'
 
 const props = defineProps({ preselected: { type: Array, default: () => [] } })
 const emit = defineEmits(['changed'])
@@ -173,7 +180,8 @@ onMounted(load)
       <section class="hro__card">
         <h2>3. Pilih grafolog</h2>
         <p class="hro__sub">
-          Grafolog terverifikasi. Beban = sampel & layanan yang sedang dikerjakan.
+          Hanya grafolog terverifikasi yang tersedia bulan ini. Beban = sampel & layanan yang sedang
+          dikerjakan.
         </p>
         <div class="hro__grafologs">
           <label
@@ -190,6 +198,13 @@ onMounted(load)
               <span v-for="s in g.specializations" :key="s" class="hro__tag">{{ s }}</span>
             </span>
             <span v-if="g.bio" class="hro__bio">{{ g.bio }}</span>
+            <span class="hro__sub"
+              >{{ STATUS_KETERSEDIAAN[g.availability.status] }}
+              {{ formatBulan(g.availability.month) }}
+              <template v-if="g.availability.slots_left !== null"
+                >· sisa kuota {{ g.availability.slots_left }}</template
+              ><template v-if="g.availability.note"> · {{ g.availability.note }}</template></span
+            >
             <span class="hro__sub"
               >Beban aktif: {{ workload(g) }} · Selesai: {{ g.completed_assignments ?? 0 }}</span
             >

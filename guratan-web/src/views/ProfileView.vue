@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { EDUCATION, EMPLOYEE_RANGES } from '@/lib/format'
+import AvailabilityEditor from '@/components/hr/AvailabilityEditor.vue'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -206,6 +207,7 @@ onMounted(async () => {
         {{ saving ? 'Menyimpan...' : 'Simpan profil' }}
       </button>
     </form>
+    <AvailabilityEditor v-if="!loading && role === 'grafolog'" />
   </div>
 </template>
 

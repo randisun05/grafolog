@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClientRequest;
 use App\Models\AuditLog;
+use App\Models\GrafologAvailability;
 use App\Models\User;
 use App\Services\ClientInvitationService;
 use Illuminate\Http\JsonResponse;
@@ -106,9 +107,12 @@ class UserLookupController extends Controller
      * Grafolog terverifikasi + profil & beban kerja - dasar HR memilih grafolog (Fase C,
      * 2026-10-17). Beban = penugasan sampel belum selesai + layanan pendukung yang masih berjalan.
      */
-    public function grafologs(): JsonResponse
+    public function grafologs(Request $request): JsonResponse
     {
-        return response()->json(User::where('role', 'grafolog')
+        $month = $request->validate(['month' => ['sometimes', 'date_format:Y-m']])['month'] ?? now()->format('Y-m');
+        $isHr = $request->user()->isHr();
+
+        $list = User::where('role', 'grafolog')
             ->where(fn ($q) => $q->whereNull('grafolog_status')->orWhere('grafolog_status', 'verified'))
             ->withCount([
                 'assignments as active_assignments' => fn ($q) => $q->where('status', 'assigned'),
@@ -116,6 +120,10 @@ class UserLookupController extends Controller
                 'serviceDeliveries as active_services' => fn ($q) => $q->whereIn('status', ['ditugaskan', 'dijadwalkan']),
             ])
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'city', 'bio', 'specializations', 'experience_years', 'grafolog_verified_at']));
+            ->get(['id', 'name', 'email', 'city', 'bio', 'specializations', 'experience_years', 'grafolog_verified_at'])
+            ->map(fn (User $g) => $g->toArray() + ['availability' => GrafologAvailability::forMonth($g, $month)]);
+
+        // HR hanya melihat grafolog yang bisa dipesan bulan itu; admin melihat semua beserta statusnya.
+        return response()->json($isHr ? $list->filter(fn ($g) => $g['availability']['bookable'])->values() : $list->values());
     }
 }

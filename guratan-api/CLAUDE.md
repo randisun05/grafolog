@@ -1758,6 +1758,18 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   "See listing"), 4 opsi aspek, kunci & penjelasan dari KB. Skor di browser.
 - 486 test (baru `EngagementFeaturesTest`, `RefundFlowTest`). Demo: 2 produk mitra "(contoh)".
 
+## Ketersediaan grafolog per bulan — 2026-10-18
+
+- `grafolog_availabilities` (user+month `YYYY-MM` unik; status tersedia|terbatas|penuh|libur;
+  `capacity` = maks. pekerjaan aktif, null = tanpa batas; `note`). Grafolog: `GET/PUT
+  /grafolog/availability` (bulan ini s.d. +5 bulan). Bulan tanpa baris = tersedia.
+- `GrafologAvailability::forMonth()` → `bookable` = status tersedia/terbatas DAN sisa kuota > 0
+  (beban = penugasan sampel `assigned` + layanan `ditugaskan/dijadwalkan`).
+- `GET /grafologs?month=`: tiap grafolog memuat `availability`; **HR hanya melihat yang
+  `bookable`**, admin melihat semua. `B2bOrderController::store` menolak grafolog tidak tersedia
+  / kuota kurang untuk jumlah kandidat (422). Penugasan manual admin tidak dibatasi.
+- Test: `GrafologAvailabilityTest` (3).
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

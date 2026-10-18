@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\GameController;
+use App\Http\Controllers\Api\GrafologAvailabilityController;
 use App\Http\Controllers\Api\Hr\B2bOrderController;
 use App\Http\Controllers\Api\Hr\CandidateAnalysisController;
 use App\Http\Controllers\Api\Hr\CandidateController;
@@ -155,6 +156,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index']);
     // Validasi supervisor opsional (Fase D, 2026-10-17) - grafolog penanganan.
     Route::middleware('role:grafolog')->group(function () {
+        Route::get('/grafolog/availability', [GrafologAvailabilityController::class, 'index']);
+        Route::put('/grafolog/availability', [GrafologAvailabilityController::class, 'update']);
         Route::get('/report-validation/fee', [ReportValidationController::class, 'fee']);
         Route::post('/reports/{report}/publish', [ReportValidationController::class, 'publish']);
         Route::post('/reports/{report}/request-validation', [ReportValidationController::class, 'request']);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Hr\StoreB2bOrderRequest;
 use App\Models\AuditLog;
 use App\Models\CandidateProfile;
+use App\Models\GrafologAvailability;
 use App\Models\Order;
 use App\Models\OrderBatch;
 use App\Models\Product;
@@ -82,6 +83,14 @@ class B2bOrderController extends Controller
 
         $grafolog = User::find($data['grafolog_id']);
         abort_unless($grafolog?->isGrafolog(), 422, 'Grafolog yang dipilih tidak terverifikasi.');
+
+        $availability = GrafologAvailability::forMonth($grafolog, now()->format('Y-m'));
+        abort_unless($availability['bookable'], 422, 'Grafolog ini sedang tidak tersedia bulan ini. Pilih grafolog lain.');
+        abort_if(
+            $availability['slots_left'] !== null && count($data['candidate_ids']) > $availability['slots_left'],
+            422,
+            "Kuota grafolog ini bulan ini tinggal {$availability['slots_left']} kandidat.",
+        );
 
         $profiles = CandidateProfile::where('company_id', $hr->company_id)
             ->whereIn('id', $data['candidate_ids'])->with('user')->get();

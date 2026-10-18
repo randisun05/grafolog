@@ -673,6 +673,12 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   (pengungkapan afiliasi; klik dicatat lalu buka tab baru). `AdminEngagementView`
   (`/admin/engagement`): panel cek tulisan & lead, produk mitra, artikel.
 
+## Ketersediaan grafolog — 2026-10-18
+
+- `components/hr/AvailabilityEditor.vue` di `/profil` (grafolog): status/kuota/catatan per bulan.
+  `HrOrdersPanel` kartu grafolog menampilkan status bulan ini + sisa kuota (daftar sudah difilter
+  backend). `lib/format.js`: `STATUS_KETERSEDIAAN`, `formatBulan`.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
