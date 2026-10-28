@@ -1866,6 +1866,12 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 
 `app:preflight [--strict]` (cek env/DB/email/DOKU/antrean/scheduler/akun demo; exit 1 bila ada GAGAL), `db:backup [--keep=14] [--connection=]` (mysqldump gz / salin SQLite; terjadwal 02:30), `samples:privatize-legacy-images [--dry-run]` (gambar Rapid lama public→privat; menutup temuan keamanan 2026-07-27). Scheduler menulis `scheduler_heartbeat` tiap menit. Runbook: `DEPLOYMENT.md` "Operasional". 526 tes backend; FE punya 13 tes vitest (`npm test`).
 
+## Pemantauan pemakaian & biaya AI — 2026-10-28
+
+- `llm_usages` (metadata saja, TANPA isi prompt/jawaban): provider, model, purpose (`terjemah_narasi`|`analisis_kandidat`), status (`ok`|`gagal`|`cache`), key_slot, http_status, error singkat, prompt/output tokens (output = kandidat + token "berpikir", sesuai penagihan), `cost_usd`, latency. `LlmUsageRecorder::record()` dipanggil `GeminiLlmProvider::complete()` per percobaan HTTP (termasuk 429/koneksi/semua key limit) dan `CandidateAiAnalysisService` saat hasil diambil dari cache. Gagal mencatat tidak pernah mengganggu alur utama.
+- Biaya = PERKIRAAN: token × `config('services.llm_cost.pricing')` (USD per 1 juta token; default gemini-2.5-flash 0,30/2,50 dari env `LLM_PRICE_INPUT_USD`/`LLM_PRICE_OUTPUT_USD` - CEK harga resmi Google sebelum dipercaya) × kurs `LLM_USD_IDR` (16500). Anggaran bulanan `LLM_MONTHLY_BUDGET_IDR` (kosong = tanpa); admin dapat notifikasi kotak masuk sekali di 80% dan 100% per bulan.
+- `GET /admin/llm-usage?days=|month=1`: ringkasan, anggaran + proyeksi, per kegunaan/model/slot key, per hari, 40 panggilan terbaru. Dashboard admin: KPI "Biaya AI Bulan Ini". FE `/admin/ai-usage` (`AdminLlmUsageView`). Provider lain (Api/SelfHosted) belum mencatat.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

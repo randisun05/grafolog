@@ -205,6 +205,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/ai-usage',
+      name: 'admin-ai-usage',
+      component: () => import('../views/AdminLlmUsageView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/kotak-masuk',
       name: 'inbox',
       component: () => import('../views/InboxView.vue'),

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\Admin\GrafologVerificationController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\KnowledgeMatrixController;
+use App\Http\Controllers\Api\Admin\LlmUsageController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
@@ -259,6 +260,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::patch('/discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
         Route::get('/content', [AdminContentBlockController::class, 'index']);
         Route::put('/content/{key}', [AdminContentBlockController::class, 'update']);
+        Route::get('/llm-usage', [LlmUsageController::class, 'index']);
         Route::get('/cv', [CvManagementController::class, 'index']);
         Route::post('/cv/groups', [CvManagementController::class, 'storeGroup']);
         Route::put('/cv/groups/{group}', [CvManagementController::class, 'updateGroup']);

@@ -721,6 +721,10 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 Tabel lebar dibungkus `.table-scroll` (main.css) agar gulir di dalam kartu; cek 390px untuk semua halaman admin lewat Playwright tanpa overflow horizontal.
 
+## Pemakaian & Biaya AI — 2026-10-28
+
+`AdminLlmUsageView` (`/admin/ai-usage`, menu Admin + palette): periode 7/30/90 hari atau bulan ini, KPI, bar anggaran (merah ≥80%), batang biaya per hari (CSS murni, hover = detail), tabel per kegunaan, per slot key, dan panggilan terbaru. Biaya ditandai perkiraan.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

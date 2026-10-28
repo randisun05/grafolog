@@ -27,3 +27,4 @@
 - [Promo metode bayar] — 2026-10-19: discount_codes.payment_methods + PaymentMethods::resolve → payment_method_types DOKU; picker di checkout
 - [Hak data] — 2026-10-19: export/hapus(anonimisasi)/re-consent/opt-out email/broadcast kritis; limiter bernama
 - [Ops] — 2026-10-19: app:preflight, db:backup, privatize-legacy-images, vitest FE, DEPLOYMENT.md operasional
+- [Monitoring AI] — 2026-10-28: llm_usages + LlmUsageRecorder + /admin/ai-usage; anggaran LLM_MONTHLY_BUDGET_IDR; harga perlu dicek

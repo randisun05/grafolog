@@ -11,6 +11,7 @@ use App\Models\PersonalityReport;
 use App\Models\Project;
 use App\Models\ReportValidation;
 use App\Models\User;
+use App\Services\Llm\LlmUsageRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -60,6 +61,11 @@ class DashboardController extends Controller
                     'key' => 'revenue_this_month',
                     'label' => 'Pendapatan Bulan Ini (Rp)',
                     'value' => (int) Payment::where('status', 'paid')->whereBetween('paid_at', $monthRange)->sum('amount'),
+                ],
+                [
+                    'key' => 'ai_cost_month',
+                    'label' => 'Biaya AI Bulan Ini (Rp)',
+                    'value' => (int) LlmUsageRecorder::monthSpendIdr(),
                 ],
                 [
                     'key' => 'active_grafologs',
