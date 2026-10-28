@@ -25,7 +25,7 @@ const commands = computed(() => {
   }
   items.push({ label: 'Kotak Masuk', to: { name: 'inbox' } })
   if (auth.isGrafolog) {
-    items.push({ label: 'Portal Grafolog', to: { name: 'portal-grafolog' } })
+    items.push({ label: 'Klien Saya', to: { name: 'grafolog-clients' } })
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
     items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
     items.push({ label: 'Supervisi Laporan', to: { name: 'validation-tasks' } })

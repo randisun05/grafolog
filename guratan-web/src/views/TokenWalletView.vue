@@ -1,8 +1,10 @@
 <script setup>
 import PaymentMethodPicker from '@/components/shared/PaymentMethodPicker.vue'
 import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
+import PromoList from '@/components/commerce/PromoList.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -12,7 +14,8 @@ const loading = ref(true)
 const loadError = ref('')
 
 const quantity = ref(10)
-const discountCode = ref('')
+const route = useRoute()
+const discountCode = ref(route.query.kode ?? '')
 const previewResult = ref(null)
 const previewLoading = ref(false)
 const previewError = ref('')
@@ -152,6 +155,8 @@ onMounted(loadWallet)
               @change="resetPreview"
             />
           </label>
+
+          <PromoList />
 
           <label class="token-wallet__field">
             Kode Diskon (opsional)

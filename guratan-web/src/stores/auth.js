@@ -3,7 +3,16 @@ import { defineStore } from 'pinia'
 import api from '@/lib/api'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(JSON.parse(localStorage.getItem('guratan_user') ?? 'null'))
+  // Nilai tersimpan bisa rusak (sisa sesi lama) - jangan sampai aplikasi crash saat dimuat.
+  function readStoredUser() {
+    try {
+      return JSON.parse(localStorage.getItem('guratan_user') ?? 'null')
+    } catch {
+      localStorage.removeItem('guratan_user')
+      return null
+    }
+  }
+  const user = ref(readStoredUser())
   const token = ref(localStorage.getItem('guratan_token'))
 
   const isAuthenticated = computed(() => !!token.value)

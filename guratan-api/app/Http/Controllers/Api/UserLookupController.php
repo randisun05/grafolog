@@ -83,6 +83,20 @@ class UserLookupController extends Controller
         ], 201);
     }
 
+    /** Klien yang dibawa grafolog ini (referred_by), terbaru dulu - bahan halaman "Klien Saya". */
+    public function index(Request $request): JsonResponse
+    {
+        $grafolog = $request->user();
+        abort_unless($grafolog->isGrafolog(), 403);
+
+        $clients = User::where('role', 'user')->where('referred_by', $grafolog->id)
+            ->withCount('orders')
+            ->latest()
+            ->get(['id', 'name', 'email', 'phone', 'created_at']);
+
+        return response()->json($clients);
+    }
+
     /** Kirim ulang undangan - hanya grafolog pembawa klien tersebut. */
     public function resendInvitation(Request $request, User $client, ClientInvitationService $invitations): JsonResponse
     {

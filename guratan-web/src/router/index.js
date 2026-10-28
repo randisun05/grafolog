@@ -113,6 +113,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'grafolog' },
     },
     {
+      path: '/grafolog/klien',
+      name: 'grafolog-clients',
+      component: () => import('../views/GrafologClientsView.vue'),
+      meta: { requiresAuth: true, role: 'grafolog' },
+    },
+    {
       path: '/grafolog/ditugaskan',
       name: 'assigned-to-me',
       component: () => import('../views/AssignedToMeView.vue'),

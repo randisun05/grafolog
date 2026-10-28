@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Commerce\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\User;
 use App\Services\Commerce\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,7 +67,12 @@ class OrderController extends Controller
         $product = Product::forClients()->find($request->validated('product_id'));
         abort_unless($product, 422, 'Produk tidak tersedia.');
 
-        $order = $this->orders->create($user, $product, $request->validated('discount_code'), 'website', $user);
+        // Klien bawaan grafolog: pesanannya ditugaskan otomatis ke pembawanya saat lunas
+        // (OrderService::markPaid). Source tetap 'website' supaya gerbang bayar tidak terlewati.
+        $bringer = $user->referred_by ? User::find($user->referred_by) : null;
+        $extra = $bringer?->isGrafolog() ? ['grafolog_id' => $bringer->id] : [];
+
+        $order = $this->orders->create($user, $product, $request->validated('discount_code'), 'website', $user, null, $extra);
 
         return response()->json($this->present($order->fresh(['product', 'deliveries', 'sample'])), 201);
     }

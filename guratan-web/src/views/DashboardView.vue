@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ClientOffers from '@/components/commerce/ClientOffers.vue'
+import PromoList from '@/components/commerce/PromoList.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -122,6 +123,7 @@ onMounted(async () => {
       </section>
     </template>
     <ClientOffers v-if="auth.isClient" />
+    <PromoList v-if="auth.isGrafolog" />
   </div>
 </template>
 

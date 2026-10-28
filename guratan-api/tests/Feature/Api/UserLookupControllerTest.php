@@ -44,6 +44,20 @@ class UserLookupControllerTest extends TestCase
         $this->actingAs($admin, 'sanctum')->getJson('/api/grafologs')->assertOk()->assertJsonCount(1);
     }
 
+    public function test_grafolog_lists_only_own_referred_clients(): void
+    {
+        $mine = User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'verified']);
+        $other = User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'verified']);
+        $ownClient = User::factory()->create(['role' => 'user', 'referred_by' => $mine->id]);
+        User::factory()->create(['role' => 'user', 'referred_by' => $other->id]);
+        User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($mine, 'sanctum')->getJson('/api/clients')
+            ->assertOk()->assertJsonCount(1)->assertJsonPath('0.id', $ownClient->id)->assertJsonPath('0.orders_count', 0);
+
+        $this->actingAs($ownClient, 'sanctum')->getJson('/api/clients')->assertForbidden();
+    }
+
     public function test_guest_cannot_create_client(): void
     {
         $this->postJson('/api/clients', ['consent_confirmed' => true, 'name' => 'Klien Baru', 'email' => 'klien@example.com'])

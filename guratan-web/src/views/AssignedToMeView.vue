@@ -59,8 +59,8 @@ onMounted(async () => {
   <div class="assigned">
     <h1>Ditugaskan ke Saya</h1>
     <p class="assigned__note">
-      Sample yang perlu Anda isi skornya - baik yang Anda buat sendiri lewat Portal Grafolog, maupun
-      yang ditugaskan HR/Administrator.
+      Sample yang perlu Anda isi skornya - baik dari klien yang Anda daftarkan lewat Klien Saya,
+      maupun yang ditugaskan HR/Administrator.
     </p>
 
     <section v-if="revisions.length" class="assigned__revisions">

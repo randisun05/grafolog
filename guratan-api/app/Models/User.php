@@ -78,6 +78,11 @@ class User extends Authenticatable
         return $this->hasMany(HandwritingSample::class, 'user_id');
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'user_id');
+    }
+
     public function isHr(): bool
     {
         return $this->role === 'hr';

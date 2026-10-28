@@ -11,6 +11,8 @@ export default defineConfig({
     vueDevTools(),
   ],
   server: {
+    // Subdomain trycloudflare.com berubah tiap tunnel dijalankan - awalan titik = semua subdomain.
+    allowedHosts: ['.trycloudflare.com'],
     fs: {
       allow: ['..'],
     },

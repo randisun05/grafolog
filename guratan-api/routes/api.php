@@ -203,6 +203,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
 
     Route::get('/sindrom', [SindromController::class, 'index']);
     Route::middleware('throttle:15,1')->get('/users/lookup', [UserLookupController::class, 'byEmail']);
+    Route::get('/clients', [UserLookupController::class, 'index']);
     Route::post('/clients', [UserLookupController::class, 'store']);
     Route::middleware('throttle:10,1')->post('/clients/{client}/invite', [UserLookupController::class, 'resendInvitation']);
     Route::middleware('role:hr,administrator')->get('/grafologs', [UserLookupController::class, 'grafologs']);

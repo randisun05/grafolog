@@ -62,6 +62,34 @@ class OrderFlowTest extends TestCase
         $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order['id']}/payment")->assertStatus(422);
     }
 
+    public function test_order_by_grafolog_referred_client_is_auto_assigned_on_payment(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'verified']);
+        $client = User::factory()->create(['role' => 'user', 'referred_by' => $grafolog->id, 'acquisition_source' => 'grafolog']);
+
+        $order = $this->actingAs($client, 'sanctum')->postJson('/api/orders', ['product_id' => $this->master()->id])
+            ->assertCreated()->json();
+        $this->assertDatabaseMissing('assignments', ['sample_id' => $order['sample_id']]); // belum lunas
+
+        $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order['id']}/payment")->assertCreated();
+
+        $this->assertDatabaseHas('assignments', ['sample_id' => $order['sample_id'], 'grafolog_id' => $grafolog->id, 'status' => 'assigned']);
+        $this->assertTrue(Order::find($order['id'])->sample->isPaid()); // tetap lewat gerbang bayar
+    }
+
+    public function test_order_by_self_registered_client_or_unverified_referrer_is_not_auto_assigned(): void
+    {
+        $pending = User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'pending']);
+        $referred = User::factory()->create(['role' => 'user', 'referred_by' => $pending->id]);
+        $own = User::factory()->create(['role' => 'user']);
+
+        foreach ([$referred, $own] as $client) {
+            $order = $this->actingAs($client, 'sanctum')->postJson('/api/orders', ['product_id' => $this->master()->id])->assertCreated()->json();
+            $this->actingAs($client, 'sanctum')->postJson("/api/orders/{$order['id']}/payment")->assertCreated();
+            $this->assertDatabaseMissing('assignments', ['sample_id' => $order['sample_id']]);
+        }
+    }
+
     public function test_b2b_product_and_inactive_product_cannot_be_ordered_by_client(): void
     {
         $client = User::factory()->create(['role' => 'user']);
