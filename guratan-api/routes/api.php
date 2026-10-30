@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementCo
 use App\Http\Controllers\Api\Admin\ArticleAdminController;
 use App\Http\Controllers\Api\Admin\AspekController as AdminAspekController;
 use App\Http\Controllers\Api\Admin\BroadcastController;
+use App\Http\Controllers\Api\Admin\ClientOrderController;
 use App\Http\Controllers\Api\Admin\CompanyController;
 use App\Http\Controllers\Api\Admin\CompanyVerificationController;
 use App\Http\Controllers\Api\Admin\ConceptMapController;
@@ -48,6 +49,8 @@ use App\Http\Controllers\Api\CvController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\GrafologAvailabilityController;
+use App\Http\Controllers\Api\GrafologDirectoryController;
+use App\Http\Controllers\Api\GrafologRequestController;
 use App\Http\Controllers\Api\Hr\B2bOrderController;
 use App\Http\Controllers\Api\Hr\CandidateAnalysisController;
 use App\Http\Controllers\Api\Hr\CandidateController;
@@ -144,6 +147,12 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::post('/orders/{order}/payment', [OrderController::class, 'pay']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
+    Route::post('/orders/{order}/grafolog', [OrderController::class, 'chooseGrafolog']);
+    Route::middleware('role:user')->get('/grafologs/directory', [GrafologDirectoryController::class, 'index']);
+    Route::middleware('role:grafolog')->group(function () {
+        Route::get('/grafolog/requests', [GrafologRequestController::class, 'index']);
+        Route::post('/grafolog/requests/{grafologRequest}/respond', [GrafologRequestController::class, 'respond']);
+    });
     Route::get('/service-deliveries', [ServiceDeliveryController::class, 'index']);
     Route::get('/service-deliveries/{delivery}', [ServiceDeliveryController::class, 'show']);
     Route::post('/service-deliveries/{delivery}/assign', [ServiceDeliveryController::class, 'assign']);
@@ -261,6 +270,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::patch('/discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
         Route::get('/content', [AdminContentBlockController::class, 'index']);
         Route::put('/content/{key}', [AdminContentBlockController::class, 'update']);
+        Route::get('/client-orders', [ClientOrderController::class, 'index']);
+        Route::post('/client-orders/{order}/assign', [ClientOrderController::class, 'assign']);
         Route::get('/llm-usage', [LlmUsageController::class, 'index']);
         Route::get('/cv', [CvManagementController::class, 'index']);
         Route::post('/cv/groups', [CvManagementController::class, 'storeGroup']);

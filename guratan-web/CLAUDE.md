@@ -729,6 +729,10 @@ Tabel lebar dibungkus `.table-scroll` (main.css) agar gulir di dalam kartu; cek 
 
 Dua jalur masuk: (A) daftar/login → `/pesan`; (B) katalog publik `/produk`, `/produk/:kode` (CTA "Daftar & pesan" membawa `?redirect=/pesan?produk=kode` lewat Register/Login yang saling menaut dengan redirect). `OrderView` = wizard 5 langkah: Produk → Pelaksanaan & waktu (mode online/offline, lokasi, tanggal, batas unggah) → CV (`CvForm @loaded` → `missing_required` memblokir) → Persyaratan (daftar dari admin + scan opsional; boleh unggah belakangan di Pesanan Saya via `SampleImages`) → Bayar. Admin produk: centang mode + editor persyaratan.
 
+## Alur klien individu T2 — 2026-10-30
+
+Wizard `OrderView` jadi 6 langkah (… Persyaratan → **Grafolog** → Bayar): pilih sendiri (`components/order/GrafologPicker.vue`: direktori + portofolio via `CvForm`) atau minta rekomendasi tim. `RiwayatView`: panel status grafolog (menunggu/diterima/pilih ulang/admin) + pilih ulang. `AssignedToMeView`: `GrafologRequestsPanel` (terima/tolak, sisa jam). Admin `/admin/orders`: `AdminClientOrdersPanel` (antrean per tahap + rekomendasi + tugaskan).
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

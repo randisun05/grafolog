@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Commerce\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\User;
+use App\Services\Commerce\GrafologMatchingService;
 use App\Services\Commerce\OrderService;
 use App\Services\Cv\CvService;
 use Illuminate\Http\JsonResponse;
@@ -74,11 +76,21 @@ class OrderController extends Controller
         abort_if($mode === 'offline' && blank($data['location_note'] ?? null), 422, 'Isi kota/tempat pelaksanaan untuk sesi offline.');
         // Tanpa komitmen eksplisit: batas unggah persyaratan default 3 hari (UI selalu meminta klien menentukan).
 
+        $choice = ($data['grafolog_choice'] ?? 'rekomendasi') === 'pilih' ? 'pilih' : 'rekomendasi';
+        $pick = null;
+        if ($choice === 'pilih') {
+            abort_unless($data['grafolog_id'] ?? null, 422, 'Pilih grafolog atau minta rekomendasi.');
+            $pick = User::findOrFail($data['grafolog_id']);
+            app(GrafologMatchingService::class)->assertSelectable($pick, ($data['scheduled_for'] ?? null) ? substr($data['scheduled_for'], 0, 7) : now()->format('Y-m'));
+        }
+
         $order = $this->orders->create($user, $product, $data['discount_code'] ?? null, 'website', $user, null, [
             'delivery_mode' => $mode,
             'scheduled_for' => $data['scheduled_for'] ?? null,
             'upload_deadline' => $data['upload_deadline'] ?? ($product->requires_handwriting ? now()->addDays(3)->toDateString() : null),
             'location_note' => $mode === 'offline' ? $data['location_note'] : null,
+            'grafolog_choice' => $choice,
+            'grafolog_id' => $pick?->id,
         ]);
 
         return response()->json($this->present($order->fresh(['product', 'deliveries', 'sample'])), 201);
@@ -99,6 +111,17 @@ class OrderController extends Controller
 
             return response()->json(['message' => 'Pembayaran sedang tidak tersedia, coba lagi nanti.'], 503);
         }
+    }
+
+    /** Klien memilih (ulang) grafolog atau meminta rekomendasi tim. */
+    public function chooseGrafolog(Request $request, Order $order): JsonResponse
+    {
+        abort_unless($order->user_id === $request->user()->id && ! $order->batch_id, 403);
+        $data = $request->validate(['grafolog_id' => ['nullable', 'integer', 'exists:users,id'], 'rekomendasi' => ['sometimes', 'boolean']]);
+        $grafolog = ($data['grafolog_id'] ?? null) ? User::find($data['grafolog_id']) : null;
+        app(GrafologMatchingService::class)->clientChoose($order, $grafolog, (bool) ($data['rekomendasi'] ?? false));
+
+        return response()->json($this->present($order->fresh(['product', 'deliveries', 'sample', 'grafolog'])));
     }
 
     public function cancel(Request $request, Order $order): JsonResponse
@@ -129,6 +152,12 @@ class OrderController extends Controller
             'scheduled_for' => $order->scheduled_for?->toDateString(),
             'upload_deadline' => $order->upload_deadline?->toDateString(),
             'location_note' => $order->location_note,
+            'grafolog_choice' => $order->grafolog_choice,
+            'grafolog_state' => $order->grafolog_state,
+            'grafolog_deadline' => $order->grafolog_deadline,
+            'grafolog_attempts' => $order->grafolog_attempts,
+            'grafolog' => $order->grafolog_id ? $order->grafolog?->only(['id', 'name', 'city']) : null,
+            'grafolog_history' => $order->grafologRequests()->with('grafolog:id,name')->get()->map(fn ($r) => ['grafolog_id' => $r->grafolog_id, 'grafolog' => $r->grafolog?->name, 'status' => $r->status, 'at' => $r->responded_at ?? $r->created_at])->values(),
             'refunded_at' => $order->refunded_at,
             'refund_note' => $order->refund_note,
             'deliveries' => $order->deliveries->map(fn ($d) => [

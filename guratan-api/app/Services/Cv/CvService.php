@@ -41,10 +41,11 @@ class CvService
             if ($viewer->isHr() && $viewer->company_id) {
                 $candidateIds = CandidateProfile::where('company_id', $viewer->company_id)->pluck('user_id')->all();
 
-                return $this->examines($subject->id, $candidateIds) ? 'subject' : null;
+                return $this->examines($subject->id, $candidateIds) ? 'subject' : 'public';
             }
 
-            return null;
+            // Portofolio grafolog terverifikasi dapat dilihat klien (variabel tidak tersembunyi) untuk memilih.
+            return $viewer->role === 'user' ? 'public' : null;
         }
         if ($viewer->isHr() && $viewer->company_id
             && CandidateProfile::where('user_id', $subject->id)->where('company_id', $viewer->company_id)->exists()) {

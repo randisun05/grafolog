@@ -1,6 +1,7 @@
 <script setup>
 import PaymentMethodPicker from '@/components/shared/PaymentMethodPicker.vue'
 import CvForm from '@/components/cv/CvForm.vue'
+import GrafologPicker from '@/components/order/GrafologPicker.vue'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/lib/api'
@@ -21,6 +22,7 @@ const STEPS = [
   { key: 'pelaksanaan', label: 'Pelaksanaan & waktu' },
   { key: 'cv', label: 'CV' },
   { key: 'persyaratan', label: 'Persyaratan' },
+  { key: 'grafolog', label: 'Grafolog' },
   { key: 'bayar', label: 'Bayar' },
 ]
 const MODE_LABEL = { online: 'Online', offline: 'Tatap muka (offline)' }
@@ -38,6 +40,8 @@ const uploadDeadline = ref('')
 const locationNote = ref('')
 const cvMissing = ref(0)
 const reqAck = ref(false)
+const grafologChoice = ref('rekomendasi') // 'pilih' | 'rekomendasi'
+const pickedGrafolog = ref(null)
 
 const paymentMethod = ref('')
 const discountCode = ref(route.query.kode ?? '')
@@ -64,6 +68,7 @@ const finalPrice = computed(() =>
     ? previewResult.value.final_price
     : (selected.value?.price ?? null),
 )
+const serviceMonth = computed(() => (scheduledFor.value || today).slice(0, 7))
 const requirements = computed(() => selected.value?.requirements ?? [])
 
 // Validasi per langkah: tombol "Lanjut" aktif hanya bila langkah ini lengkap.
@@ -83,6 +88,8 @@ const stepError = computed(() => {
     return `Lengkapi ${cvMissing.value} isian wajib CV lalu klik Simpan CV.`
   if (k === 'persyaratan' && requirements.value.length && !reqAck.value)
     return 'Centang bahwa Anda sudah memahami persyaratan.'
+  if (k === 'grafolog' && grafologChoice.value === 'pilih' && !pickedGrafolog.value)
+    return 'Pilih seorang grafolog atau minta rekomendasi tim.'
   return ''
 })
 
@@ -177,6 +184,8 @@ async function pay() {
         scheduled_for: scheduledFor.value || undefined,
         upload_deadline: uploadDeadline.value || undefined,
         location_note: mode.value === 'offline' ? locationNote.value : undefined,
+        grafolog_choice: grafologChoice.value,
+        grafolog_id: grafologChoice.value === 'pilih' ? pickedGrafolog.value.id : undefined,
       })
       createdOrder.value = data
     }
@@ -378,8 +387,37 @@ onMounted(load)
         </div>
       </section>
 
-      <!-- 5. Bayar -->
-      <section v-if="selected" v-show="step === 4" class="order__checkout">
+      <!-- 5. Grafolog -->
+      <section v-if="selected" v-show="step === 4">
+        <h2 class="order__group">Pilih grafolog</h2>
+        <p class="order__note">
+          Setelah Anda membayar, grafolog yang Anda pilih punya 24 jam untuk menerima. Jika menolak
+          atau tidak menjawab, Anda diberi tahu lewat notifikasi dan email lalu bisa memilih
+          grafolog lain.
+        </p>
+        <fieldset class="wiz__field">
+          <label class="wiz__radio">
+            <input v-model="grafologChoice" type="radio" name="gchoice" value="pilih" /> Saya pilih
+            sendiri
+          </label>
+          <label class="wiz__radio">
+            <input v-model="grafologChoice" type="radio" name="gchoice" value="rekomendasi" /> Minta
+            rekomendasi dari tim (admin yang mencarikan)
+          </label>
+        </fieldset>
+        <p v-if="grafologChoice === 'pilih' && pickedGrafolog" class="order__discount-applied">
+          Dipilih: <strong>{{ pickedGrafolog.name }}</strong>
+        </p>
+        <GrafologPicker
+          v-if="grafologChoice === 'pilih'"
+          :month="serviceMonth"
+          :selected-id="pickedGrafolog?.id ?? null"
+          @select="(g) => (pickedGrafolog = g)"
+        />
+      </section>
+
+      <!-- 6. Bayar -->
+      <section v-if="selected" v-show="step === 5" class="order__checkout">
         <h2 class="order__checkout-title">Ringkasan</h2>
         <ul class="order__includes">
           <li>
@@ -390,6 +428,14 @@ onMounted(load)
             }}<template v-if="mode === 'offline'"> - {{ locationNote }}</template>
           </li>
           <li v-if="scheduledFor">Tanggal diinginkan: {{ scheduledFor }}</li>
+          <li>
+            Grafolog:
+            {{
+              grafologChoice === 'pilih'
+                ? (pickedGrafolog?.name ?? '-') + ' (menunggu konfirmasi 24 jam)'
+                : 'rekomendasi tim'
+            }}
+          </li>
           <li v-if="uploadDeadline">Batas unggah persyaratan: {{ uploadDeadline }}</li>
         </ul>
 

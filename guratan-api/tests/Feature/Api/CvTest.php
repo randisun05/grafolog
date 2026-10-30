@@ -112,10 +112,11 @@ class CvTest extends TestCase
         $this->assertSame(['semua', 'khusus_grafolog'], $keys($candidate, $grafolog));
         $this->assertSame(['semua', 'khusus_grafolog'], $keys($hr, $grafolog));
         $this->assertSame(['semua', 'khusus_grafolog', 'rahasia'], $keys($admin, $grafolog));
-        $this->actingAs($outsiderHr, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
+        // Portofolio grafolog terverifikasi terlihat publik (non-tersembunyi) agar klien/HR bisa memilih.
+        $this->assertSame(['semua', 'khusus_grafolog'], $keys($outsiderHr, $grafolog));
         $this->actingAs($otherGrafolog, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
         $stranger = User::factory()->create(['role' => 'user']);
-        $this->actingAs($stranger, 'sanctum')->getJson("/api/cv/users/{$grafolog->id}")->assertForbidden();
+        $this->assertSame(['semua', 'khusus_grafolog'], $keys($stranger, $grafolog));
         $put($candidate, $grafolog, ['semua' => 'z'])->assertForbidden();
     }
 
@@ -139,7 +140,8 @@ class CvTest extends TestCase
         $this->actingAs($client, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/foto")->assertOk();
         $this->actingAs($client, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/dokumen")->assertNotFound();
         $stranger = User::factory()->create(['role' => 'user']);
-        $this->actingAs($stranger, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/foto")->assertForbidden();
+        $this->actingAs($stranger, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/foto")->assertOk(); // portofolio publik
+        $this->actingAs($stranger, 'sanctum')->get("/api/cv/users/{$grafolog->id}/files/dokumen")->assertNotFound(); // tersembunyi
         $this->actingAs($client, 'sanctum')->post('/api/cv/files/foto', ['file' => UploadedFile::fake()->image('b.jpg', 200, 200)], ['Accept' => 'application/json'])->assertOk(); // foto milik klien sendiri (applies all)
 
         // Supervisor (peer): terhubung lewat penugasan supervisi.

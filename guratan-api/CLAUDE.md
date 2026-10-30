@@ -1878,6 +1878,13 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - `orders.delivery_mode/scheduled_for/upload_deadline/location_note`: `POST /orders` memvalidasi mode ∈ modes produk, offline wajib `location_note`, `scheduled_for` ≥ hari ini, `upload_deadline` ≤ jadwal; produk berscan tanpa deadline → default +3 hari. Pemesanan ditolak 422 bila isian WAJIB CV (`CvService::missingRequired`) belum lengkap; `GET /cv` mengembalikan `missing_required`. `OrderController::present` memuat mode/jadwal/`image_count`.
 - Rencana T2/T3 (lanjutan, keputusan pemilik 2026-10-30): klien pilih grafolog / minta rekomendasi ADMIN (bukan mesin otomatis); bayar dulu lalu grafolog konfirmasi 24 jam, tolak/lewat → klien pilih ulang, 3x gagal → antrean admin; penugasan admin tetap; chat teks per pesanan; "resume" = ringkasan laporan untuk klien; offline = kota/tempat saja.
 
+## Alur klien individu T2 (pilih grafolog, konfirmasi 24 jam) — 2026-10-30
+
+- `GrafologMatchingService`: bayar → `startOnPaid` (B2C saja; batch HR tetap langsung ditugaskan). `grafolog_choice=pilih` → `GrafologRequest` (24 jam, `CONFIRM_HOURS`), `orders.grafolog_state` menunggu_konfirmasi; `rekomendasi`/tanpa pilihan → `menunggu_admin` (admin yang mencarikan; BUKAN refund). Terima → `finalize()`: Assignment sampel + layanan pendukung `ditugaskan` + notifikasi (inbox+email). Tolak/lewat waktu → `release()`: attempts++, `menunggu_pilih` (klien pilih ulang via `POST /orders/{o}/grafolog {grafolog_id|rekomendasi}`; yang pernah menolak ditolak 422); attempts ≥ 3 → `menunggu_admin` otomatis. `sweep()` tiap 15 menit (`konfirmasi-grafolog-sweep`) + saat daftar dibuka. Penugasan admin (`POST /admin/client-orders/{o}/assign` atau `POST /samples/{s}/assignment` oleh admin) final & menyinkronkan state.
+- `markPaid` TIDAK lagi menugaskan pesanan B2C otomatis; hanya batch HR. Kapasitas bulan (`GrafologAvailability::forMonth`) kini juga menghitung pesanan klien menunggu_konfirmasi/diterima (bulan jadwal/bayar).
+- Endpoint: `GET /grafologs/directory?month&q&all` (role user), `GET /grafolog/requests`, `POST /grafolog/requests/{id}/respond {decision, note}`, admin `GET /admin/client-orders?state=` (+ `recommend()`: skor keahlian/kota offline/beban/pengalaman, hanya yang bookable & belum menolak). Portofolio = `GET /cv/users/{grafolog}` relasi baru `public` (klien/HR bisa baca CV non-tersembunyi grafolog terverifikasi; tidak diaudit).
+- `POST /orders` menerima `grafolog_choice`/`grafolog_id` (tervalidasi: terverifikasi + tersedia di bulan jadwal); default rekomendasi.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

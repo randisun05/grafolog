@@ -7,6 +7,7 @@ use App\Http\Requests\StoreAssignmentRequest;
 use App\Models\Assignment;
 use App\Models\HandwritingSample;
 use App\Models\User;
+use App\Services\Commerce\GrafologMatchingService;
 use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 
@@ -37,7 +38,12 @@ class AssignmentController extends Controller
             ['grafolog_id' => $grafolog->id, 'assigned_by' => $user->id, 'status' => 'assigned']
         );
 
-        $notifier->send($grafolog, 'penugasan', 'Penugasan baru', "Anda ditugaskan menangani sampel #{$sample->id}.", '/grafolog/ditugaskan');
+        $order = $sample->order;
+        if ($order && ! $order->batch_id && $user->isAdministrator()) {
+            app(GrafologMatchingService::class)->adminAssign($order->loadMissing(['user', 'product']), $grafolog, $user);
+        } else {
+            $notifier->send($grafolog, 'penugasan', 'Penugasan baru', "Anda ditugaskan menangani sampel #{$sample->id}.", '/grafolog/ditugaskan');
+        }
 
         return response()->json($assignment->load('grafolog:id,name,email'), 201);
     }

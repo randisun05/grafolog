@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\GrafologRequest;
 use App\Models\HandwritingSample;
 use App\Models\Order;
 use App\Models\Payment;
@@ -79,6 +80,8 @@ class DashboardController extends Controller
                 ['label' => 'Perusahaan menunggu verifikasi', 'count' => Company::where('status', 'pending')->count(), 'to' => '/admin/verifikasi?tab=perusahaan'],
                 ['label' => 'Pesanan lunas perlu ditugaskan', 'count' => $unassigned, 'to' => '/admin/orders'],
                 ['label' => 'Pesanan > 90 hari belum selesai (kandidat refund)', 'count' => Order::where('status', Order::STATUS_PROCESSING)->where('paid_at', '<', now()->subDays(Order::REFUND_OVERDUE_DAYS))->count(), 'to' => '/admin/orders'],
+                ['label' => 'Pesanan klien menunggu rekomendasi grafolog', 'count' => Order::whereNull('batch_id')->where('grafolog_state', 'menunggu_admin')->count(), 'to' => '/admin/orders'],
+                ['label' => 'Konfirmasi grafolog melewati 24 jam', 'count' => GrafologRequest::where('status', 'menunggu')->where('expires_at', '<', now())->count(), 'to' => '/admin/orders'],
                 ['label' => 'Penugasan supervisi melewati tenggat', 'count' => ReportValidation::where('status', ReportValidation::WAITING)->where('due_at', '<', now())->count(), 'to' => '/admin/validasi'],
             ],
             'activity' => $this->recentActivity(HandwritingSample::pluck('id')),
@@ -133,6 +136,11 @@ class DashboardController extends Controller
                     'value' => Project::where('created_by', $user->id)
                         ->whereHas('samples', fn ($q) => $q->where('status', '!=', 'completed'))
                         ->count(),
+                ],
+                [
+                    'key' => 'requests_waiting',
+                    'label' => 'Permintaan Menunggu Konfirmasi',
+                    'value' => GrafologRequest::where('grafolog_id', $user->id)->where('status', 'menunggu')->where('expires_at', '>', now())->count(),
                 ],
                 [
                     'key' => 'pending_review',

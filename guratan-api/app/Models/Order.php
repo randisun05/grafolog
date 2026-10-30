@@ -29,7 +29,7 @@ class Order extends Model
 
     protected $fillable = [
         'batch_id', 'user_id', 'product_id', 'sample_id', 'grafolog_id', 'status', 'base_amount', 'amount', 'discount_code_id',
-        'source', 'created_by', 'delivery_mode', 'scheduled_for', 'upload_deadline', 'location_note', 'paid_at', 'completed_at', 'cancelled_at', 'cancel_reason',
+        'source', 'created_by', 'delivery_mode', 'scheduled_for', 'upload_deadline', 'location_note', 'grafolog_choice', 'grafolog_state', 'grafolog_deadline', 'grafolog_attempts', 'paid_at', 'completed_at', 'cancelled_at', 'cancel_reason',
         'refund_requested_at', 'refund_reason', 'refund_status', 'refund_note', 'refund_decided_by', 'refunded_at',
     ];
 
@@ -38,6 +38,7 @@ class Order extends Model
     protected function casts(): array
     {
         return [
+            'grafolog_deadline' => 'datetime',
             'scheduled_for' => 'date',
             'upload_deadline' => 'date',
             'paid_at' => 'datetime',
@@ -46,6 +47,11 @@ class Order extends Model
             'refund_requested_at' => 'datetime',
             'refunded_at' => 'datetime',
         ];
+    }
+
+    public function grafologRequests(): HasMany
+    {
+        return $this->hasMany(GrafologRequest::class)->latest('id');
     }
 
     public function user(): BelongsTo
