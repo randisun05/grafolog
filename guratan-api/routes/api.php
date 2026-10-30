@@ -59,6 +59,7 @@ use App\Http\Controllers\Api\Hr\PositionController;
 use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\MeasurementController;
 use App\Http\Controllers\Api\MeasurementVariableController;
+use App\Http\Controllers\Api\OrderChatController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PaymentController;
@@ -148,6 +149,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/orders/{order}/payment', [OrderController::class, 'pay']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::post('/orders/{order}/grafolog', [OrderController::class, 'chooseGrafolog']);
+    Route::get('/orders/{order}/messages', [OrderChatController::class, 'index']);
+    Route::middleware('throttle:chat')->post('/orders/{order}/messages', [OrderChatController::class, 'store']);
+    Route::get('/chat/unread', [OrderChatController::class, 'unread']);
     Route::middleware('role:user')->get('/grafologs/directory', [GrafologDirectoryController::class, 'index']);
     Route::middleware('role:grafolog')->group(function () {
         Route::get('/grafolog/requests', [GrafologRequestController::class, 'index']);
@@ -208,6 +212,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/reports/{report}/validations', [ReportValidationController::class, 'forReport']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
+    Route::get('/reports/{report}/resume', [ReportController::class, 'resume'])->middleware('log.report_access');
     Route::patch('/reports/{report}/aspek/{kode}/narasi', [ReportController::class, 'updateNarasi']);
     Route::get('/reports/{report}/revisions', [ReportController::class, 'revisions']);
     Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);

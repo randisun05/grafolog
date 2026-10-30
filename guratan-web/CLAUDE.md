@@ -733,6 +733,10 @@ Dua jalur masuk: (A) daftar/login → `/pesan`; (B) katalog publik `/produk`, `/
 
 Wizard `OrderView` jadi 6 langkah (… Persyaratan → **Grafolog** → Bayar): pilih sendiri (`components/order/GrafologPicker.vue`: direktori + portofolio via `CvForm`) atau minta rekomendasi tim. `RiwayatView`: panel status grafolog (menunggu/diterima/pilih ulang/admin) + pilih ulang. `AssignedToMeView`: `GrafologRequestsPanel` (terima/tolak, sisa jam). Admin `/admin/orders`: `AdminClientOrdersPanel` (antrean per tahap + rekomendasi + tugaskan).
 
+## Alur klien individu T3 — 2026-10-30
+
+`OrderChatView` (`/pesanan/:id/chat`, polling 8 dtk, Enter = kirim, teks dirender sebagai teks), `ReportResume` (di `ReportView` untuk non-grafolog penangan), `ClientOrdersCard` (Dashboard klien: pesanan berjalan + status grafolog + Chat + Laporan). Riwayat & `GrafologRequestsPanel` punya tombol Chat + lencana belum dibaca. Catatan: status "dibaca" pada pesan sendiri baru berubah saat halaman dimuat ulang.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

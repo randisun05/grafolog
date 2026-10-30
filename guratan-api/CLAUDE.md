@@ -1885,6 +1885,11 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Endpoint: `GET /grafologs/directory?month&q&all` (role user), `GET /grafolog/requests`, `POST /grafolog/requests/{id}/respond {decision, note}`, admin `GET /admin/client-orders?state=` (+ `recommend()`: skor keahlian/kota offline/beban/pengalaman, hanya yang bookable & belum menolak). Portofolio = `GET /cv/users/{grafolog}` relasi baru `public` (klien/HR bisa baca CV non-tersembunyi grafolog terverifikasi; tidak diaudit).
 - `POST /orders` menerima `grafolog_choice`/`grafolog_id` (tervalidasi: terverifikasi + tersedia di bulan jadwal); default rekomendasi.
 
+## Alur klien individu T3 (chat, resume) — 2026-10-30
+
+- `order_messages` + `OrderChatController`: chat TEKS per pesanan B2C (strip_tags, ≤2000, throttle `chat` 30/mnt). Peserta: klien pemilik + grafolog yang sudah MENERIMA (`grafolog_state=diterima`); admin hanya baca (tidak menandai dibaca, audit `lihat_chat_pesanan`). Terbuka selama pesanan diproses; setelah selesai hanya 14 hari; ditutup bila batal/refund. Satu notifikasi per rentetan pesan belum dibaca. `GET /chat/unread` (total + per pesanan). Masuk ekspor data; saat hapus akun body pesan pengirim diganti '[pesan dihapus]'. `GET /grafolog/requests` kini memuat `accepted` (pesanan diterima + unread).
+- Resume: `GET /reports/{r}/resume?lang=` (`ReportResumeService`, deterministik tanpa AI): rata-rata per sindrom + 5 ciri paling menonjol (kalimat pertama narasi KB) + catatan "bukan diagnosis; skor tinggi = ciri menonjol, bukan lebih baik". Akses = aturan laporan. Dashboard klien: KPI `unread_chat`.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

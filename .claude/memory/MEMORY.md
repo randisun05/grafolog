@@ -30,3 +30,4 @@
 - [Monitoring AI] — 2026-10-28: llm_usages + LlmUsageRecorder + /admin/ai-usage; anggaran LLM_MONTHLY_BUDGET_IDR; harga perlu dicek
 - [Alur klien T1] — 2026-10-30: katalog publik, wizard 5 langkah, modes/requirements produk; T2 (pilih grafolog+konfirmasi 24j+rekomendasi admin), T3 (chat teks+resume) menyusul
 - [Alur klien T2] — 2026-10-30: pilih grafolog/rekomendasi admin, konfirmasi 24 jam, pilih ulang, 3x→admin; T3 chat+resume menyusul
+- [Alur klien T3] — 2026-10-30: chat teks per pesanan, resume laporan klien, dashboard pesanan; seluruh alur T1-T3 selesai

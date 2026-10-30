@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\GrafologRequest;
 use App\Models\HandwritingSample;
 use App\Models\Order;
+use App\Models\OrderMessage;
 use App\Models\Payment;
 use App\Models\PersonalityReport;
 use App\Models\Project;
@@ -191,6 +192,7 @@ class DashboardController extends Controller
             'role' => 'client',
             'kpi' => [
                 ['key' => 'total_assessments', 'label' => 'Total Assessment', 'value' => $sampleIds->count()],
+                ['key' => 'unread_chat', 'label' => 'Pesan Belum Dibaca', 'value' => OrderMessage::whereNull('read_at')->where('sender_id', '!=', $user->id)->whereHas('order', fn ($q) => $q->where('user_id', $user->id))->count()],
                 ['key' => 'completed', 'label' => 'Selesai', 'value' => $completed],
                 ['key' => 'in_progress', 'label' => 'Sedang Diproses', 'value' => $sampleIds->count() - $completed],
                 [

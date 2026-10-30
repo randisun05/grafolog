@@ -49,6 +49,11 @@ class Order extends Model
         ];
     }
 
+    public function messages(): HasMany
+    {
+        return $this->hasMany(OrderMessage::class);
+    }
+
     public function grafologRequests(): HasMany
     {
         return $this->hasMany(GrafologRequest::class)->latest('id');

@@ -31,6 +31,7 @@ async function load() {
     ])
     reports.value = data.data
     orders.value = ordersRes.data
+    if (auth.isClient) unreadByOrder.value = (await api.get('/chat/unread')).data.by_order ?? {}
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Gagal memuat riwayat.'
   } finally {
@@ -59,6 +60,7 @@ const GSTATE = {
   diterima: 'Diterima grafolog',
 }
 const pickerOpen = ref(null)
+const unreadByOrder = ref({})
 const declinedIds = (o) =>
   (o.grafolog_history ?? [])
     .filter((h) => ['ditolak', 'kedaluwarsa'].includes(h.status))
@@ -145,6 +147,14 @@ onMounted(load)
                 {{ h.grafolog }}: {{ h.status }}
               </li>
             </ul>
+            <div v-if="o.grafolog_state === 'diterima'" class="riwayat__actions">
+              <RouterLink :to="`/pesanan/${o.id}/chat`" class="btn btn--primary">
+                Chat dengan grafolog
+                <span v-if="unreadByOrder[o.id]" class="riwayat__badge">{{
+                  unreadByOrder[o.id]
+                }}</span>
+              </RouterLink>
+            </div>
             <div v-if="o.grafolog_state === 'menunggu_pilih'" class="riwayat__actions">
               <button
                 type="button"
@@ -308,5 +318,13 @@ onMounted(load)
   background: var(--color-gold-soft);
   border-radius: var(--radius-sm);
   font-size: 13.5px;
+}
+.riwayat__badge {
+  background: var(--color-seal);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 11px;
+  margin-left: 4px;
 }
 </style>

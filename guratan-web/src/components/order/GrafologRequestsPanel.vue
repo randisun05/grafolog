@@ -6,7 +6,7 @@ import { useToast } from '@/composables/useToast'
 
 /** Grafolog: permintaan penanganan pesanan klien (jawab dalam 24 jam). */
 const toast = useToast()
-const data = ref({ pending: [], history: [], confirm_hours: 24 })
+const data = ref({ pending: [], history: [], accepted: [], confirm_hours: 24 })
 const notes = ref({})
 const busy = ref(0)
 const STATUS = {
@@ -40,7 +40,7 @@ onMounted(load)
 </script>
 
 <template>
-  <section v-if="data.pending.length || data.history.length" class="grp">
+  <section v-if="data.pending.length || data.history.length || data.accepted.length" class="grp">
     <h2>Permintaan pesanan klien</h2>
     <p v-if="data.pending.length" class="grp__hint">
       Jawab dalam {{ data.confirm_hours }} jam. Bila tidak dijawab, permintaan dialihkan dan klien
@@ -89,6 +89,17 @@ onMounted(load)
         </div>
       </li>
     </ul>
+    <template v-if="data.accepted.length">
+      <h3>Pesanan klien yang Anda tangani</h3>
+      <ul class="grp__hist">
+        <li v-for="o in data.accepted" :key="o.id">
+          #{{ o.id }} {{ o.product }} — {{ o.client }}
+          <RouterLink :to="`/pesanan/${o.id}/chat`" class="btn">
+            Chat <span v-if="o.unread" class="grp__badge">{{ o.unread }}</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </template>
     <details v-if="data.history.length">
       <summary>Riwayat jawaban</summary>
       <ul class="grp__hist">
@@ -146,5 +157,13 @@ onMounted(load)
 }
 .grp__actions input {
   width: 220px;
+}
+.grp__badge {
+  background: var(--color-seal);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 11px;
+  margin-left: 4px;
 }
 </style>

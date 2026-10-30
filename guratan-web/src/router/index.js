@@ -222,6 +222,13 @@ const router = createRouter({
       props: true,
     },
     {
+      path: '/pesanan/:id/chat',
+      name: 'order-chat',
+      component: () => import('../views/OrderChatView.vue'),
+      props: true,
+      meta: { requiresAuth: true, role: ['user', 'grafolog', 'administrator'] },
+    },
+    {
       path: '/kotak-masuk',
       name: 'inbox',
       component: () => import('../views/InboxView.vue'),

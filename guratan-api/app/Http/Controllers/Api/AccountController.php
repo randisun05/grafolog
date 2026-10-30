@@ -10,6 +10,7 @@ use App\Models\CvValue;
 use App\Models\HandwritingSample;
 use App\Models\InboxMessage;
 use App\Models\Order;
+use App\Models\OrderMessage;
 use App\Models\PersonalityReport;
 use App\Models\ReportValidation;
 use App\Models\SampleImage;
@@ -57,6 +58,7 @@ class AccountController extends Controller
                 ->map(fn (Order $o) => ['id' => $o->id, 'produk' => $o->product?->nama, 'status' => $o->status, 'jumlah' => $o->amount, 'dibuat' => $o->created_at, 'dibayar' => $o->paid_at])->all(),
             'sampel_tulisan' => HandwritingSample::whereIn('id', $sampleIds)->withCount('images')->get(['id', 'tier', 'status', 'created_at'])->toArray(),
             'laporan' => PersonalityReport::whereIn('sample_id', $sampleIds)->where('review_status', PersonalityReport::REVIEW_APPROVED)->get(['id', 'sample_id', 'tier', 'data', 'generated_at'])->toArray(),
+            'pesan_chat' => OrderMessage::where('sender_id', $user->id)->get(['order_id', 'body', 'created_at'])->toArray(),
             'kotak_masuk' => InboxMessage::where('user_id', $user->id)->get(['type', 'title', 'body', 'read_at', 'created_at'])->toArray(),
             'log_aktivitas_90_hari' => ActivityLog::where('user_id', $user->id)->latest('id')->limit(1000)->get(['event', 'method', 'path', 'status', 'ip', 'created_at'])->toArray(),
         ];
@@ -103,6 +105,7 @@ class AccountController extends Controller
             if ($user->certificate_path) {
                 Storage::disk('local')->delete($user->certificate_path);
             }
+            OrderMessage::where('sender_id', $user->id)->update(['body' => '[pesan dihapus]']);
             InboxMessage::where('user_id', $user->id)->delete();
             ActivityLog::where('user_id', $user->id)->update(['user_id' => null]);
             $user->tokens()->delete();

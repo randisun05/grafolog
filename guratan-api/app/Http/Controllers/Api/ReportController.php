@@ -10,6 +10,7 @@ use App\Models\ReportRevision;
 use App\Models\User;
 use App\Services\Reporting\ReportLocalizer;
 use App\Services\Reporting\ReportPdfService;
+use App\Services\Reporting\ReportResumeService;
 use App\Services\Reporting\ReportRevisionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,16 @@ class ReportController extends Controller
             ->paginate(20);
 
         return response()->json($reports);
+    }
+
+    /** Resume (ringkasan) laporan untuk pembaca yang berhak melihat laporan. */
+    public function resume(Request $request, PersonalityReport $report, ReportResumeService $resume): JsonResponse
+    {
+        $this->authorizeAccess($request, $report);
+        abort_unless($report->data, 404, 'Laporan belum siap.');
+        $bahasa = $this->bahasa($request);
+
+        return response()->json($resume->build($this->localizer->localize($report->data, $bahasa), $bahasa));
     }
 
     public function show(Request $request, PersonalityReport $report): JsonResponse

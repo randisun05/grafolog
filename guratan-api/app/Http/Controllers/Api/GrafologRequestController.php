@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\GrafologRequest;
+use App\Models\Order;
 use App\Services\Commerce\GrafologMatchingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,13 @@ class GrafologRequestController extends Controller
         return response()->json([
             'pending' => (clone $mine)->where('status', GrafologRequest::WAITING)->orderBy('expires_at')->get()->map($row)->values(),
             'history' => (clone $mine)->where('status', '!=', GrafologRequest::WAITING)->latest('id')->limit(15)->get()->map($row)->values(),
+            'accepted' => Order::whereNull('batch_id')->where('grafolog_id', $request->user()->id)->where('grafolog_state', 'diterima')
+                ->whereIn('status', [Order::STATUS_PROCESSING, Order::STATUS_DONE])
+                ->with(['user:id,name', 'product:id,nama'])
+                ->withCount(['messages as unread' => fn ($q) => $q->whereNull('read_at')->where('sender_id', '!=', $request->user()->id)])
+                ->latest('id')->limit(30)->get()
+                ->map(fn ($o) => ['id' => $o->id, 'product' => $o->product?->nama, 'client' => $o->user?->name, 'status' => $o->status, 'unread' => $o->unread,
+                    'delivery_mode' => $o->delivery_mode, 'scheduled_for' => $o->scheduled_for?->toDateString(), 'sample_id' => $o->sample_id])->values(),
             'confirm_hours' => GrafologMatchingService::CONFIRM_HOURS,
         ]);
     }
