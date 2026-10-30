@@ -1872,6 +1872,12 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Biaya = PERKIRAAN: token × `config('services.llm_cost.pricing')` (USD per 1 juta token; default gemini-2.5-flash 0,30/2,50 dari env `LLM_PRICE_INPUT_USD`/`LLM_PRICE_OUTPUT_USD` - CEK harga resmi Google sebelum dipercaya) × kurs `LLM_USD_IDR` (16500). Anggaran bulanan `LLM_MONTHLY_BUDGET_IDR` (kosong = tanpa); admin dapat notifikasi kotak masuk sekali di 80% dan 100% per bulan.
 - `GET /admin/llm-usage?days=|month=1`: ringkasan, anggaran + proyeksi, per kegunaan/model/slot key, per hari, 40 panggilan terbaru. Dashboard admin: KPI "Biaya AI Bulan Ini". FE `/admin/ai-usage` (`AdminLlmUsageView`). Provider lain (Api/SelfHosted) belum mencatat.
 
+## Alur klien individu T1 (katalog, mode, jadwal) — 2026-10-30
+
+- `products.modes` (online|offline, default online) + `products.requirements` ([{judul, keterangan}]), diatur admin (`StoreProductRequest`); `Product::availableModes()`, ikut di `toCatalogArray()`. `GET /products/{kode}` publik (detail).
+- `orders.delivery_mode/scheduled_for/upload_deadline/location_note`: `POST /orders` memvalidasi mode ∈ modes produk, offline wajib `location_note`, `scheduled_for` ≥ hari ini, `upload_deadline` ≤ jadwal; produk berscan tanpa deadline → default +3 hari. Pemesanan ditolak 422 bila isian WAJIB CV (`CvService::missingRequired`) belum lengkap; `GET /cv` mengembalikan `missing_required`. `OrderController::present` memuat mode/jadwal/`image_count`.
+- Rencana T2/T3 (lanjutan, keputusan pemilik 2026-10-30): klien pilih grafolog / minta rekomendasi ADMIN (bukan mesin otomatis); bayar dulu lalu grafolog konfirmasi 24 jam, tolak/lewat → klien pilih ulang, 3x gagal → antrean admin; penugasan admin tetap; chat teks per pesanan; "resume" = ringkasan laporan untuk klien; offline = kota/tempat saja.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

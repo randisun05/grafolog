@@ -139,6 +139,7 @@ async function handleLogout() {
         <button type="button" class="app-navbar__logout" @click="handleLogout">Keluar</button>
       </template>
       <template v-else>
+        <RouterLink to="/produk">Produk</RouterLink>
         <RouterLink to="/cek-tulisan">Cek Tulisan Gratis</RouterLink>
         <RouterLink to="/produk-mitra">Produk Mitra</RouterLink>
         <RouterLink to="/artikel">Artikel</RouterLink>

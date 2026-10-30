@@ -46,6 +46,16 @@ async function submit() {
       <button type="submit" class="btn btn--primary" :disabled="loading">
         {{ loading ? 'Memproses...' : 'Masuk' }}
       </button>
+      <p class="auth-form__alt">
+        Belum punya akun?
+        <RouterLink
+          :to="{
+            name: 'register',
+            query: route.query.redirect ? { redirect: route.query.redirect } : {},
+          }"
+          >Daftar</RouterLink
+        >
+      </p>
     </form>
   </div>
 </template>

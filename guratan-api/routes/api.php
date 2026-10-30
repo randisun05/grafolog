@@ -95,6 +95,7 @@ Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentContr
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);
 Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{kode}', [ProductController::class, 'show']);
 Route::get('/promos', [ProductController::class, 'promos']);
 Route::get('/payment-methods', fn () => response()->json(PaymentMethods::groups()));
 Route::get('/content', [ContentController::class, 'index']);

@@ -19,6 +19,14 @@ class ProductController extends Controller
         );
     }
 
+    /** Detail satu produk untuk halaman katalog publik. */
+    public function show(string $kode): JsonResponse
+    {
+        $product = Product::forClients()->with('components')->where('kode', $kode)->firstOrFail();
+
+        return response()->json($product->toCatalogArray());
+    }
+
     /** Promo aktif: kode diskon publik yang berlaku sekarang + produk unggulan. */
     public function promos(Request $request): JsonResponse
     {

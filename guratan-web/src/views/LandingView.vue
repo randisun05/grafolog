@@ -392,8 +392,8 @@ onMounted(async () => {
             </li>
             <li><span class="check">✓</span> Laporan tersimpan di akun, unduh PDF kapan saja</li>
           </ul>
-          <RouterLink :to="`/pesan?produk=${p.kode}`" class="btn btn--primary price-card__cta"
-            >Pilih {{ p.nama }}</RouterLink
+          <RouterLink :to="`/produk/${p.kode}`" class="btn btn--primary price-card__cta"
+            >Lihat & pesan</RouterLink
           >
         </div>
         <div v-for="p in supportProducts" :key="p.id" class="price-card">
@@ -405,8 +405,8 @@ onMounted(async () => {
               <span class="check">✓</span> {{ TIPE[c.tipe] ?? c.nama }}
             </li>
           </ul>
-          <RouterLink :to="`/pesan?produk=${p.kode}`" class="btn btn--ghost price-card__cta"
-            >Pilih</RouterLink
+          <RouterLink :to="`/produk/${p.kode}`" class="btn btn--ghost price-card__cta"
+            >Lihat detail</RouterLink
           >
         </div>
       </div>
@@ -467,6 +467,7 @@ onMounted(async () => {
       <span aria-hidden="true">·</span>
       <RouterLink to="/kebijakan-transaksi">Kebijakan Transaksi</RouterLink>
       <span aria-hidden="true">·</span>
+      <RouterLink to="/produk">Produk &amp; Layanan</RouterLink>
       <RouterLink to="/artikel">Artikel</RouterLink>
       <span aria-hidden="true">·</span>
       <RouterLink to="/produk-mitra">Produk Mitra</RouterLink>

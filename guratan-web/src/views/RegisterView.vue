@@ -1,10 +1,11 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const form = ref({
   name: '',
@@ -21,7 +22,7 @@ async function submit() {
   errors.value = {}
   try {
     await auth.register(form.value)
-    router.push({ name: 'dashboard' })
+    router.push(route.query.redirect || { name: 'dashboard' })
   } catch (e) {
     errors.value = e.response?.data?.errors ?? {}
   } finally {
@@ -71,6 +72,16 @@ async function submit() {
         {{ loading ? 'Memproses...' : 'Daftar' }}
       </button>
     </form>
+    <p class="register__grafolog">
+      Sudah punya akun?
+      <RouterLink
+        :to="{
+          name: 'login',
+          query: route.query.redirect ? { redirect: route.query.redirect } : {},
+        }"
+        >Masuk</RouterLink
+      >
+    </p>
     <RouterLink to="/daftar-grafolog" class="register__grafolog"
       >Anda grafolog bersertifikat? Daftar di sini</RouterLink
     >

@@ -40,6 +40,11 @@ class StoreProductRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
             'is_featured' => ['sometimes', 'boolean'],
             'promo_label' => ['nullable', 'string', 'max:60'],
+            'modes' => ['sometimes', 'array', 'min:1'],
+            'modes.*' => ['string', Rule::in(Product::MODES)],
+            'requirements' => ['sometimes', 'nullable', 'array', 'max:15'],
+            'requirements.*.judul' => ['required', 'string', 'max:120'],
+            'requirements.*.keterangan' => ['nullable', 'string', 'max:500'],
             'sort' => ['sometimes', 'integer', 'min:0'],
             'price' => [$product ? 'prohibited' : 'required', 'integer', 'min:0'],
         ];

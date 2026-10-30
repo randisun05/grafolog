@@ -48,6 +48,7 @@ class CvController extends Controller
         return response()->json([
             'user' => ['id' => $user->id, 'name' => $user->name],
             'editable' => $this->cv->canEdit($relation),
+            'missing_required' => $relation === 'self' ? $this->cv->missingRequired($user) : null,
             'groups' => $this->cv->render($user, $relation),
         ]);
     }

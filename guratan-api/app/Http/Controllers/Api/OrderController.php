@@ -7,6 +7,7 @@ use App\Http\Requests\Commerce\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\Commerce\OrderService;
+use App\Services\Cv\CvService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -66,7 +67,19 @@ class OrderController extends Controller
         $product = Product::forClients()->find($request->validated('product_id'));
         abort_unless($product, 422, 'Produk tidak tersedia.');
 
-        $order = $this->orders->create($user, $product, $request->validated('discount_code'), 'website', $user);
+        abort_if(app(CvService::class)->missingRequired($user) > 0, 422, 'Lengkapi CV Anda (isian wajib) sebelum memesan.');
+        $data = $request->validated();
+        $mode = $data['delivery_mode'] ?? $product->availableModes()[0];
+        abort_unless(in_array($mode, $product->availableModes(), true), 422, 'Mode pelaksanaan tidak tersedia untuk produk ini.');
+        abort_if($mode === 'offline' && blank($data['location_note'] ?? null), 422, 'Isi kota/tempat pelaksanaan untuk sesi offline.');
+        // Tanpa komitmen eksplisit: batas unggah persyaratan default 3 hari (UI selalu meminta klien menentukan).
+
+        $order = $this->orders->create($user, $product, $data['discount_code'] ?? null, 'website', $user, null, [
+            'delivery_mode' => $mode,
+            'scheduled_for' => $data['scheduled_for'] ?? null,
+            'upload_deadline' => $data['upload_deadline'] ?? ($product->requires_handwriting ? now()->addDays(3)->toDateString() : null),
+            'location_note' => $mode === 'offline' ? $data['location_note'] : null,
+        ]);
 
         return response()->json($this->present($order->fresh(['product', 'deliveries', 'sample'])), 201);
     }
@@ -110,7 +123,12 @@ class OrderController extends Controller
             'product' => $order->product?->only(['id', 'kode', 'nama', 'kategori']),
             'sample_id' => $order->sample_id,
             'sample_status' => $order->sample?->status,
+            'image_count' => $order->sample?->images()->count() ?? 0,
             'report_id' => $report?->id,
+            'delivery_mode' => $order->delivery_mode,
+            'scheduled_for' => $order->scheduled_for?->toDateString(),
+            'upload_deadline' => $order->upload_deadline?->toDateString(),
+            'location_note' => $order->location_note,
             'refunded_at' => $order->refunded_at,
             'refund_note' => $order->refund_note,
             'deliveries' => $order->deliveries->map(fn ($d) => [

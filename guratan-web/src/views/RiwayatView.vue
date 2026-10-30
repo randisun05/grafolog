@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { formatRupiah, formatTanggal, STATUS_PESANAN } from '@/lib/format'
+import SampleImages from '@/components/shared/SampleImages.vue'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ServiceDeliveryCard from '@/components/commerce/ServiceDeliveryCard.vue'
 import { useToast } from '@/composables/useToast'
@@ -85,6 +86,28 @@ onMounted(load)
               STATUS_PESANAN[o.status] ?? o.status
             }}</span>
           </div>
+
+          <p v-if="o.delivery_mode" class="riwayat__meta">
+            {{ o.delivery_mode === 'offline' ? 'Tatap muka' : 'Online' }}
+            <template v-if="o.location_note"> · {{ o.location_note }}</template>
+            <template v-if="o.scheduled_for">
+              · Tanggal diinginkan {{ formatTanggal(o.scheduled_for) }}</template
+            >
+            <template v-if="o.upload_deadline">
+              · Batas unggah {{ formatTanggal(o.upload_deadline) }}</template
+            >
+          </p>
+          <details
+            v-if="o.sample_id && o.status === 'diproses' && o.sample_status !== 'completed'"
+            class="riwayat__upload"
+            :open="!o.image_count"
+          >
+            <summary>
+              Persyaratan: scan tulisan tangan
+              <span class="riwayat__meta">({{ o.image_count }} berkas)</span>
+            </summary>
+            <SampleImages :sample-id="o.sample_id" :can-upload="true" @changed="load" />
+          </details>
 
           <div v-if="o.status === 'menunggu_pembayaran'" class="riwayat__actions">
             <button type="button" class="btn btn--primary" @click="payOrder(o)">Bayar</button>

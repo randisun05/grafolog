@@ -725,6 +725,10 @@ Tabel lebar dibungkus `.table-scroll` (main.css) agar gulir di dalam kartu; cek 
 
 `AdminLlmUsageView` (`/admin/ai-usage`, menu Admin + palette): periode 7/30/90 hari atau bulan ini, KPI, bar anggaran (merah ≥80%), batang biaya per hari (CSS murni, hover = detail), tabel per kegunaan, per slot key, dan panggilan terbaru. Biaya ditandai perkiraan.
 
+## Alur klien individu T1 — 2026-10-30
+
+Dua jalur masuk: (A) daftar/login → `/pesan`; (B) katalog publik `/produk`, `/produk/:kode` (CTA "Daftar & pesan" membawa `?redirect=/pesan?produk=kode` lewat Register/Login yang saling menaut dengan redirect). `OrderView` = wizard 5 langkah: Produk → Pelaksanaan & waktu (mode online/offline, lokasi, tanggal, batas unggah) → CV (`CvForm @loaded` → `missing_required` memblokir) → Persyaratan (daftar dari admin + scan opsional; boleh unggah belakangan di Pesanan Saya via `SampleImages`) → Bayar. Admin produk: centang mode + editor persyaratan.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

@@ -17,9 +17,11 @@ class Product extends Model
 
     public const TARGET = ['b2c', 'b2b', 'semua'];
 
+    public const MODES = ['online', 'offline'];
+
     protected $fillable = [
         'kode', 'nama', 'kategori', 'ringkasan', 'deskripsi', 'target', 'requires_handwriting',
-        'is_active', 'is_featured', 'promo_label', 'sort', 'created_by',
+        'is_active', 'is_featured', 'promo_label', 'sort', 'created_by', 'modes', 'requirements',
     ];
 
     protected $attributes = [
@@ -33,6 +35,8 @@ class Product extends Model
             'requires_handwriting' => 'boolean',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
+            'modes' => 'array',
+            'requirements' => 'array',
         ];
     }
 
@@ -68,6 +72,12 @@ class Product extends Model
         return $q->where('is_active', true)->whereIn('target', ['b2b', 'semua']);
     }
 
+    /** Mode pelaksanaan yang ditawarkan (default online saja). */
+    public function availableModes(): array
+    {
+        return $this->modes ?: ['online'];
+    }
+
     public function toCatalogArray(): array
     {
         return [
@@ -81,6 +91,8 @@ class Product extends Model
             'requires_handwriting' => $this->requires_handwriting,
             'is_featured' => $this->is_featured,
             'promo_label' => $this->promo_label,
+            'modes' => $this->availableModes(),
+            'requirements' => $this->requirements ?? [],
             'price' => $this->currentPrice(),
             'components' => $this->components->map(fn ($c) => ['tipe' => $c->tipe, 'nama' => $c->nama])->values(),
         ];

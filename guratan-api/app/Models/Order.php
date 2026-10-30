@@ -29,7 +29,7 @@ class Order extends Model
 
     protected $fillable = [
         'batch_id', 'user_id', 'product_id', 'sample_id', 'grafolog_id', 'status', 'base_amount', 'amount', 'discount_code_id',
-        'source', 'created_by', 'paid_at', 'completed_at', 'cancelled_at', 'cancel_reason',
+        'source', 'created_by', 'delivery_mode', 'scheduled_for', 'upload_deadline', 'location_note', 'paid_at', 'completed_at', 'cancelled_at', 'cancel_reason',
         'refund_requested_at', 'refund_reason', 'refund_status', 'refund_note', 'refund_decided_by', 'refunded_at',
     ];
 
@@ -38,6 +38,8 @@ class Order extends Model
     protected function casts(): array
     {
         return [
+            'scheduled_for' => 'date',
+            'upload_deadline' => 'date',
             'paid_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',

@@ -121,10 +121,29 @@ class DemoDataSeeder extends Seeder
         $this->assign($intan, $bima, $users['hr']);
         $this->createB2bData($users, ['hendra' => $hendra, 'intan' => $intan]);
 
+        $this->seedProductDetails();
         $this->seedCv($users);
 
         $this->command?->info('Data demo dibuat. Semua akun berpassword: '.self::PASSWORD);
         $this->command?->table(['Role', 'Email'], collect($users)->map(fn (User $u) => [$u->role, $u->email])->values()->all());
+    }
+
+    /** Mode pelaksanaan & persyaratan contoh untuk katalog. */
+    private function seedProductDetails(): void
+    {
+        $set = [
+            'master' => ['modes' => ['online'], 'requirements' => [
+                ['judul' => 'Tulisan tangan di kertas polos', 'keterangan' => 'Minimal satu halaman A4, tanpa garis, ditandatangani di bawahnya.'],
+                ['judul' => 'Scan PDF 300 dpi', 'keterangan' => 'Ukuran halaman A4/F4 utuh, tanpa zoom atau crop.'],
+            ]],
+            'konseling' => ['modes' => ['online', 'offline'], 'requirements' => [
+                ['judul' => 'Tujuan konseling', 'keterangan' => 'Tuliskan singkat apa yang ingin dibahas.'],
+            ]],
+            'wawancara' => ['modes' => ['online', 'offline'], 'requirements' => []],
+        ];
+        foreach ($set as $kode => $attrs) {
+            Product::where('kode', $kode)->first()?->update(['modes' => $attrs['modes'], 'requirements' => $attrs['requirements']]);
+        }
     }
 
     /** Variabel CV contoh + isian untuk beberapa akun demo (grafolog, klien, kandidat). */

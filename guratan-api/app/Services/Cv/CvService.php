@@ -134,6 +134,17 @@ class CvService
         }
     }
 
+    /** Jumlah variabel WAJIB (untuk jenis CV pemilik ini, termasuk yang tersembunyi) yang belum terisi. */
+    public function missingRequired(User $subject): int
+    {
+        $values = CvValue::where('user_id', $subject->id)->pluck('value', 'cv_field_id');
+        $applies = $this->appliesTo($subject);
+
+        return CvField::where('is_active', true)->where('required', true)->whereIn('applies_to', $applies)
+            ->whereHas('group', fn ($q) => $q->where('is_active', true))->get()
+            ->filter(fn (CvField $f) => blank($values[$f->id] ?? null))->count();
+    }
+
     /** Field berkas yang boleh diakses relasi ini (404 bila tidak berlaku/tersembunyi). */
     public function fileField(User $subject, string $relation, string $key): CvField
     {

@@ -211,6 +211,17 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/produk',
+      name: 'catalog',
+      component: () => import('../views/ProductCatalogView.vue'),
+    },
+    {
+      path: '/produk/:kode',
+      name: 'product-detail',
+      component: () => import('../views/ProductDetailView.vue'),
+      props: true,
+    },
+    {
       path: '/kotak-masuk',
       name: 'inbox',
       component: () => import('../views/InboxView.vue'),
