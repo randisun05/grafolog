@@ -14,7 +14,7 @@ use RuntimeException;
  * DOKU 2026-07-27 - JANGAN diubah tanpa mengecek ulang ke developers.doku.com,
  * signature yang salah gagal otentikasi di sisi DOKU tanpa pesan yang jelas.
  */
-class DokuService
+class DokuService implements PaymentGateway
 {
     private const CHECKOUT_PATH = '/checkout/v1/payment';
 
@@ -29,6 +29,16 @@ class DokuService
         $this->clientId = $clientId ?? config('services.doku.client_id');
         $this->secretKey = $secretKey ?? config('services.doku.secret_key');
         $this->baseUrl = $baseUrl ?? config('services.doku.base_url');
+    }
+
+    public function name(): string
+    {
+        return 'doku';
+    }
+
+    public function isConfigured(): bool
+    {
+        return filled($this->clientId) && filled($this->secretKey);
     }
 
     /**
@@ -81,6 +91,7 @@ class DokuService
 
         return [
             'url' => $payload['payment']['url'] ?? null,
+            'ref' => $payload['payment']['token_id'] ?? null,
             'token_id' => $payload['payment']['token_id'] ?? null,
             'expired_date' => $payload['payment']['expired_date'] ?? null,
         ];

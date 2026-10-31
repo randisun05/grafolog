@@ -44,6 +44,7 @@ const grafologChoice = ref('rekomendasi') // 'pilih' | 'rekomendasi'
 const pickedGrafolog = ref(null)
 
 const paymentMethod = ref('')
+const gateway = ref('')
 const discountCode = ref(route.query.kode ?? '')
 const previewResult = ref(null)
 const previewLoading = ref(false)
@@ -197,6 +198,7 @@ async function pay() {
     }
     const { data: payment } = await api.post(`/orders/${createdOrder.value.id}/payment`, {
       payment_method: paymentMethod.value || undefined,
+      gateway: gateway.value || undefined,
     })
     // Mode uji (akun DOKU belum ada): backend langsung menandai lunas.
     if (payment.paid) {
@@ -466,6 +468,7 @@ onMounted(load)
         <p v-if="payError" class="error">{{ payError }}</p>
         <PaymentMethodPicker
           v-model="paymentMethod"
+          v-model:gateway="gateway"
           :allowed="previewResult?.code_valid ? previewResult.code_payment_methods : null"
         />
         <label class="order__toc">

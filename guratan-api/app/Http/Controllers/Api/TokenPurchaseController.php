@@ -8,7 +8,7 @@ use App\Models\AuditLog;
 use App\Models\DiscountCode;
 use App\Models\TokenPrice;
 use App\Models\TokenPurchase;
-use App\Services\Payment\DokuService;
+use App\Services\Payment\PaymentGatewayManager;
 use App\Services\Payment\PaymentMethods;
 use App\Services\Payment\PaymentMode;
 use App\Services\TokenWalletService;
@@ -18,14 +18,14 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Mulai pembayaran DOKU untuk pembelian token grafolog. Struktur method
+ * Mulai pembayaran untuk pembelian token grafolog. Struktur method
  * ini sengaja dibuat semirip mungkin dengan PaymentController::store
  * (base_amount/discount_code/try-catch 503) - reuse pola yang sudah
  * terverifikasi, bukan menciptakan cara baru untuk hal yang sama.
  */
 class TokenPurchaseController extends Controller
 {
-    public function __construct(private DokuService $doku, private TokenWalletService $tokenWallet) {}
+    public function __construct(private PaymentGatewayManager $gateways, private TokenWalletService $tokenWallet) {}
 
     public function store(CreateTokenPurchaseRequest $request): JsonResponse
     {
@@ -72,8 +72,9 @@ class TokenPurchaseController extends Controller
             ], 201);
         }
 
+        $gateway = $this->gateways->resolve($request->validated('gateway'));
         try {
-            $checkout = $this->doku->createCheckout(
+            $checkout = $gateway->createCheckout(
                 $purchase->invoice_number,
                 $purchase->amount,
                 $purchase->currency,
@@ -82,7 +83,7 @@ class TokenPurchaseController extends Controller
                 $methodTypes,
             );
         } catch (RuntimeException $e) {
-            Log::error('DOKU checkout token gagal dibuat', ['token_purchase_id' => $purchase->id, 'error' => $e->getMessage()]);
+            Log::error('Checkout token gagal dibuat', ['gateway' => $gateway->name(), 'token_purchase_id' => $purchase->id, 'error' => $e->getMessage()]);
 
             return response()->json([
                 'message' => 'Pembayaran sedang tidak tersedia, coba lagi nanti.',
@@ -90,8 +91,9 @@ class TokenPurchaseController extends Controller
         }
 
         $purchase->update([
-            'doku_token_id' => $checkout['token_id'],
-            'doku_payment_url' => $checkout['url'],
+            'gateway' => $gateway->name(),
+            'gateway_ref' => $checkout['ref'],
+            'gateway_url' => $checkout['url'],
         ]);
 
         return response()->json([

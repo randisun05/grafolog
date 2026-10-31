@@ -9,8 +9,8 @@ class Payment extends Model
 {
     protected $fillable = [
         'sample_id', 'order_id', 'order_batch_id', 'invoice_number', 'amount', 'base_amount', 'discount_code_id',
-        'currency', 'status', 'doku_token_id', 'doku_payment_url',
-        'doku_payment_channel', 'notification_payload', 'paid_at',
+        'currency', 'gateway', 'status', 'gateway_ref', 'gateway_url',
+        'gateway_channel', 'notification_payload', 'paid_at',
     ];
 
     protected function casts(): array

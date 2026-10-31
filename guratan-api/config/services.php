@@ -104,4 +104,22 @@ return [
         'callback_url' => env('DOKU_CALLBACK_URL', rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/dashboard'),
     ],
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Xendit Payment Gateway (alternatif DOKU)
+    |--------------------------------------------------------------------------
+    |
+    | secret_key dari Xendit Dashboard - sandbox vs produksi ditentukan prefix key
+    | (xnd_development_... / xnd_production_...), base_url sama. callback_token = nilai
+    | X-Callback-Token statis (Settings > Webhooks) untuk memverifikasi webhook.
+    |
+    */
+    'xendit' => [
+        'secret_key' => env('XENDIT_SECRET_KEY'),
+        'callback_token' => env('XENDIT_CALLBACK_TOKEN'),
+        'base_url' => env('XENDIT_BASE_URL', 'https://api.xendit.co'),
+        'success_redirect_url' => env('XENDIT_SUCCESS_REDIRECT_URL', rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/dashboard'),
+    ],
+
 ];

@@ -9,8 +9,8 @@ class TokenPurchase extends Model
 {
     protected $fillable = [
         'user_id', 'quantity', 'unit_price', 'base_amount', 'discount_code_id',
-        'amount', 'currency', 'status', 'invoice_number', 'doku_token_id',
-        'doku_payment_url', 'notification_payload', 'paid_at',
+        'amount', 'currency', 'gateway', 'status', 'invoice_number', 'gateway_ref',
+        'gateway_url', 'notification_payload', 'paid_at',
     ];
 
     protected function casts(): array

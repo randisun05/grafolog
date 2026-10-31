@@ -22,6 +22,7 @@ const previewError = ref('')
 
 const buying = ref(false)
 const paymentMethod = ref('')
+const gateway = ref('')
 const buyError = ref('')
 
 const typeLabel = {
@@ -101,6 +102,7 @@ async function buy() {
     const body = { quantity: quantity.value }
     if (previewResult.value?.code_valid) body.discount_code = discountCode.value
     if (paymentMethod.value) body.payment_method = paymentMethod.value
+    if (gateway.value) body.gateway = gateway.value
     const { data } = await api.post('/tokens/purchase', body)
     // Mode uji (akun DOKU belum ada): token langsung masuk saldo.
     if (data.paid) {
@@ -184,6 +186,7 @@ onMounted(loadWallet)
 
           <PaymentMethodPicker
             v-model="paymentMethod"
+            v-model:gateway="gateway"
             :allowed="previewResult?.code_valid ? previewResult.code_payment_methods : null"
           />
           <p v-if="buyError" class="error">{{ buyError }}</p>

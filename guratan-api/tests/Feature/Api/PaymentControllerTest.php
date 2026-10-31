@@ -99,7 +99,7 @@ class PaymentControllerTest extends TestCase
             'sample_id' => $sample->id,
             'amount' => 49000,
             'status' => 'pending',
-            'doku_token_id' => 'tok-abc123',
+            'gateway_ref' => 'tok-abc123',
         ]);
 
         Http::assertSent(function ($request) {

@@ -15,7 +15,7 @@ use App\Models\Product;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Notifications\Notifier;
-use App\Services\Payment\DokuService;
+use App\Services\Payment\PaymentGatewayManager;
 use App\Services\Payment\PaymentMethods;
 use App\Services\Payment\PaymentMode;
 use Illuminate\Support\Collection;
@@ -23,13 +23,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Alur pesanan produk (2026-10-17): buat pesanan -> bayar (DOKU atau mode uji) -> lunas: layanan
+ * Alur pesanan produk (2026-10-17): buat pesanan -> bayar (gateway atau mode uji) -> lunas: layanan
  * pendukung dibuat -> selesai saat laporan grafologi disetujui supervisor dan semua layanan
  * dilaporkan. Komponen grafologi selalu memakai tier `master` (Comprehensive tidak dijual lagi).
  */
 class OrderService
 {
-    public function __construct(private DokuService $doku, private Notifier $notifier) {}
+    public function __construct(private PaymentGatewayManager $gateways, private Notifier $notifier) {}
 
     /** @return array{base:int, amount:int, discount:?DiscountCode} */
     public function quote(Product $product, ?string $code, string $audience = 'client'): array
@@ -121,7 +121,7 @@ class OrderService
     }
 
     /** @return array{paid:bool, bypass?:bool, payment_url?:string, invoice_number:string} */
-    public function startBatchPayment(OrderBatch $batch, User $payer, ?string $ip = null, ?string $method = null): array
+    public function startBatchPayment(OrderBatch $batch, User $payer, ?string $ip = null, ?string $method = null, ?string $gatewayName = null): array
     {
         abort_if($batch->status === Order::STATUS_CANCELLED, 422, 'Pesanan sudah dibatalkan.');
         abort_if($batch->isPaid(), 422, 'Pesanan ini sudah dibayar.');
@@ -146,13 +146,14 @@ class OrderService
             return ['paid' => true, 'bypass' => true, 'invoice_number' => $payment->invoice_number];
         }
 
-        $checkout = $this->doku->createCheckout($payment->invoice_number, $payment->amount, 'IDR', $payer->name, $payer->email, $methodTypes);
-        $payment->update(['doku_token_id' => $checkout['token_id'], 'doku_payment_url' => $checkout['url']]);
+        $gateway = $this->gateways->resolve($gatewayName);
+        $checkout = $gateway->createCheckout($payment->invoice_number, $payment->amount, 'IDR', $payer->name, $payer->email, $methodTypes);
+        $payment->update(['gateway' => $gateway->name(), 'gateway_ref' => $checkout['ref'], 'gateway_url' => $checkout['url']]);
 
         return ['paid' => false, 'payment_url' => $checkout['url'], 'invoice_number' => $payment->invoice_number];
     }
 
-    /** Idempoten - dipanggil mode uji/gratis atau webhook DOKU. */
+    /** Idempoten - dipanggil mode uji/gratis atau webhook gateway. */
     public function markBatchPaid(OrderBatch $batch): void
     {
         if ($batch->isPaid()) {
@@ -200,9 +201,9 @@ class OrderService
     /**
      * @return array{paid:bool, bypass?:bool, payment_url?:string, invoice_number:string}
      *
-     * @throws \RuntimeException bila DOKU menolak/tidak terkonfigurasi (pemanggil mengubahnya jadi 503)
+     * @throws \RuntimeException bila gateway menolak/tidak terkonfigurasi (pemanggil mengubahnya jadi 503)
      */
-    public function startPayment(Order $order, User $payer, ?string $ip = null, ?string $method = null): array
+    public function startPayment(Order $order, User $payer, ?string $ip = null, ?string $method = null, ?string $gatewayName = null): array
     {
         abort_if($order->status === Order::STATUS_CANCELLED, 422, 'Pesanan sudah dibatalkan.');
         abort_if($order->isPaid(), 422, 'Pesanan ini sudah dibayar.');
@@ -219,7 +220,7 @@ class OrderService
             'status' => 'pending',
         ]);
 
-        // Gratis (diskon 100%) atau mode uji: langsung lunas tanpa DOKU.
+        // Gratis (diskon 100%) atau mode uji: langsung lunas tanpa gateway.
         if ($order->amount === 0 || PaymentMode::bypassed()) {
             $payment->update(['status' => 'paid', 'paid_at' => now(), 'notification_payload' => ['bypass' => PaymentMode::bypassed()]]);
             $order->discountCode?->incrementUsage();
@@ -229,13 +230,14 @@ class OrderService
             return ['paid' => true, 'bypass' => true, 'invoice_number' => $payment->invoice_number];
         }
 
-        $checkout = $this->doku->createCheckout($payment->invoice_number, $payment->amount, 'IDR', $payer->name, $payer->email, $methodTypes);
-        $payment->update(['doku_token_id' => $checkout['token_id'], 'doku_payment_url' => $checkout['url']]);
+        $gateway = $this->gateways->resolve($gatewayName);
+        $checkout = $gateway->createCheckout($payment->invoice_number, $payment->amount, 'IDR', $payer->name, $payer->email, $methodTypes);
+        $payment->update(['gateway' => $gateway->name(), 'gateway_ref' => $checkout['ref'], 'gateway_url' => $checkout['url']]);
 
         return ['paid' => false, 'payment_url' => $checkout['url'], 'invoice_number' => $payment->invoice_number];
     }
 
-    /** Dipanggil saat pembayaran sukses (mode uji, gratis, atau webhook DOKU). Idempoten. */
+    /** Dipanggil saat pembayaran sukses (mode uji, gratis, atau webhook gateway). Idempoten. */
     public function markPaid(Order $order): void
     {
         if ($order->isPaid()) {

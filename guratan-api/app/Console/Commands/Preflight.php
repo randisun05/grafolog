@@ -44,9 +44,12 @@ class Preflight extends Command
         $this->check('MAIL_FROM terisi', filled(config('mail.from.address')) && ! str_contains((string) config('mail.from.address'), 'example'), 'warn', 'MAIL_FROM_ADDRESS masih contoh');
 
         $bypass = PaymentMode::bypassed();
-        $this->check('Mode uji pembayaran mati', ! $bypass, $isProd ? 'fail' : 'warn', 'PAYMENT_BYPASS/kredensial DOKU kosong: pembayaran langsung dianggap lunas');
-        $this->check('Kredensial DOKU terisi', filled(config('services.doku.client_id')) && filled(config('services.doku.secret_key')), $isProd ? 'fail' : 'warn', 'DOKU_CLIENT_ID/DOKU_SECRET_KEY kosong');
-        $this->check('DOKU_IS_PRODUCTION=true', (bool) config('services.doku.is_production'), $isProd ? 'fail' : 'warn', 'DOKU masih sandbox');
+        $this->check('Mode uji pembayaran mati', ! $bypass, $isProd ? 'fail' : 'warn', 'PAYMENT_BYPASS/kredensial gateway kosong: pembayaran langsung dianggap lunas');
+        $gw = app(\App\Services\Payment\PaymentGatewayManager::class);
+        $this->check('Ada gateway pembayaran terkonfigurasi', $gw->anyConfigured(), $isProd ? 'fail' : 'warn', 'Kredensial DOKU/Xendit kosong semua');
+        $this->check('Gateway default ('.$gw->defaultName().') terisi', in_array($gw->defaultName(), $gw->available(), true), $isProd ? 'fail' : 'warn', 'PAYMENT_GATEWAY='.$gw->defaultName().' tapi kredensialnya kosong');
+        $this->check('DOKU_IS_PRODUCTION=true (bila DOKU dipakai)', ! filled(config('services.doku.client_id')) || (bool) config('services.doku.is_production'), $isProd ? 'fail' : 'warn', 'DOKU masih sandbox');
+        $this->check('XENDIT_CALLBACK_TOKEN terisi (bila Xendit dipakai)', ! filled(config('services.xendit.secret_key')) || filled(config('services.xendit.callback_token')), $isProd ? 'fail' : 'warn', 'Webhook Xendit tidak bisa diverifikasi');
 
         $this->check('Antrean bukan sync', config('queue.default') !== 'sync', 'fail', 'QUEUE_CONNECTION=sync: email memperlambat request');
         $this->check('Worker antrean hidup', $this->queueHealthy(), 'warn', 'Ada job menunggu > 10 menit: jalankan `php artisan queue:work` via supervisor/systemd');

@@ -121,12 +121,12 @@ class B2bOrderController extends Controller
         abort_unless($batch->company_id === $request->user()->company_id, 404);
 
         try {
-            return response()->json($this->orders->startBatchPayment($batch, $request->user(), $request->ip(), $this->method($request)), 201);
+            return response()->json($this->orders->startBatchPayment($batch, $request->user(), $request->ip(), $this->method($request), $this->gateway($request)), 201);
         } catch (RuntimeException $e) {
             if ($e instanceof HttpExceptionInterface) {
                 throw $e;
             }
-            Log::error('DOKU checkout pesanan B2B gagal dibuat', ['batch_id' => $batch->id, 'error' => $e->getMessage()]);
+            Log::error('Checkout pesanan B2B gagal dibuat', ['batch_id' => $batch->id, 'error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Pembayaran sedang tidak tersedia, coba lagi nanti.'], 503);
         }

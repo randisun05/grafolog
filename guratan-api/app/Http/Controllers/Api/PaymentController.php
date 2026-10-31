@@ -12,6 +12,8 @@ use App\Models\PricingPlan;
 use App\Models\TokenPurchase;
 use App\Services\Commerce\OrderService;
 use App\Services\Payment\DokuService;
+use App\Services\Payment\PaymentGatewayManager;
+use App\Services\Payment\XenditService;
 use App\Services\Payment\PaymentMethods;
 use App\Services\Payment\PaymentMode;
 use App\Services\TokenWalletService;
@@ -23,10 +25,21 @@ use RuntimeException;
 
 class PaymentController extends Controller
 {
-    public function __construct(private DokuService $doku, private TokenWalletService $tokenWallet) {}
+    public function __construct(
+        private DokuService $doku,
+        private XenditService $xendit,
+        private PaymentGatewayManager $gateways,
+        private TokenWalletService $tokenWallet,
+    ) {}
+
+    /** Gateway yang bisa dipilih pembeli (kredensial terisi), default di urutan pertama - publik, tanpa rahasia. */
+    public function gateways(): JsonResponse
+    {
+        return response()->json(['default' => $this->gateways->defaultName(), 'available' => $this->gateways->available()]);
+    }
 
     /**
-     * Mulai pembayaran DOKU untuk satu sample tier comprehensive/master.
+     * Mulai pembayaran (DOKU/Xendit) untuk satu sample tier comprehensive/master.
      * Hanya pemilik sample (klien) yang boleh membayar - grafolog/pihak lain
      * yang membuatkan sample tidak otomatis boleh bayar atas nama klien.
      * `discount_code` opsional (Commerce Fase D) - divalidasi lewat
@@ -75,12 +88,14 @@ class PaymentController extends Controller
             ], 201);
         }
 
-        // DokuService melempar RuntimeException kalau kredensial belum diisi
-        // atau DOKU menolak request - jangan biarkan itu bocor jadi 500 mentah
+        $gateway = $this->gateways->resolve($request->validated('gateway'));
+
+        // Gateway melempar RuntimeException kalau kredensial belum diisi
+        // atau gateway menolak request - jangan biarkan itu bocor jadi 500 mentah
         // (leak stack trace/nama env var kalau APP_DEBUG kelupaan aktif di
         // production). Detail asli tetap masuk log server untuk developer.
         try {
-            $checkout = $this->doku->createCheckout(
+            $checkout = $gateway->createCheckout(
                 $payment->invoice_number,
                 $payment->amount,
                 $payment->currency,
@@ -89,7 +104,7 @@ class PaymentController extends Controller
                 $methodTypes,
             );
         } catch (RuntimeException $e) {
-            Log::error('DOKU checkout gagal dibuat', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+            Log::error('Checkout gagal dibuat', ['gateway' => $gateway->name(), 'payment_id' => $payment->id, 'error' => $e->getMessage()]);
 
             return response()->json([
                 'message' => 'Pembayaran sedang tidak tersedia, coba lagi nanti.',
@@ -97,8 +112,9 @@ class PaymentController extends Controller
         }
 
         $payment->update([
-            'doku_token_id' => $checkout['token_id'],
-            'doku_payment_url' => $checkout['url'],
+            'gateway' => $gateway->name(),
+            'gateway_ref' => $checkout['ref'],
+            'gateway_url' => $checkout['url'],
         ]);
 
         return response()->json([
@@ -133,48 +149,82 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Invalid Signature'], 400);
         }
 
-        $invoiceNumber = $request->input('order.invoice_number');
-        $status = $request->input('transaction.status');
+        return $this->dispatchNotification(
+            'DOKU',
+            $request->input('order.invoice_number'),
+            (string) $request->input('transaction.status'),
+            $request->input('transaction.status') === 'SUCCESS',
+            $request,
+        );
+    }
 
+    /**
+     * Webhook Xendit (Callback URL invoice) - server-to-server, TIDAK di belakang auth:sanctum;
+     * keamanan = header X-Callback-Token. Payload datar: `external_id` (= invoice_number kita),
+     * `status` PAID/SETTLED = lunas, EXPIRED/lainnya = gagal. Belum dicek terhadap payload
+     * sungguhan Xendit: periksa `notification_payload` yang tersimpan pada transaksi test pertama.
+     */
+    public function xenditNotification(Request $request): JsonResponse
+    {
+        if (! $this->xendit->verifyWebhookToken($request)) {
+            Log::warning('Xendit notification: invalid callback token', ['ip' => $request->ip()]);
+
+            return response()->json(['message' => 'Invalid Callback Token'], 400);
+        }
+
+        $status = (string) $request->input('status');
+
+        return $this->dispatchNotification(
+            'Xendit',
+            $request->input('external_id'),
+            $status,
+            in_array($status, ['PAID', 'SETTLED'], true),
+            $request,
+        );
+    }
+
+    /** Cari transaksi (Payment dulu, lalu TokenPurchase) lalu terapkan hasil bayar - dipakai kedua webhook. */
+    private function dispatchNotification(string $gateway, ?string $invoiceNumber, string $status, bool $success, Request $request): JsonResponse
+    {
         if ($payment = Payment::where('invoice_number', $invoiceNumber)->first()) {
-            $this->handleSamplePaymentNotification($payment, $status, $request);
+            $this->handleSamplePaymentNotification($payment, $status, $success, $request);
 
             return response()->json(['message' => 'OK']);
         }
 
         if ($purchase = TokenPurchase::where('invoice_number', $invoiceNumber)->first()) {
-            $this->handleTokenPurchaseNotification($purchase, $status, $request);
+            $this->handleTokenPurchaseNotification($purchase, $status, $success, $request);
 
             return response()->json(['message' => 'OK']);
         }
 
-        Log::warning('DOKU notification: unknown invoice_number', ['invoice_number' => $invoiceNumber]);
+        Log::warning($gateway.' notification: unknown invoice_number', ['invoice_number' => $invoiceNumber]);
 
         return response()->json(['message' => 'Unknown invoice_number'], 404);
     }
 
-    private function handleSamplePaymentNotification(Payment $payment, string $status, Request $request): void
+    private function handleSamplePaymentNotification(Payment $payment, string $status, bool $success, Request $request): void
     {
         $wasAlreadyPaid = $payment->isPaid();
 
         // Status lunas bersifat final: notifikasi susulan (FAILED/EXPIRED atau
         // SUCCESS dobel) tidak boleh menurunkan status atau mengkredit ulang.
         if ($wasAlreadyPaid) {
-            Log::info('DOKU notification diabaikan, invoice sudah lunas', ['invoice_number' => $payment->invoice_number, 'status' => $status]);
+            Log::info('Notification diabaikan, invoice sudah lunas', ['invoice_number' => $payment->invoice_number, 'status' => $status]);
 
             return;
         }
 
         $payment->update([
             'notification_payload' => $request->all(),
-            'status' => $status === 'SUCCESS' ? 'paid' : 'failed',
-            'paid_at' => $status === 'SUCCESS' ? now() : null,
+            'status' => $success ? 'paid' : 'failed',
+            'paid_at' => $success ? now() : null,
         ]);
 
         // Kuota kode diskon baru terpakai saat pembayaran BENAR-BENAR sukses,
         // bukan saat preview atau saat Payment dibuat - dan hanya sekali,
         // jaga-jaga DOKU mengirim notifikasi SUCCESS dobel untuk invoice yang sama.
-        if ($status === 'SUCCESS' && ! $wasAlreadyPaid) {
+        if ($success && ! $wasAlreadyPaid) {
             $payment->discountCode?->incrementUsage();
             // Pembayaran pesanan produk (2026-10-17): buat layanan pendukungnya.
             if ($payment->order) {
@@ -186,27 +236,27 @@ class PaymentController extends Controller
         }
     }
 
-    private function handleTokenPurchaseNotification(TokenPurchase $purchase, string $status, Request $request): void
+    private function handleTokenPurchaseNotification(TokenPurchase $purchase, string $status, bool $success, Request $request): void
     {
         $wasAlreadyPaid = $purchase->isPaid();
 
         // Status lunas bersifat final: notifikasi susulan (FAILED/EXPIRED atau
         // SUCCESS dobel) tidak boleh menurunkan status atau mengkredit ulang.
         if ($wasAlreadyPaid) {
-            Log::info('DOKU notification diabaikan, invoice sudah lunas', ['invoice_number' => $purchase->invoice_number, 'status' => $status]);
+            Log::info('Notification diabaikan, invoice sudah lunas', ['invoice_number' => $purchase->invoice_number, 'status' => $status]);
 
             return;
         }
 
         $purchase->update([
             'notification_payload' => $request->all(),
-            'status' => $status === 'SUCCESS' ? 'paid' : 'failed',
-            'paid_at' => $status === 'SUCCESS' ? now() : null,
+            'status' => $success ? 'paid' : 'failed',
+            'paid_at' => $success ? now() : null,
         ]);
 
         // Sama seperti Payment: kuota diskon & saldo token baru bertambah
         // saat SUKSES sungguhan, sekali saja, dijaga dari notifikasi dobel.
-        if ($status === 'SUCCESS' && ! $wasAlreadyPaid) {
+        if ($success && ! $wasAlreadyPaid) {
             $this->tokenWallet->credit($purchase->user, $purchase->quantity, ['token_purchase_id' => $purchase->id]);
             $purchase->discountCode?->incrementUsage();
         }

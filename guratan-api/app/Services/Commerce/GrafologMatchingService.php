@@ -46,7 +46,19 @@ class GrafologMatchingService
     /** Dipanggil saat pesanan klien individu lunas. */
     public function startOnPaid(Order $order): void
     {
-        $grafolog = $order->grafolog_choice === 'pilih' && $order->grafolog_id ? User::find($order->grafolog_id) : null;
+        // Klien bawaan grafolog (referred_by) yang tidak memilih grafolog lain: langsung ditugaskan ke
+        // pembawanya tanpa menunggu konfirmasi 24 jam (OrderController mengisi grafolog_id = pembawa).
+        if ($order->grafolog_choice !== 'pilih' && $order->grafolog_id && $order->user->referred_by === $order->grafolog_id) {
+            $bringer = User::find($order->grafolog_id);
+            if ($bringer?->isGrafolog()) {
+                $this->finalize($order, $bringer, $bringer->id);
+                $this->notifier->send($bringer, 'penugasan', 'Penugasan baru', "Pesanan #{$order->id} ({$order->product->nama}) dari klien Anda sekarang menjadi tanggung jawab Anda.", '/grafolog/ditugaskan');
+
+                return;
+            }
+        }
+
+        $grafolog =$order->grafolog_choice === 'pilih' && $order->grafolog_id ? User::find($order->grafolog_id) : null;
         $grafolog ? $this->request($order, $grafolog) : $this->toAdmin($order);
     }
 

@@ -22,6 +22,7 @@ class CreateTokenPurchaseRequest extends FormRequest
             'quantity' => ['required', 'integer', 'min:1'],
             'discount_code' => ['nullable', 'string', 'max:32'],
             'payment_method' => ['nullable', 'in:'.implode(',', PaymentMethods::keys())],
+            'gateway' => ['nullable', 'in:doku,xendit'],
         ];
     }
 }

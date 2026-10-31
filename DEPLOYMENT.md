@@ -19,6 +19,8 @@ bahwa deployment sudah terjadi.
 | `MAIL_MAILER` | `smtp` (akun Gmail pribadi) | provider transaksional yang layak untuk volume production (Gmail SMTP punya rate limit harian dan bukan dirancang untuk ini — lihat catatan di bawah) |
 | `DOKU_CLIENT_ID` / `DOKU_SECRET_KEY` | kosong/sandbox | **kredensial PRODUCTION dari DOKU Back Office** — akun sandbox dan production DOKU terpisah total, jangan tertukar |
 | `DOKU_IS_PRODUCTION` | `false` | `true` |
+| `XENDIT_SECRET_KEY` / `XENDIT_CALLBACK_TOKEN` | kosong | (opsional, gateway alternatif) key `xnd_production_...` + token webhook dari Xendit Dashboard; Callback URL: `https://<api>/api/payments/xendit-notification` |
+| `PAYMENT_GATEWAY` | `doku` | `doku` atau `xendit` (default; pembeli bisa memilih bila keduanya terisi) |
 | `PRICE_MASTER` (di `config/pricing.php`) | placeholder 149000 | **konfirmasi angka resmi ke bisnis sebelum go-live** |
 
 ### Langkah deploy

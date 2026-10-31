@@ -1928,3 +1928,19 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 - Frontend checkout UI (see "Payment (DOKU)" above — backend is done,
   frontend trigger point is an open product question).
 - Production DOKU credentials (sandbox-only scaffolding so far).
+
+## Gateway ganda DOKU + Xendit — 2026-10-31
+
+- `Services/Payment/PaymentGateway` (interface) diimplementasi `DokuService` dan `XenditService`; `PaymentGatewayManager`
+  memilih: default `PAYMENT_GATEWAY` (doku|xendit), pembeli boleh memilih gateway lain yang kredensialnya terisi lewat
+  field `gateway` di request bayar (sample, pesanan, pesanan B2B, beli token). `GET /api/payment-gateways` (publik)
+  = `{default, available}`; FE `PaymentMethodPicker` menampilkan pilihan "Penyedia pembayaran" hanya bila >1 aktif.
+- Kolom `doku_*` pada `payments`/`token_purchases` diganti nama jadi `gateway_ref`/`gateway_url`/`gateway_channel`,
+  plus kolom `gateway` (baris lama = 'doku'). `PaymentMode::bypassed()` hanya aktif bila TIDAK ada gateway terkonfigurasi.
+- Webhook: DOKU tetap `POST /api/payments/notification` (signature HMAC); Xendit `POST /api/payments/xendit-notification`
+  (header `X-Callback-Token`, payload datar `external_id` + `status` PAID/SETTLED = lunas). Keduanya lewat
+  `PaymentController::dispatchNotification()` (lunas final, idempoten).
+- **Batasan**: Xendit belum membatasi metode bayar per grup promo (halaman bayar Xendit menampilkan semua metode);
+  Xendit belum pernah dites terhadap akun sungguhan - cek `notification_payload` pada transaksi test pertama.
+- Klien bawaan grafolog (`referred_by`) tetap langsung ditugaskan ke pembawanya saat lunas
+  (`GrafologMatchingService::startOnPaid`), walau alur T2 umumnya meminta konfirmasi grafolog 24 jam.

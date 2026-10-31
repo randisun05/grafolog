@@ -106,13 +106,13 @@ class OrderController extends Controller
         abort_unless($order->user_id === $request->user()->id && ! $order->batch_id, 403);
 
         try {
-            return response()->json($this->orders->startPayment($order, $request->user(), $request->ip(), $this->method($request)), 201);
+            return response()->json($this->orders->startPayment($order, $request->user(), $request->ip(), $this->method($request), $this->gateway($request)), 201);
         } catch (RuntimeException $e) {
             // abort() (422 sudah dibayar/dibatalkan) juga RuntimeException - teruskan apa adanya.
             if ($e instanceof HttpExceptionInterface) {
                 throw $e;
             }
-            Log::error('DOKU checkout pesanan gagal dibuat', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            Log::error('Checkout pesanan gagal dibuat', ['order_id' => $order->id, 'error' => $e->getMessage()]);
 
             return response()->json(['message' => 'Pembayaran sedang tidak tersedia, coba lagi nanti.'], 503);
         }

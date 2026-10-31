@@ -21,6 +21,6 @@ class PaymentMode
             return filter_var($explicit, FILTER_VALIDATE_BOOLEAN);
         }
 
-        return blank(config('services.doku.client_id'));
+        return ! app(PaymentGatewayManager::class)->anyConfigured();
     }
 }

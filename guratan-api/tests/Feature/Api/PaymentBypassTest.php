@@ -39,7 +39,8 @@ class PaymentBypassTest extends TestCase
     {
         $this->assertTrue(PaymentMode::bypassed());
 
-        config(['services.doku.client_id' => 'abc']);
+        // "Terkonfigurasi" = client id DAN secret terisi (PaymentGateway::isConfigured()).
+        config(['services.doku.client_id' => 'abc', 'services.doku.secret_key' => 'def']);
         $this->assertFalse(PaymentMode::bypassed());
 
         config(['payment.bypass' => 'true']);

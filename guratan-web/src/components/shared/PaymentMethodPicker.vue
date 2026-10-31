@@ -2,18 +2,31 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '@/lib/api'
 
-/** Pilihan metode bayar (opsional). `allowed` dari kode promo membatasi pilihan; kosong = bebas. */
+/**
+ * Pilihan metode bayar (opsional). `allowed` dari kode promo membatasi pilihan; kosong = bebas.
+ * Bila lebih dari satu gateway (DOKU/Xendit) terkonfigurasi, pembeli juga bisa memilih gateway
+ * (`v-model:gateway`, kosong = gateway default server).
+ */
 const props = defineProps({
   modelValue: { type: String, default: '' },
+  gateway: { type: String, default: '' },
   allowed: { type: Array, default: null },
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:gateway'])
+const GATEWAY_LABEL = { doku: 'DOKU', xendit: 'Xendit' }
 const groups = ref([])
+const gateways = ref([])
 onMounted(async () => {
   try {
     groups.value = (await api.get('/payment-methods')).data
   } catch {
     groups.value = []
+  }
+  try {
+    const available = (await api.get('/payment-gateways')).data?.available
+    gateways.value = Array.isArray(available) ? available : []
+  } catch {
+    gateways.value = []
   }
 })
 const options = computed(() =>
@@ -22,6 +35,13 @@ const options = computed(() =>
 </script>
 
 <template>
+  <label v-if="gateways.length > 1" class="pmp">
+    Penyedia pembayaran
+    <select :value="gateway" @change="emit('update:gateway', $event.target.value)">
+      <option value="">Otomatis</option>
+      <option v-for="g in gateways" :key="g" :value="g">{{ GATEWAY_LABEL[g] ?? g }}</option>
+    </select>
+  </label>
   <label v-if="groups.length" class="pmp">
     Metode pembayaran
     <select :value="modelValue" @change="emit('update:modelValue', $event.target.value)">

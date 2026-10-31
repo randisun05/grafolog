@@ -44,6 +44,7 @@ const quote = ref(null)
 const submitting = ref(false)
 const agreed = ref(false)
 const paymentMethod = ref('')
+const gateway = ref('')
 const paying = ref(null)
 
 async function load() {
@@ -127,6 +128,7 @@ async function pay(batch) {
   try {
     const { data } = await api.post(`/hr/orders/${batch.id}/payment`, {
       payment_method: paymentMethod.value || undefined,
+      gateway: gateway.value || undefined,
     })
     if (data.paid) {
       toast.push(
@@ -263,7 +265,11 @@ onMounted(load)
           >
           <strong>{{ formatRupiah(quote.final_total) }}</strong>
         </div>
-        <PaymentMethodPicker v-model="paymentMethod" :allowed="quote?.code_payment_methods" />
+        <PaymentMethodPicker
+          v-model="paymentMethod"
+          v-model:gateway="gateway"
+          :allowed="quote?.code_payment_methods"
+        />
         <label class="hro__toc">
           <input v-model="agreed" type="checkbox" />
           <span>

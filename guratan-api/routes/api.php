@@ -95,6 +95,9 @@ Route::middleware('throttle:password-reset')->group(function () {
 // DOKU memanggil ini server-to-server, tidak punya token Sanctum kita -
 // keamanan bergantung penuh pada DokuService::verifyNotificationSignature().
 Route::middleware('throttle:30,1')->post('/payments/notification', [PaymentController::class, 'notification']);
+// Xendit: Callback URL invoice - diverifikasi header X-Callback-Token (XenditService::verifyWebhookToken()).
+Route::middleware('throttle:30,1')->post('/payments/xendit-notification', [PaymentController::class, 'xenditNotification']);
+Route::get('/payment-gateways', [PaymentController::class, 'gateways']);
 
 // Publik (tanpa login) - dipakai halaman harga/marketing sebelum checkout.
 Route::get('/pricing', [PricingController::class, 'index']);

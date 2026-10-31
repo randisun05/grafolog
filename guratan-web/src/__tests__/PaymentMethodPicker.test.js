@@ -44,3 +44,37 @@ describe('PaymentMethodPicker', () => {
     expect(w.emitted('update:modelValue')[0]).toEqual(['qris'])
   })
 })
+
+describe('PaymentMethodPicker - pilihan gateway', () => {
+  it('menampilkan pilihan penyedia hanya bila lebih dari satu gateway tersedia', async () => {
+    const { default: api } = await import('@/lib/api')
+    api.get.mockImplementation((url) =>
+      Promise.resolve({
+        data:
+          url === '/payment-gateways'
+            ? { default: 'doku', available: ['doku', 'xendit'] }
+            : [{ key: 'va', label: 'Virtual Account' }],
+      }),
+    )
+    const w = mount(PaymentMethodPicker, { props: { modelValue: '', gateway: '' } })
+    await flushPromises()
+    const selects = w.findAll('select')
+    expect(selects).toHaveLength(2)
+    expect(selects[0].findAll('option').map((o) => o.text())).toEqual(['Otomatis', 'DOKU', 'Xendit'])
+
+    await selects[0].setValue('xendit')
+    expect(w.emitted('update:gateway')[0]).toEqual(['xendit'])
+  })
+
+  it('menyembunyikan pilihan penyedia bila hanya satu gateway', async () => {
+    const { default: api } = await import('@/lib/api')
+    api.get.mockImplementation((url) =>
+      Promise.resolve({
+        data: url === '/payment-gateways' ? { default: 'doku', available: ['doku'] } : [{ key: 'va', label: 'VA' }],
+      }),
+    )
+    const w = mount(PaymentMethodPicker, { props: { modelValue: '' } })
+    await flushPromises()
+    expect(w.findAll('select')).toHaveLength(1)
+  })
+})
