@@ -19,6 +19,7 @@ class GenerateNarasiTerpaduRequest extends FormRequest
     {
         return [
             'bahasa' => ['required', 'in:id,en'],
+            'force' => ['nullable', 'boolean'],
         ];
     }
 }

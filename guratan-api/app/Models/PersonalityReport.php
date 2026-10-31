@@ -13,6 +13,7 @@ class PersonalityReport extends Model
         'review_status', 'reviewed_by', 'reviewed_at', 'review_note',
         'validation', 'validation_requested_at', 'validation_fee', 'validation_paid_to', 'validation_paid_at',
         'narasi_terpadu', 'narasi_bahasa', 'narasi_status', 'pdf_path_klien',
+        'narasi_input_hash', 'narasi_generation_error',
     ];
 
     /** Fase D (2026-10-17): laporan baru menunggu keputusan grafolog - terbit mandiri / minta validasi. */
