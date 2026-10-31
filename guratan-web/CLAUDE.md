@@ -758,3 +758,11 @@ Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
 - `components/upload/` is intentionally absent (deleted 2026-08-01, Rapid
   tier retired) — don't recreate it without an explicit new user decision
   reversing that.
+
+## Operasional dari branch lama — 2026-10-31
+
+- `AdminNotificationLogsView` (`/admin/notification-logs`, menu Admin + palette): log pengiriman email/WhatsApp.
+- `lib/analytics.js` (GA4): no-op sampai `VITE_GA_MEASUREMENT_ID` diisi; pageview manual lewat `router.afterEach`.
+  Pengungkapan Google Analytics, Fonnte, dan Xendit sudah ditambahkan ke `legal/privacy-policy.md` (perlu ditinjau pemilik
+  hukum; versi dokumen belum dinaikkan jadi pengguna belum diminta persetujuan ulang).
+- `PaymentMethodPicker`: pilihan "Penyedia pembayaran" (DOKU/Xendit) muncul hanya bila >1 gateway aktif.
