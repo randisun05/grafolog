@@ -33,4 +33,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Sentry: no-op bila SENTRY_LARAVEL_DSN kosong. Dijaga class_exists supaya aplikasi tetap jalan
+        // di mesin yang belum menjalankan `composer install` setelah paket ini ditambahkan.
+        if (class_exists(\Sentry\Laravel\Integration::class)) {
+            \Sentry\Laravel\Integration::handles($exceptions);
+        }
     })->create();
