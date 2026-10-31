@@ -466,6 +466,7 @@ onMounted(async () => {
       <RouterLink to="/syarat">Syarat Layanan</RouterLink>
       <span aria-hidden="true">·</span>
       <RouterLink to="/kebijakan-transaksi">Kebijakan Transaksi</RouterLink>
+      <RouterLink to="/kebijakan-token">Kebijakan Token</RouterLink>
       <span aria-hidden="true">·</span>
       <RouterLink to="/produk">Produk &amp; Layanan</RouterLink>
       <RouterLink to="/artikel">Artikel</RouterLink>

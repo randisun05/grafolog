@@ -4,12 +4,13 @@ import { marked } from 'marked'
 import privacySource from '../../../legal/privacy-policy.md?raw'
 import termsSource from '../../../legal/terms-of-service.md?raw'
 import sopSource from '../../../legal/sop-transaksi.md?raw'
+import tokenSource from '../../../legal/kebijakan-token.md?raw'
 
 const props = defineProps({
   doc: { type: String, required: true },
 })
 
-const sources = { privasi: privacySource, syarat: termsSource, transaksi: sopSource }
+const sources = { privasi: privacySource, syarat: termsSource, transaksi: sopSource, token: tokenSource }
 
 const markdown = computed(() => (sources[props.doc] ?? '').replace(/<!--[\s\S]*?-->/g, '').trim())
 const isDraft = computed(() => /\[[A-Z][^\]]*\]/.test(markdown.value))

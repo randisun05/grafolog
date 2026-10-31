@@ -282,6 +282,12 @@ const router = createRouter({
       component: () => import('../views/LegalView.vue'),
       props: { doc: 'transaksi' },
     },
+    {
+      path: '/kebijakan-token',
+      name: 'token-policy',
+      component: () => import('../views/LegalView.vue'),
+      props: { doc: 'token' },
+    },
     // Fase E (2026-10-17): lead magnet, konten, mini game - publik.
     {
       path: '/cek-tulisan',

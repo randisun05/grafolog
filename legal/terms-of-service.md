@@ -18,14 +18,13 @@ Dengan membuat akun atau memakai Guratan, Anda menyetujui ketentuan ini dan
 ## 1. Tentang Layanan
 
 Guratan adalah platform analisis grafologi (membaca kecenderungan kepribadian dari
-tulisan tangan) berbahasa Indonesia, dioperasikan oleh [NAMA PERUSAHAAN].
+tulisan tangan) berbahasa Indonesia, dioperasikan oleh Animus Scriptura.
 
 | Layanan | Cara Kerja |
 |---|---|
-| Comprehensive (berbayar) | Grafolog bersertifikat mengukur tulisan tangan dari scan PDF secara manual (kaliper) dan mengisi skor 40 aspek; laporan dibuat dari basis pengetahuan grafologi. |
-| Master (berbayar) | Seperti Comprehensive, ditambah satu sesi konsultasi daring dengan grafolog. |
+| Analisis tulisan tangan (berbayar) | Grafolog bersertifikat mengukur tulisan tangan dari scan/sampel secara manual (kaliper) dan mengisi pengukuran; laporan dibuat dari basis pengetahuan grafologi. Sesuai produk, dapat disertai sesi konsultasi. |
 | Layanan pendukung | Wawancara, konsultasi, konseling, program lain sesuai katalog. |
-| Asesmen perusahaan (B2B) | Perusahaan memesan asesmen untuk kandidat; grafolog dipilih perusahaan dari yang tersedia; tersedia analisis gabungan antar-kandidat. |
+| Asesmen perusahaan (B2B) | Perusahaan memesan asesmen untuk kandidat; grafolog dipilih perusahaan dari yang tersedia, atau perusahaan meminta rekomendasi administrator; grafolog wajib mengonfirmasi dalam 24 jam; tersedia analisis gabungan antar-kandidat. |
 
 ## 2. Peran Pengguna
 
@@ -77,7 +76,8 @@ Isian CV (termasuk foto dan dokumen) harus benar dan milik Anda. CV saling terli
 ## 6. Pemesanan, Pembayaran, dan Pembatalan
 
 - Harga yang berlaku adalah harga saat pesanan dibuat, termasuk promo yang sah saat itu.
-  Pembayaran melalui mitra payment gateway DOKU.
+  Pembayaran melalui mitra payment gateway yang kami tunjuk (saat ini DOKU).
+- **Konfirmasi grafolog**: grafolog pilihan Anda mengonfirmasi dalam 24 jam; bila menolak atau tidak menjawab, Anda dapat memilih grafolog lain atau meminta rekomendasi administrator. Pesanan baru berjalan setelah ada grafolog yang menerima.
 - **Pesanan yang belum dibayar** dapat dibatalkan tanpa biaya.
 - **Pesanan yang sudah dibayar (sudah di-order) tidak dapat dibatalkan** oleh pengguna.
   Dengan membayar, Anda menyetujui ketentuan ini.
@@ -96,6 +96,8 @@ memilih grafolog yang tersedia pada bulan layanan yang dipilih. Estimasi waktu p
 adalah perkiraan, bukan jaminan, tetapi tunduk pada batas 90 hari di pasal 6.
 
 ## 8. Token Grafolog
+
+Rincian lengkap ada di [Kebijakan Token](/kebijakan-token).
 
 Token adalah saldo kredit internal grafolog untuk layanan di dalam Guratan (mis. biaya
 supervisi); **bukan uang elektronik dan tidak dapat diuangkan kembali** (tidak ada
@@ -139,7 +141,7 @@ menerima notifikasi di kotak masuk. Anda dapat mematikan email notifikasi di Pro
 
 ## 13. Batasan Tanggung Jawab
 
-Sepanjang diizinkan hukum, [NAMA PERUSAHAAN] tidak bertanggung jawab atas keputusan
+Sepanjang diizinkan hukum, Animus Scriptura tidak bertanggung jawab atas keputusan
 yang diambil berdasarkan laporan, termasuk keputusan karier, hubungan, atau kesehatan.
 Tanggung jawab kami untuk satu pesanan dibatasi sebesar nilai yang Anda bayarkan untuk
 pesanan tersebut, kecuali hukum menentukan lain. Layanan diberikan sebagaimana adanya
@@ -153,8 +155,8 @@ masuk minimal 14 hari sebelum berlaku; pemakaian setelahnya berarti menerima.
 ## 15. Hukum dan Sengketa
 
 Tunduk pada hukum Republik Indonesia. Kami mengutamakan penyelesaian musyawarah;
-bila gagal, sengketa diselesaikan di pengadilan negeri tempat domisili [NAMA PERUSAHAAN].
+bila gagal, sengketa diselesaikan di pengadilan negeri tempat domisili Animus Scriptura.
 
 ## 16. Kontak
 
-[NAMA PERUSAHAAN] · [ALAMAT] · [EMAIL KONTAK]
+Animus Scriptura · [ALAMAT] · [EMAIL KONTAK]

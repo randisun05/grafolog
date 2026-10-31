@@ -11,7 +11,7 @@ Isi mengikuti kondisi sistem nyata (lihat guratan-api/CLAUDE.md). Kurung siku
 
 *Berlaku sejak: [TANGGAL RILIS] · Versi 1.1 (19 Oktober 2026)*
 
-[NAMA PERUSAHAAN] ("kami") adalah **Pengendali Data Pribadi** atas data yang diproses
+Animus Scriptura ("kami") adalah **Pengendali Data Pribadi** atas data yang diproses
 lewat Guratan menurut UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP).
 
 ## 1. Data yang Kami Proses
@@ -127,4 +127,4 @@ Perubahan material kami beritahukan lewat email dan kotak masuk sebelum berlaku.
 
 ## 12. Kontak
 
-Pejabat pelindungan data: [NAMA / JABATAN] · [EMAIL PRIVASI] · [NAMA PERUSAHAAN], [ALAMAT]
+Pejabat pelindungan data: [NAMA / JABATAN] · [EMAIL PRIVASI] · Animus Scriptura, [ALAMAT]
