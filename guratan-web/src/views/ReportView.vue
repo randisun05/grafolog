@@ -9,6 +9,7 @@ import CvForm from '@/components/cv/CvForm.vue'
 import ReportResume from '@/components/report/ReportResume.vue'
 import ConsultationPanel from '@/components/report/ConsultationPanel.vue'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
+import NarasiTerpaduPanel from '@/components/report/NarasiTerpaduPanel.vue'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 
@@ -100,6 +101,15 @@ function onNarasiUpdated(updatedReport) {
     review_status: updatedReport.review_status,
   }
 }
+
+function onNarasiTerpaduUpdated(updatedReport) {
+  report.value = {
+    ...report.value,
+    narasi_terpadu: updatedReport.narasi_terpadu,
+    narasi_bahasa: updatedReport.narasi_bahasa,
+    narasi_status: updatedReport.narasi_status,
+  }
+}
 </script>
 
 <template>
@@ -186,6 +196,21 @@ function onNarasiUpdated(updatedReport) {
         @corrected="onCorrected"
       />
 
+      <!-- Narasi terpadu (draf AI yang disunting grafolog). Grafolog mengelolanya di sini; klien/HR melihatnya
+           di atas rincian laporan hanya setelah ditandai final (backend menyembunyikan draf dari klien). -->
+      <NarasiTerpaduPanel
+        v-if="canEdit"
+        :report-id="report.id"
+        :narasi-terpadu="report.narasi_terpadu"
+        :narasi-bahasa="report.narasi_bahasa"
+        :narasi-status="report.narasi_status"
+        @updated="onNarasiTerpaduUpdated"
+      />
+      <section v-else-if="report.narasi_terpadu" class="report-view__narasi-card">
+        <h2 class="report-view__internal-heading">Narasi Laporan</h2>
+        <div class="report-view__narasi-klien">{{ report.narasi_terpadu }}</div>
+      </section>
+
       <ReportDocument
         v-if="report.data"
         :data="report.data"
@@ -260,5 +285,20 @@ function onNarasiUpdated(updatedReport) {
   font-size: 13px;
   color: var(--color-text-soft);
   margin: 0 0 14px;
+}
+.report-view__narasi-klien {
+  white-space: pre-line;
+  line-height: 1.7;
+  font-size: 15px;
+  text-align: justify;
+}
+.report-view__internal-heading {
+  margin-top: 32px;
+  font-size: 17px;
+}
+.report-view__internal-hint {
+  font-size: 12.5px;
+  color: var(--color-text-soft);
+  margin: 4px 0 16px;
 }
 </style>

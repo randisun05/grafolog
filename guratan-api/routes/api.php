@@ -216,8 +216,11 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/reports/{report}/validations', [ReportValidationController::class, 'forReport']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
+    Route::get('/reports/{report}/pdf-narasi', [ReportController::class, 'pdfNarasi'])->middleware('log.report_access');
     Route::get('/reports/{report}/resume', [ReportController::class, 'resume'])->middleware('log.report_access');
     Route::patch('/reports/{report}/aspek/{kode}/narasi', [ReportController::class, 'updateNarasi']);
+    Route::post('/reports/{report}/narasi-terpadu/generate', [ReportController::class, 'generateNarasiTerpadu']);
+    Route::patch('/reports/{report}/narasi-terpadu', [ReportController::class, 'updateNarasiTerpadu']);
     Route::get('/reports/{report}/revisions', [ReportController::class, 'revisions']);
     Route::get('/reports/{report}/revisions/{revision}', [ReportController::class, 'showRevision']);
 

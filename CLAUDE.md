@@ -63,7 +63,12 @@ Seluruh skor & narasi laporan berasal dari knowledge base nyata milik user
 
 LLM di sistem ini hanya merangkai/menerjemahkan narasi yang sudah ada di
 knowledge base — TIDAK pernah "mengarang" interpretasi psikologi dari nol
-(lihat `NarasiCacheService` di `guratan-api/CLAUDE.md`).
+(lihat `NarasiCacheService` di `guratan-api/CLAUDE.md`). **Narasi terpadu**
+(2026-08-22, lihat `guratan-api/CLAUDE.md`) menyusun ulang/merangkai narasi
+per-aspek yang sudah ada jadi 1 laporan deskriptif mengalir untuk klien —
+tetap dilarang keras menambah klaim baru di luar data yang diberikan (aturan
+eksplisit di prompt), dan draftnya wajib direview/disunting grafolog dulu
+sebelum klien bisa melihatnya.
 
 ## Status pengembangan (ringkas — detail penuh di CLAUDE.md sub-repo)
 
@@ -76,8 +81,6 @@ tersambung SMTP nyata).
 ### Yang SENGAJA belum dibangun (bukan lupa — keputusan)
 
 - Computer vision untuk Rapid tier.
-- Kalimat penghubung antar-aspek dalam satu laporan (butuh LLM per-laporan,
-  ditunda sampai ada data pemakaian nyata).
 - Dashboard B2B, batch processing, culture-fit matching, marketplace
   psikolog.
 - Payment gateway, Privacy Policy/ToS final, deployment production.
@@ -91,5 +94,11 @@ tersambung SMTP nyata).
 2. Data yang diproses = data psikologis sensitif → keamanan & audit log
    bukan opsional.
 3. LLM dipakai seminimal & se-defensif mungkin (cache, bukan panggilan live
-   per-user) — demi biaya DAN privasi.
+   per-user) — demi biaya DAN privasi. **Pengecualian sadar sejak
+   2026-08-22**: narasi terpadu (laporan klien final, lihat
+   `guratan-api/CLAUDE.md`) genuinely 1 call live per-laporan, karena
+   kombinasi 40 skor tiap klien unik dan tidak bisa di-cache seperti narasi
+   per-aspek. Pagar yang menjaga privasi tetap ada: grafolog wajib
+   review/edit draft AI sebelum menandai final, klien tidak pernah melihat
+   draft yang belum di-approve.
 4. MVP dulu, jangan bangun fitur yang belum perlu (CV, B2B dashboard, dst).

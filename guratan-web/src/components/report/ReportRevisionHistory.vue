@@ -15,7 +15,11 @@ const revisions = ref([])
 const openRevisionId = ref(null)
 const revisionData = ref({})
 
-const jenisLabel = { koreksi_skor: 'Koreksi Skor', edit_manual: 'Edit Narasi Manual' }
+const jenisLabel = {
+  koreksi_skor: 'Koreksi Skor',
+  edit_manual: 'Edit Narasi Manual',
+  edit_narasi_terpadu: 'Edit Narasi Terpadu',
+}
 
 async function toggle() {
   open.value = !open.value
@@ -67,10 +71,13 @@ async function viewRevision(revision) {
           <p v-if="r.catatan" class="revision-history__catatan">"{{ r.catatan }}"</p>
 
           <div v-if="openRevisionId === r.id" class="revision-history__snapshot">
-            <p class="revision-history__snapshot-label">
-              Isi laporan pada versi ini (sebelum diubah):
-            </p>
-            <ReportDocument v-if="revisionData[r.id]" :data="revisionData[r.id]" />
+            <p class="revision-history__snapshot-label">Isi laporan pada versi ini (sebelum diubah):</p>
+            <template v-if="revisionData[r.id]">
+              <p v-if="r.jenis === 'edit_narasi_terpadu'" class="revision-history__narasi-snapshot">
+                {{ revisionData[r.id].narasi_terpadu || '(kosong)' }}
+              </p>
+              <ReportDocument v-else :data="revisionData[r.id]" />
+            </template>
             <SkeletonLoader v-else variant="report" :rows="2" label="Memuat..." />
           </div>
         </li>
@@ -138,5 +145,10 @@ async function viewRevision(revision) {
   font-size: 12px;
   color: var(--color-text-soft);
   margin-bottom: 8px;
+}
+.revision-history__narasi-snapshot {
+  white-space: pre-line;
+  font-size: 13.5px;
+  line-height: 1.6;
 }
 </style>
