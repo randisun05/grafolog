@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreKombinasiTemuanRequest;
+use App\Http\Requests\Admin\SyncTopikRequest;
 use App\Http\Requests\Admin\UpdateKombinasiTemuanRequest;
 use App\Models\AuditLog;
 use App\Models\KombinasiTemuan;
@@ -18,7 +19,7 @@ use Illuminate\Http\Request;
  */
 class KombinasiTemuanController extends Controller
 {
-    private const WITH = ['syarat.indikator:id,kode,nama', 'syarat.aspek:id,kode,nama', 'syarat.sindrom:id,kode_romawi,nama'];
+    private const WITH = ['syarat.indikator:id,kode,nama', 'syarat.aspek:id,kode,nama', 'syarat.sindrom:id,kode_romawi,nama', 'topik'];
 
     public function index(): JsonResponse
     {
@@ -51,5 +52,14 @@ class KombinasiTemuanController extends Controller
         AuditLog::record('hapus_kombinasi_temuan', KombinasiTemuan::class, $id, $request->user()->id, $request->ip());
 
         return response()->json(['message' => 'Kombinasi temuan dihapus.']);
+    }
+
+    public function syncTopik(SyncTopikRequest $request, KombinasiTemuan $kombinasiTemuan): JsonResponse
+    {
+        $kombinasiTemuan->topik()->sync($request->validated('topik_ids'));
+
+        AuditLog::record('ubah_topik_kombinasi_temuan', KombinasiTemuan::class, $kombinasiTemuan->id, $request->user()->id, $request->ip());
+
+        return response()->json($kombinasiTemuan->load(self::WITH));
     }
 }

@@ -160,6 +160,19 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   (only present when a report has at least one match) at the end of the
   document, styled with its own gold-accent left border to read as a
   distinct finding type from the per-Aspek narasi above it.
+  **Gained an 8th tab, "Topik", 2026-08-22** — pure tagging infrastructure
+  (see `guratan-api/CLAUDE.md`'s "Topik (kategorisasi)" for why this ships
+  with no consumer feature yet). Inline in `AdminKnowledgeView.vue` (not
+  its own component — CRUD is as simple as the Sindrom tab: nama +
+  optional deskripsi, no nested builder). The Aspek tab's existing edit
+  panel gained a checkbox multi-select ("Topik") wired to
+  `PUT /admin/knowledge/aspek/{id}/topik` (`aspekTopikSelection` ref,
+  separate `saveAspekTopik()` call — deliberately NOT folded into the
+  existing `saveAspek()`/`aspekEditForm`, since it's its own sync
+  endpoint on the backend, not a plain field). `KombinasiTemuanManager.vue`
+  got the identical widget for the same reason. Both list views show a
+  small chip of tagged Topik names next to the existing count badges when
+  any are tagged, so tags are visible without opening the edit panel.
   **Below is the original (now-removed) tab's history, kept for context:**
   **Gained a 6th tab, "Referensi Silang", 2026-08-08 (KM-F)** — same
   paginated-search pattern as the Indikator tab (280 rows). Table columns:

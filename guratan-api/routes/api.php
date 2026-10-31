@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\Admin\TokenPriceController as AdminTokenPriceContro
 use App\Http\Controllers\Api\Admin\ValidationIndexController;
 use App\Http\Controllers\Api\Admin\VerificationCountsController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\Admin\TopikController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\AssignmentController;
@@ -217,6 +218,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     });
     Route::get('/reports/{report}/validations', [ReportValidationController::class, 'forReport']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
+    Route::get('/reports/{report}/segmen', [ReportController::class, 'segmen']);
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf-narasi', [ReportController::class, 'pdfNarasi'])->middleware('log.report_access');
     Route::get('/reports/{report}/resume', [ReportController::class, 'resume'])->middleware('log.report_access');
@@ -324,6 +326,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::post('/knowledge/aspek', [AdminAspekController::class, 'store']);
         Route::put('/knowledge/aspek/{aspek}', [AdminAspekController::class, 'update']);
         Route::delete('/knowledge/aspek/{aspek}', [AdminAspekController::class, 'destroy']);
+        Route::put('/knowledge/aspek/{aspek}/topik', [AdminAspekController::class, 'syncTopik']);
 
         Route::get('/knowledge/indikator', [AdminIndikatorController::class, 'index']);
         Route::get('/knowledge/indikator-options', [AdminIndikatorController::class, 'options']);
@@ -350,6 +353,13 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::delete('/knowledge/kombinasi/{kombinasiTemuan}', [KombinasiTemuanController::class, 'destroy']);
         Route::post('/knowledge/kombinasi/{kombinasiTemuan}/syarat', [KombinasiSyaratController::class, 'store']);
         Route::delete('/knowledge/kombinasi-syarat/{kombinasiSyarat}', [KombinasiSyaratController::class, 'destroy']);
+        Route::put('/knowledge/kombinasi/{kombinasiTemuan}/topik', [KombinasiTemuanController::class, 'syncTopik']);
+
+        // Topik / kategorisasi (2026-08-22) - lihat CLAUDE.md "Topik (kategorisasi)".
+        Route::get('/knowledge/topik', [TopikController::class, 'index']);
+        Route::post('/knowledge/topik', [TopikController::class, 'store']);
+        Route::put('/knowledge/topik/{topik}', [TopikController::class, 'update']);
+        Route::delete('/knowledge/topik/{topik}', [TopikController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

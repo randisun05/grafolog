@@ -10,6 +10,9 @@ const temuanList = ref([])
 const indikatorOptions = ref([])
 const aspekOptions = ref([])
 const sindromOptions = ref([])
+const topikOptions = ref([])
+const topikSelection = ref([])
+const topikSaving = ref(false)
 
 const createForm = ref({ nama: '', teks_interpretasi: '', logika_gabung: 'OR' })
 const createErrors = ref({})
@@ -38,16 +41,18 @@ kondisiOptions.sindrom = kondisiOptions.aspek
 async function load() {
   loading.value = true
   try {
-    const [temuanRes, indikatorRes, aspekRes, sindromRes] = await Promise.all([
+    const [temuanRes, indikatorRes, aspekRes, sindromRes, topikRes] = await Promise.all([
       api.get('/admin/knowledge/kombinasi'),
       api.get('/admin/knowledge/indikator-options'),
       api.get('/admin/knowledge/aspek'),
       api.get('/admin/knowledge/sindrom'),
+      api.get('/admin/knowledge/topik'),
     ])
     temuanList.value = temuanRes.data
     indikatorOptions.value = indikatorRes.data
     aspekOptions.value = aspekRes.data
     sindromOptions.value = sindromRes.data
+    topikOptions.value = topikRes.data
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal memuat Kombinasi Temuan.')
   } finally {
@@ -76,6 +81,20 @@ function startEdit(temuan) {
   expandedId.value = temuan.id
   editForm.value = { nama: temuan.nama, teks_interpretasi: temuan.teks_interpretasi, logika_gabung: temuan.logika_gabung }
   syaratForm.value = { level: 'aspek', indikator_id: '', aspek_id: '', sindrom_id: '', kondisi: '' }
+  topikSelection.value = (temuan.topik ?? []).map((t) => t.id)
+}
+
+async function saveTopikSelection(temuan) {
+  topikSaving.value = true
+  try {
+    const { data } = await api.put(`/admin/knowledge/kombinasi/${temuan.id}/topik`, { topik_ids: topikSelection.value })
+    temuanList.value = temuanList.value.map((t) => (t.id === temuan.id ? data : t))
+    toast.push('Topik disimpan.', 'success')
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal menyimpan Topik.')
+  } finally {
+    topikSaving.value = false
+  }
 }
 function cancelEdit() {
   expandedId.value = null
@@ -240,6 +259,18 @@ function formatSyarat(syarat) {
               Tambah Syarat
             </button>
           </div>
+
+          <h4>Topik</h4>
+          <div class="kombinasi-manager__topik-checkboxes">
+            <label v-for="t in topikOptions" :key="t.id" class="kombinasi-manager__topik-checkbox">
+              <input type="checkbox" :value="t.id" v-model="topikSelection" />
+              {{ t.nama }}
+            </label>
+            <p v-if="topikOptions.length === 0" class="kombinasi-manager__empty">Belum ada Topik - buat dulu di tab "Topik".</p>
+          </div>
+          <button type="button" class="btn" :disabled="topikSaving" @click="saveTopikSelection(temuan)">
+            {{ topikSaving ? 'Menyimpan...' : 'Simpan Topik' }}
+          </button>
         </div>
       </div>
     </template>
@@ -355,5 +386,17 @@ function formatSyarat(syarat) {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+.kombinasi-manager__topik-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 8px;
+}
+.kombinasi-manager__topik-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
 }
 </style>

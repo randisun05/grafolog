@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreAspekRequest;
+use App\Http\Requests\Admin\SyncTopikRequest;
 use App\Http\Requests\Admin\UpdateAspekRequest;
 use App\Models\Aspek;
 use App\Models\AuditLog;
@@ -18,7 +19,7 @@ class AspekController extends Controller
     public function index(): JsonResponse
     {
         return response()->json(
-            Aspek::with('sindrom:id,kode_romawi,nama')->withCount('indikator')->orderBy('kode')->get()
+            Aspek::with(['sindrom:id,kode_romawi,nama', 'topik'])->withCount('indikator')->orderBy('kode')->get()
         );
     }
 
@@ -37,7 +38,21 @@ class AspekController extends Controller
 
         AuditLog::record('ubah_aspek', Aspek::class, $aspek->id, $request->user()->id, $request->ip());
 
-        return response()->json($aspek->load('sindrom:id,kode_romawi,nama'));
+        return response()->json($aspek->load(['sindrom:id,kode_romawi,nama', 'topik']));
+    }
+
+    /**
+     * Sinkronkan tag Topik 1 Aspek (bukan attach/detach 1-1 - grafolog
+     * ganti seluruh set-nya sekaligus dari multi-select di UI, sync() lebih
+     * pas daripada 2 endpoint terpisah).
+     */
+    public function syncTopik(SyncTopikRequest $request, Aspek $aspek): JsonResponse
+    {
+        $aspek->topik()->sync($request->validated('topik_ids'));
+
+        AuditLog::record('ubah_topik_aspek', Aspek::class, $aspek->id, $request->user()->id, $request->ip());
+
+        return response()->json($aspek->load('topik'));
     }
 
     /**

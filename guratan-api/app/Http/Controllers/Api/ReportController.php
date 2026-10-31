@@ -16,6 +16,7 @@ use App\Services\Reporting\NarasiTerpaduService;
 use App\Services\Reporting\ReportPdfService;
 use App\Services\Reporting\ReportResumeService;
 use App\Services\Reporting\ReportRevisionService;
+use App\Services\Reporting\TopikFilterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,7 @@ class ReportController extends Controller
         private ReportLocalizer $localizer,
         private ReportPdfService $pdfService,
         private ReportRevisionService $reportRevisions,
+        private TopikFilterService $topikFilter,
     ) {}
 
     /**
@@ -98,6 +100,24 @@ class ReportController extends Controller
         abort_unless(in_array($bahasa, ReportLocalizer::BAHASA, true), 422, 'Bahasa tidak didukung (id|en).');
 
         return $bahasa;
+    }
+
+    /**
+     * Baca breakdown internal `data`, disaring ke Aspek/Kombinasi Temuan
+     * yang ditag salah satu Topik yang diminta - contoh konkret "produk
+     * turunan" (mis. B2B minta laporan segmen Karier saja) tanpa mengubah
+     * proses generate utama sama sekali (murni `TopikFilterService`
+     * membaca ulang `data` yang sudah tersimpan). Staff-only, sama seperti
+     * breakdown internal biasa - klien tetap TIDAK PERNAH mengakses ini.
+     */
+    public function segmen(Request $request, PersonalityReport $report): JsonResponse
+    {
+        $this->authorizeAccess($request, $report);
+        abort_if($this->isClientViewer($request->user()), 403, 'Segmen internal tidak tersedia untuk klien.');
+
+        $topikIds = collect($request->input('topik_ids', []))->map(fn ($id) => (int) $id)->all();
+
+        return response()->json($this->topikFilter->filter($report->data ?? [], $topikIds));
     }
 
     public function pdf(Request $request, PersonalityReport $report): StreamedResponse
