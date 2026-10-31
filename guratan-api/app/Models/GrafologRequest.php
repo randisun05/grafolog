@@ -18,11 +18,11 @@ class GrafologRequest extends Model
 
     public const CANCELLED = 'dibatalkan';
 
-    protected $fillable = ['order_id', 'grafolog_id', 'status', 'note', 'expires_at', 'responded_at'];
+    protected $fillable = ['order_id', 'grafolog_id', 'status', 'note', 'expires_at', 'responded_at', 'reminded_at'];
 
     protected function casts(): array
     {
-        return ['expires_at' => 'datetime', 'responded_at' => 'datetime'];
+        return ['expires_at' => 'datetime', 'responded_at' => 'datetime', 'reminded_at' => 'datetime'];
     }
 
     public function order(): BelongsTo

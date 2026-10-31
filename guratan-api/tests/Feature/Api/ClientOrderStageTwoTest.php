@@ -6,9 +6,11 @@ use App\Mail\NotificationMail;
 use App\Models\Assignment;
 use App\Models\GrafologAvailability;
 use App\Models\GrafologRequest;
+use App\Models\InboxMessage;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Commerce\GrafologMatchingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -183,5 +185,26 @@ class ClientOrderStageTwoTest extends TestCase
         $this->paidOrder(['grafolog_choice' => 'pilih', 'grafolog_id' => $g->id]);
         $this->assertFalse(GrafologAvailability::forMonth($g, now()->format('Y-m'))['bookable']);
         $this->actingAs($this->client, 'sanctum')->postJson('/api/orders', ['product_id' => Product::where('kode', 'konseling')->value('id'), 'grafolog_choice' => 'pilih', 'grafolog_id' => $g->id])->assertStatus(422);
+    }
+
+    public function test_grafolog_gets_one_reminder_when_twelve_hours_remain(): void
+    {
+        $g = $this->grafolog();
+        $this->paidOrder(['grafolog_choice' => 'pilih', 'grafolog_id' => $g->id]);
+        $svc = app(GrafologMatchingService::class);
+
+        $this->travel(11)->hours();
+        $this->assertSame(0, $svc->remind()); // sisa 13 jam: belum waktunya
+        $this->travel(2)->hours(); // sisa ± 11 jam
+        $this->assertSame(1, $svc->remind());
+        $this->assertSame(0, $svc->remind()); // hanya sekali
+        $this->assertSame(1, InboxMessage::where('user_id', $g->id)->where('type', 'pengingat_permintaan')->count());
+        Mail::assertQueued(NotificationMail::class, fn ($m) => $m->hasTo($g->email));
+
+        // Yang sudah dijawab tidak diingatkan lagi.
+        $o2 = $this->paidOrder(['grafolog_choice' => 'pilih', 'grafolog_id' => $g->id]);
+        GrafologRequest::where('order_id', $o2->id)->update(['status' => 'ditolak']);
+        $this->travel(11)->hours();
+        $this->assertSame(0, $svc->remind());
     }
 }

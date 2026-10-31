@@ -65,6 +65,8 @@ class OrderChatController extends Controller
             'you' => $request->user()->id,
             'with' => $other ? ['id' => $other->id, 'name' => $other->name] : null,
             'order' => ['id' => $order->id, 'product' => $order->product?->nama],
+            // Pesan saya sampai id ini sudah dibaca lawan bicara (pembaruan status tanpa memuat ulang halaman).
+            'read_upto' => (int) OrderMessage::where('order_id', $order->id)->where('sender_id', $request->user()->id)->whereNotNull('read_at')->max('id'),
             'messages' => $messages->map(fn (OrderMessage $m) => [
                 'id' => $m->id, 'body' => $m->body, 'at' => $m->created_at, 'mine' => $m->sender_id === $request->user()->id,
                 'sender' => $m->sender?->name, 'read' => $m->read_at !== null,

@@ -22,6 +22,10 @@ async function load(initial = false) {
     meta.value = { open: data.open, with: data.with, order: data.order }
     if (initial) messages.value = data.messages
     else if (data.messages.length) messages.value.push(...data.messages)
+    // Perbarui status "dibaca" pada pesan sendiri tanpa memuat ulang halaman.
+    messages.value.forEach((m) => {
+      if (m.mine && m.id <= data.read_upto) m.read = true
+    })
     if (initial || data.messages.length) {
       await nextTick()
       if (box.value) box.value.scrollTop = box.value.scrollHeight

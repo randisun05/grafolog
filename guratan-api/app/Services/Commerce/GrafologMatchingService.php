@@ -22,6 +22,9 @@ class GrafologMatchingService
 
     public const MAX_ATTEMPTS = 3;
 
+    /** Pengingat dikirim ke grafolog saat sisa waktu konfirmasi tinggal sekian jam. */
+    public const REMIND_WHEN_HOURS_LEFT = 12;
+
     public function __construct(private Notifier $notifier) {}
 
     public static function monthOf(Order $order): string
@@ -134,8 +137,25 @@ class GrafologMatchingService
     /** Permintaan yang lewat 24 jam dianggap ditolak. Dipanggil terjadwal + saat daftar dibuka. */
     public function sweep(): int
     {
+        $this->remind();
         $due = GrafologRequest::where('status', GrafologRequest::WAITING)->where('expires_at', '<', now())->get();
         $due->each(fn (GrafologRequest $r) => $this->release($r, GrafologRequest::EXPIRED, 'Tidak menjawab dalam '.self::CONFIRM_HOURS.' jam.'));
+
+        return $due->count();
+    }
+
+    /** Pengingat sekali per permintaan saat sisa waktu <= 12 jam (inbox + email ke grafolog). */
+    public function remind(): int
+    {
+        $due = GrafologRequest::where('status', GrafologRequest::WAITING)->whereNull('reminded_at')
+            ->where('expires_at', '>', now())->where('expires_at', '<=', now()->addHours(self::REMIND_WHEN_HOURS_LEFT))
+            ->with(['order.product', 'order.user', 'grafolog'])->get();
+        foreach ($due as $req) {
+            $req->update(['reminded_at' => now()]);
+            $left = max(1, (int) ceil(now()->diffInMinutes($req->expires_at, false) / 60));
+            $this->notifier->send($req->grafolog, 'pengingat_permintaan', 'Pengingat: permintaan menunggu jawaban Anda',
+                "Pesanan #{$req->order_id} ({$req->order->product?->nama}) dari {$req->order->user?->name} tinggal ± {$left} jam lagi. Terima atau tolak agar klien tidak menunggu.", '/grafolog/ditugaskan');
+        }
 
         return $due->count();
     }

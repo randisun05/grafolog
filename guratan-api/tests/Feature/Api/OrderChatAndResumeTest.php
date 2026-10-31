@@ -66,9 +66,12 @@ class OrderChatAndResumeTest extends TestCase
         $res = $this->actingAs($this->grafolog, 'sanctum')->getJson($url)->assertOk()->assertJsonPath('open', true)->assertJsonPath('with.id', $this->client->id);
         $this->assertSame('Halo Bu, kapan bisa mulai?', $res->json('messages.0.body')); // tag HTML dibuang
         $this->assertFalse($res->json('messages.0.mine'));
+        $this->assertSame(0, $res->json('read_upto')); // grafolog belum mengirim apa pun
         $this->assertSame(0, $this->actingAs($this->grafolog, 'sanctum')->getJson('/api/chat/unread')->json('total')); // sudah dibaca
 
         $this->actingAs($this->grafolog, 'sanctum')->postJson($url, ['body' => 'Besok pagi ya'])->assertCreated();
+        // Klien belum membuka -> pesan klien (id 1,2) sudah dibaca grafolog; read_upto klien = 2.
+        $this->assertSame(2, $this->actingAs($this->client, 'sanctum')->getJson($url)->json('read_upto'));
         $this->assertDatabaseHas('inbox_messages', ['user_id' => $this->client->id, 'type' => 'pesan_baru']);
         $after = $this->actingAs($this->client, 'sanctum')->getJson($url.'?after='.OrderMessage::where('sender_id', $this->client->id)->max('id'))->json('messages');
         $this->assertCount(1, $after);

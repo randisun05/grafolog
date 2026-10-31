@@ -735,7 +735,7 @@ Wizard `OrderView` jadi 6 langkah (… Persyaratan → **Grafolog** → Bayar): 
 
 ## Alur klien individu T3 — 2026-10-30
 
-`OrderChatView` (`/pesanan/:id/chat`, polling 8 dtk, Enter = kirim, teks dirender sebagai teks), `ReportResume` (di `ReportView` untuk non-grafolog penangan), `ClientOrdersCard` (Dashboard klien: pesanan berjalan + status grafolog + Chat + Laporan). Riwayat & `GrafologRequestsPanel` punya tombol Chat + lencana belum dibaca. Catatan: status "dibaca" pada pesan sendiri baru berubah saat halaman dimuat ulang.
+`OrderChatView` (`/pesanan/:id/chat`, polling 8 dtk, Enter = kirim, teks dirender sebagai teks), `ReportResume` (di `ReportView` untuk non-grafolog penangan), `ClientOrdersCard` (Dashboard klien: pesanan berjalan + status grafolog + Chat + Laporan). Riwayat & `GrafologRequestsPanel` punya tombol Chat + lencana belum dibaca.  Status "dibaca" pada pesan sendiri ikut diperbarui oleh polling (`read_upto`).
 
 ## Stack
 
