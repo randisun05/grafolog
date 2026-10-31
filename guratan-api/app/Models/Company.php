@@ -20,14 +20,14 @@ class Company extends Model
 
     protected $fillable = [
         'name', 'status', 'industry', 'employee_range', 'phone', 'address', 'website',
-        'verified_at', 'verified_by', 'review_note', 'created_by',
+        'verified_at', 'verified_by', 'review_note', 'created_by', 'is_active',
     ];
 
-    protected $attributes = ['status' => self::STATUS_VERIFIED];
+    protected $attributes = ['status' => self::STATUS_VERIFIED, 'is_active' => true];
 
     protected function casts(): array
     {
-        return ['verified_at' => 'datetime'];
+        return ['verified_at' => 'datetime', 'is_active' => 'boolean'];
     }
 
     public function creator(): BelongsTo
@@ -53,5 +53,10 @@ class Company extends Model
     public function isVerified(): bool
     {
         return $this->status === self::STATUS_VERIFIED;
+    }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(CompanyContract::class);
     }
 }

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/lib/api'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -89,7 +89,7 @@ onMounted(() => load(1))
       <span class="admin-audit-log__result-count">{{ meta.total }} entri</span>
     </div>
 
-    <LoadingSpinner v-if="loading" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="table" :columns="5" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <p v-else-if="logs.length === 0" class="admin-audit-log__empty">Tidak ada log yang cocok.</p>
     <table v-else class="admin-audit-log__table">

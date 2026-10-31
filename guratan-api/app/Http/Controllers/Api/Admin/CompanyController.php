@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCompanyRequest;
+use App\Http\Requests\Admin\UpdateCompanyRequest;
+use App\Models\AuditLog;
 use App\Models\Company;
+use App\Models\HandwritingSample;
+use App\Models\PersonalityReport;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -16,7 +20,23 @@ class CompanyController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Company::query()->latest()->paginate(20));
+        $companies = Company::query()->with('contracts')->latest()->paginate(20);
+
+        // Ringkasan lintas-perusahaan: rantai company -> akun hr -> sampel yang dibuat akun itu
+        // (sama seperti DashboardController::hrDashboard() per HR, di sini digabung per perusahaan).
+        $companies->getCollection()->transform(function (Company $company) {
+            $hrIds = $company->users()->where('role', 'hr')->pluck('id');
+            $sampleIds = HandwritingSample::whereIn('created_by', $hrIds)->pluck('id');
+
+            $company->hr_count = $hrIds->count();
+            $company->total_candidates = $sampleIds->count();
+            $company->completed_reports = PersonalityReport::whereIn('sample_id', $sampleIds)->where('status', 'completed')->count();
+            $company->avg_turnaround_days = PersonalityReport::avgTurnaroundDaysFor($sampleIds);
+
+            return $company;
+        });
+
+        return response()->json($companies);
     }
 
     public function store(StoreCompanyRequest $request): JsonResponse
@@ -26,6 +46,27 @@ class CompanyController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
+        AuditLog::record('buat_perusahaan', Company::class, $company->id, $request->user()->id, $request->ip());
+
         return response()->json($company, 201);
+    }
+
+    /**
+     * Sebelumnya tidak ada UI/endpoint update sama sekali untuk Company -
+     * cuma create+list (lihat ROADMAP.md "Kesiapan Publikasi"). is_active
+     * BUKAN hard-delete dan SENGAJA tidak mencabut akses akun hr yang sudah
+     * terikat ke company ini - menonaktifkan company cuma mencegah company
+     * itu dipakai untuk hr BARU (lihat StoreStaffUserRequest's exists check
+     * tidak berubah), bukan otomatis menonaktifkan staf yang sudah ada.
+     * Kalau perlu mencabut akses hr terkait, lakukan eksplisit lewat
+     * AdminUserController::update() per akun.
+     */
+    public function update(UpdateCompanyRequest $request, Company $company): JsonResponse
+    {
+        $company->update($request->validated());
+
+        AuditLog::record('ubah_perusahaan', Company::class, $company->id, $request->user()->id, $request->ip());
+
+        return response()->json($company);
     }
 }

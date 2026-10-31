@@ -92,6 +92,7 @@ async function handleLogout() {
             <RouterLink to="/admin/products">Kelola Produk</RouterLink>
             <RouterLink to="/admin/discounts">Kelola Promo &amp; Diskon</RouterLink>
             <RouterLink to="/admin/users">Kelola Staf</RouterLink>
+            <RouterLink to="/admin/kelola-perusahaan">Kelola Perusahaan</RouterLink>
             <RouterLink to="/admin/verifikasi?tab=grafolog">Verifikasi Grafolog</RouterLink>
             <RouterLink to="/admin/verifikasi?tab=perusahaan">Verifikasi Perusahaan</RouterLink>
             <RouterLink to="/admin/validasi">Penugasan Supervisi</RouterLink>
@@ -106,6 +107,7 @@ async function handleLogout() {
             <RouterLink to="/admin/broadcast">Broadcast Kotak Masuk</RouterLink>
             <RouterLink to="/admin/log-aktivitas">Log Aktivitas</RouterLink>
             <RouterLink to="/admin/notification-logs">Log Notifikasi</RouterLink>
+            <RouterLink to="/admin/audit-logs">Log Audit</RouterLink>
             <RouterLink to="/admin/recap/users">Rekap Pengguna</RouterLink>
             <RouterLink to="/admin/recap/grafolog">Rekap Grafolog</RouterLink>
             <RouterLink to="/admin/recap/token-purchases">Rekap Token</RouterLink>

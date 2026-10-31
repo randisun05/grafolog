@@ -45,6 +45,8 @@ const commands = computed(() => {
     items.push({ label: 'Broadcast Kotak Masuk', to: { name: 'admin-broadcast' } })
     items.push({ label: 'Log Aktivitas', to: { name: 'admin-activity' } })
     items.push({ label: 'Log Notifikasi', to: { name: 'admin-notification-logs' } })
+    items.push({ label: 'Log Audit', to: { name: 'admin-audit-logs' } })
+    items.push({ label: 'Kelola Perusahaan', to: { name: 'admin-company-manage' } })
     items.push({ label: 'Rekap Pengguna', to: { name: 'admin-recap-users' } })
     items.push({ label: 'Rekap Grafolog', to: { name: 'admin-recap-grafolog' } })
     items.push({ label: 'Rekap Token', to: { name: 'admin-recap-token-purchases' } })
@@ -54,6 +56,7 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Games', to: { name: 'admin-games' } })
     items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })
     items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
+    items.push({ label: 'Log Audit', to: { name: 'admin-audit-logs' } })
   }
   if (auth.isHr) {
     items.push({ label: 'Rekrutmen: Kandidat & Analisis', to: { name: 'hr-candidates' } })

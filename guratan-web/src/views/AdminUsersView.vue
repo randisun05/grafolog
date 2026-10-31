@@ -26,6 +26,28 @@ const roleLabel = {
   user: 'Klien',
 }
 
+const togglingUserId = ref(null)
+
+// Nonaktifkan/aktifkan akun staf (bukan klien). Menonaktifkan juga memutus semua sesi aktifnya.
+async function toggleUserActive(u) {
+  togglingUserId.value = u.id
+  try {
+    const { data } = await api.patch(`/admin/users/${u.id}`, {
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      company_id: u.company_id,
+      is_active: !u.is_active,
+    })
+    u.is_active = data.is_active
+    toast.push(`${u.name} ${u.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`, 'success')
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal mengubah status akun.')
+  } finally {
+    togglingUserId.value = null
+  }
+}
+
 async function loadUsers() {
   loading.value = true
   loadError.value = ''
@@ -105,7 +127,7 @@ onMounted(loadUsers)
     </form>
 
     <h2 class="admin-users__list-title">Semua User</h2>
-    <SkeletonLoader v-if="loading" variant="table" :columns="3" label="Memuat..." />
+    <SkeletonLoader v-if="loading" variant="table" :columns="5" label="Memuat..." />
     <p v-else-if="loadError" class="error">{{ loadError }}</p>
     <div v-else class="table-scroll">
       <table class="admin-users__table">
@@ -114,6 +136,8 @@ onMounted(loadUsers)
             <th>Nama</th>
             <th>Email</th>
             <th>Role</th>
+            <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -122,6 +146,18 @@ onMounted(loadUsers)
             <td>{{ u.email }}</td>
             <td>
               <span class="admin-users__role-badge">{{ roleLabel[u.role] ?? u.role }}</span>
+            </td>
+            <td>{{ u.is_active === false ? 'Nonaktif' : 'Aktif' }}</td>
+            <td>
+              <button
+                v-if="u.role !== 'user'"
+                type="button"
+                class="btn"
+                :disabled="togglingUserId === u.id"
+                @click="toggleUserActive(u)"
+              >
+                {{ u.is_active === false ? 'Aktifkan' : 'Nonaktifkan' }}
+              </button>
             </td>
           </tr>
         </tbody>
@@ -132,7 +168,7 @@ onMounted(loadUsers)
 
 <style scoped>
 .admin-users {
-  max-width: 720px;
+  max-width: 860px;
 }
 .admin-users__note {
   color: var(--color-text-soft);

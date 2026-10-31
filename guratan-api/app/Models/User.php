@@ -18,7 +18,7 @@ use Laravel\Sanctum\HasApiTokens;
     'name', 'email', 'phone', 'password', 'role', 'company_id', 'token_balance', 'consented_at', 'consent_source', 'consent_version',
     'acquisition_source', 'referred_by', 'grafolog_status', 'certificate_number', 'certificate_path',
     'grafolog_verified_at', 'grafolog_verified_by', 'grafolog_review_note',
-    'must_change_password', 'email_notifications', 'anonymized_at', 'city', 'bio', 'specializations', 'experience_years', 'birth_date', 'gender', 'education', 'occupation',
+    'must_change_password', 'email_notifications', 'anonymized_at', 'is_active', 'city', 'bio', 'specializations', 'experience_years', 'birth_date', 'gender', 'education', 'occupation',
 ])]
 #[Hidden(['password', 'remember_token', 'certificate_path'])]
 class User extends Authenticatable
@@ -32,6 +32,9 @@ class User extends Authenticatable
     public const ESSENTIAL_NOTICE_TYPES = ['pembayaran', 'refund', 'verifikasi', 'insiden'];
 
     protected $appends = ['needs_consent'];
+
+    // is_active default DB true, tapi MySQL tidak refetch ke model in-memory setelah create().
+    protected $attributes = ['is_active' => true];
 
     /**
      * Pengguna perlu menyetujui ulang ToS/Privasi bila versi persetujuannya bukan yang berlaku,
@@ -128,6 +131,7 @@ class User extends Authenticatable
             'must_change_password' => 'boolean',
             'email_notifications' => 'boolean',
             'anonymized_at' => 'datetime',
+            'is_active' => 'boolean',
         ];
     }
 }

@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\AnalyticsController;
+use App\Http\Controllers\Api\Admin\AuditLogController;
+use App\Http\Controllers\Api\Admin\CompanyContractController;
 use App\Http\Controllers\Api\Admin\GrafologRecapController;
 use App\Http\Controllers\Api\Admin\PaymentRecapController;
 use App\Http\Controllers\Api\Admin\TokenPurchaseRecapController;
@@ -256,6 +258,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/reports/{report}/validations', [ReportValidationController::class, 'forReport']);
     Route::get('/reports/{report}', [ReportController::class, 'show'])->middleware('log.report_access');
     Route::get('/reports/{report}/segmen', [ReportController::class, 'segmen']);
+    Route::get('/topik', [\App\Http\Controllers\Api\TopikController::class, 'index']);
     Route::get('/reports/{report}/pdf', [ReportController::class, 'pdf'])->middleware('log.report_access');
     Route::get('/reports/{report}/pdf-narasi', [ReportController::class, 'pdfNarasi'])->middleware('log.report_access');
     Route::get('/reports/{report}/resume', [ReportController::class, 'resume'])->middleware('log.report_access');
@@ -302,6 +305,12 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/recap/token-purchases/export', [TokenPurchaseRecapController::class, 'export']);
         Route::get('/recap/payments', [PaymentRecapController::class, 'index']);
         Route::get('/recap/payments/export', [PaymentRecapController::class, 'export']);
+        Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        Route::patch('/users/{user}', [AdminUserController::class, 'update']);
+        Route::patch('/companies/{company}', [CompanyController::class, 'update']);
+        Route::post('/companies/{company}/contracts', [CompanyContractController::class, 'store']);
+        Route::patch('/company-contracts/{companyContract}', [CompanyContractController::class, 'update']);
+        Route::delete('/company-contracts/{companyContract}', [CompanyContractController::class, 'destroy']);
         Route::get('/analytics/revenue', [AnalyticsController::class, 'revenue']);
         Route::get('/analytics/product-usage', [AnalyticsController::class, 'productUsage']);
         Route::get('/analytics/user-growth', [AnalyticsController::class, 'userGrowth']);

@@ -2359,3 +2359,12 @@ tidak disentuh.
 Disesuaikan ke main: omzet dikelompokkan per kode produk (order/batch) lalu jatuh ke tier sample; rekap pembayaran memuat kolom gateway.
 `PersonalityReport::avgTurnaroundDaysFor()` dipakai controller baru (DashboardController/CompanyController lama belum direfaktor).
 FE: halaman `/admin/recap/*` dan `/admin/analytics` (Chart.js + vue-chartjs, tema di `lib/chartTheme.js`), menu Admin + palette.
+
+## B2B tambahan & manajemen admin (dari branch lama) — 2026-10-31
+
+- **Log audit**: `GET /api/admin/audit-logs` (+ `/admin/audit-logs`), baca-saja atas `audit_logs`.
+- **Siklus hidup akun**: kolom `is_active` pada `users` & `companies`; login ditolak untuk akun nonaktif, `PATCH /api/admin/users/{user}`
+  (staf non-klien; menonaktifkan memutus semua token) dan `PATCH /api/admin/companies/{company}`. Menonaktifkan perusahaan tidak otomatis
+  menonaktifkan akun HR-nya. UI: tombol di Kelola Staf dan halaman baru Kelola Perusahaan.
+- **Kontrak perusahaan** (`company_contracts`, hanya catatan, tidak menghitung tagihan) + ringkasan lintas-perusahaan di `GET /api/admin/companies`.
+- **Filter segmen Topik** untuk HR di halaman laporan: `GET /api/topik` (staf) + `GET /api/reports/{id}/segmen`.

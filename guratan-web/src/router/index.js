@@ -290,6 +290,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/kelola-perusahaan',
+      name: 'admin-company-manage',
+      component: () => import('../views/AdminCompanyManageView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/audit-logs',
+      name: 'admin-audit-logs',
+      component: () => import('../views/AdminAuditLogView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/notification-logs',
       name: 'admin-notification-logs',
       component: () => import('../views/AdminNotificationLogsView.vue'),

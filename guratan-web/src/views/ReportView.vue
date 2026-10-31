@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import api from '@/lib/api'
 import ReportDocument from '@/components/report/ReportDocument.vue'
 import ReportCorrectionPanel from '@/components/report/ReportCorrectionPanel.vue'
@@ -58,7 +58,42 @@ async function load() {
   }
 }
 
-onMounted(load)
+// Laporan tersegmentasi per-Topik (B2B): HR memfilter rincian ke Topik tertentu (mis. "Karier").
+// Murni tampilan baca - tidak mengubah laporan yang tersimpan.
+const topikOptions = ref([])
+const selectedTopikIds = ref([])
+const segmentedData = ref(null)
+const segmenLoading = ref(false)
+
+async function loadTopikOptions() {
+  try {
+    topikOptions.value = (await api.get('/topik')).data
+  } catch {
+    // Filter hanya tidak muncul; rincian penuh tetap tampil.
+  }
+}
+
+watch(selectedTopikIds, async (ids) => {
+  if (ids.length === 0) {
+    segmentedData.value = null
+    return
+  }
+  segmenLoading.value = true
+  try {
+    const params = new URLSearchParams()
+    ids.forEach((id) => params.append('topik_ids[]', id))
+    segmentedData.value = (await api.get(`/reports/${props.id}/segmen?${params.toString()}`)).data
+  } catch {
+    toast.push('Gagal memuat laporan tersegmentasi.')
+  } finally {
+    segmenLoading.value = false
+  }
+})
+
+onMounted(() => {
+  load()
+  if (auth.isHr) loadTopikOptions()
+})
 
 async function switchBahasa(value) {
   if (value === bahasa.value) return
@@ -213,10 +248,24 @@ function onNarasiTerpaduUpdated(updatedReport) {
         <div class="report-view__narasi-klien">{{ report.narasi_terpadu }}</div>
       </section>
 
+      <div v-if="auth.isHr && topikOptions.length > 0" class="report-view__segmen">
+        <h3>Filter Segmen Topik</h3>
+        <p class="report-view__segmen-hint">
+          Pilih satu atau lebih topik untuk melihat bagian laporan yang relevan saja (mis. Karier). Kosongkan
+          pilihan untuk kembali ke rincian penuh. Filter ini murni tampilan, tidak mengubah laporan tersimpan.
+        </p>
+        <div class="report-view__segmen-options">
+          <label v-for="t in topikOptions" :key="t.id">
+            <input v-model="selectedTopikIds" type="checkbox" :value="t.id" /> {{ t.nama }}
+          </label>
+        </div>
+        <p v-if="segmenLoading" class="report-view__segmen-hint">Memuat...</p>
+      </div>
+
       <ReportDocument
         v-if="report.data"
-        :data="report.data"
-        :editable="canEdit"
+        :data="segmentedData ?? report.data"
+        :editable="canEdit && !segmentedData"
         :report-id="report.id"
         :bahasa="bahasa"
         @narasi-updated="onNarasiUpdated"
@@ -302,5 +351,21 @@ function onNarasiTerpaduUpdated(updatedReport) {
   font-size: 12.5px;
   color: var(--color-text-soft);
   margin: 4px 0 16px;
+}
+.report-view__segmen {
+  margin: 20px 0;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.report-view__segmen-hint {
+  font-size: 13px;
+  color: var(--color-text-soft);
+}
+.report-view__segmen-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
 }
 </style>
