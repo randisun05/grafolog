@@ -7,6 +7,8 @@ import HrCandidatesPanel from '@/components/hr/HrCandidatesPanel.vue'
 import HrPositionsPanel from '@/components/hr/HrPositionsPanel.vue'
 import HrOrdersPanel from '@/components/hr/HrOrdersPanel.vue'
 import HrAnalysisPanel from '@/components/hr/HrAnalysisPanel.vue'
+import HrPotensiPanel from '@/components/hr/HrPotensiPanel.vue'
+import HrChatPanel from '@/components/hr/HrChatPanel.vue'
 
 /**
  * Ruang kerja rekrutmen HR (Fase C, 2026-10-17): kandidat -> pesan asesmen (HR memilih
@@ -21,6 +23,8 @@ const tabs = [
   { key: 'posisi', label: 'Posisi' },
   { key: 'pesanan', label: 'Pesan Asesmen' },
   { key: 'analisis', label: 'Analisis' },
+  { key: 'potensi', label: 'Potensi' },
+  { key: 'chat', label: 'Asisten Data' },
 ]
 const tab = ref(tabs.some((t) => t.key === route.query.tab) ? route.query.tab : 'kandidat')
 const positions = ref([])
@@ -73,7 +77,9 @@ onMounted(loadPositions)
       :preselected="preselected"
       @changed="go('kandidat')"
     />
-    <HrAnalysisPanel v-else :positions="positions" />
+    <HrAnalysisPanel v-else-if="tab === 'analisis'" :positions="positions" />
+    <HrPotensiPanel v-else-if="tab === 'potensi'" />
+    <HrChatPanel v-else />
   </div>
 </template>
 

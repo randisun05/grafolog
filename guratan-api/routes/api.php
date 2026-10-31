@@ -77,6 +77,8 @@ use App\Http\Controllers\Api\GrafologRequestController;
 use App\Http\Controllers\Api\Hr\B2bOrderController;
 use App\Http\Controllers\Api\Hr\CandidateAnalysisController;
 use App\Http\Controllers\Api\Hr\CandidateController;
+use App\Http\Controllers\Api\Hr\ChatController as HrChatController;
+use App\Http\Controllers\Api\Hr\PotensiController as HrPotensiController;
 use App\Http\Controllers\Api\Hr\CandidateImportController;
 use App\Http\Controllers\Api\Hr\PositionController;
 use App\Http\Controllers\Api\InboxController;
@@ -443,6 +445,13 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {
+        // Dashboard Potensi + asisten data AI (dipindah dari fitur Supervisor branch lama).
+        Route::get('/potensi', [HrPotensiController::class, 'index']);
+        Route::get('/chat', [HrChatController::class, 'index']);
+        Route::post('/chat', [HrChatController::class, 'store']);
+        Route::get('/chat/{conversation}', [HrChatController::class, 'show']);
+        Route::delete('/chat/{conversation}', [HrChatController::class, 'destroy']);
+        Route::middleware('throttle:20,1')->post('/chat/{conversation}/messages', [HrChatController::class, 'sendMessage']);
         Route::post('/candidates/import', [CandidateImportController::class, 'import']);
 
         // Fase C B2B (2026-10-17): posisi, kandidat, pesanan batch, analisis.

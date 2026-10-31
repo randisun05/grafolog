@@ -2368,3 +2368,14 @@ FE: halaman `/admin/recap/*` dan `/admin/analytics` (Chart.js + vue-chartjs, tem
   menonaktifkan akun HR-nya. UI: tombol di Kelola Staf dan halaman baru Kelola Perusahaan.
 - **Kontrak perusahaan** (`company_contracts`, hanya catatan, tidak menghitung tagihan) + ringkasan lintas-perusahaan di `GET /api/admin/companies`.
 - **Filter segmen Topik** untuk HR di halaman laporan: `GET /api/topik` (staf) + `GET /api/reports/{id}/segmen`.
+
+## Dashboard Potensi & Asisten Data untuk HR (dari fitur Supervisor branch lama) — 2026-10-31
+
+Peran Supervisor perusahaan tidak dihidupkan lagi (digantikan supervisi antar-grafolog), tapi dua kemampuannya dipindah ke **HR**:
+- `GET /api/hr/potensi` (+ `topik_ids[]`): rata-rata skor & distribusi level narasi per Aspek seluruh kandidat perusahaan, hanya laporan
+  `selesai` + `disetujui` QA (`PotensiAggregationService::reportsForCompany`, rantai pesanan batch → sampel → laporan). Tanpa AI.
+- Asisten data AI: `/api/hr/chat[/{id}[/messages]]` (`HrChatService`). Memakai `TextGenerator` (penyedia sama dengan Analisis Kandidat, ikut
+  pencatatan pemakaian/anggaran, purpose `chat_hr`). **Privasi**: konteks tanpa identitas (kandidat berlabel "Kandidat N"), hanya laporan
+  disetujui; riwayat 12 pesan; percakapan privat per akun HR; pesan HR disimpan dulu sebelum AI dipanggil (503 bila AI tak tersedia).
+  Beda dari branch asal yang mengirim nama kandidat ke LLM — itu bertentangan dengan klaim "data teranonimkan" di kebijakan privasi.
+- FE: tab "Potensi" dan "Asisten Data" di `/hr/candidates`.
