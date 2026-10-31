@@ -142,4 +142,45 @@ class ScoringCorrectionTest extends TestCase
         $this->assertArrayNotHasKey('narasi_diedit_manual', $fresh);
         $this->assertNotSame('Teks override manual.', $fresh['narasi']);
     }
+
+    public function test_correcting_scores_downgrades_final_narasi_terpadu_to_draft_without_regenerating(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = $this->completedSample($grafolog);
+        $report = $sample->reports()->first();
+        $report->update([
+            'narasi_terpadu' => 'Narasi lama yang sudah final.',
+            'narasi_status' => 'final',
+            'narasi_input_hash' => 'hash-lama-tidak-relevan',
+            'pdf_path_klien' => 'reports/laporan-klien-lama.pdf',
+        ]);
+
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores/correct", $this->skorPayload(3, 9))
+            ->assertOk();
+
+        $fresh = $report->fresh();
+        // Turun ke draft (klien tidak lagi bisa lihat status final yang
+        // basi) TAPI teks lama tetap ada apa adanya - TIDAK ada panggilan AI
+        // otomatis di sini (tidak ada Http::fake terpasang di test ini sama
+        // sekali, jadi kalau kode diam-diam memanggil LLM, test akan error
+        // "attempting to hit external server" alih-alih assert biasa).
+        $this->assertSame('draft', $fresh->narasi_status);
+        $this->assertSame('Narasi lama yang sudah final.', $fresh->narasi_terpadu);
+        $this->assertNull($fresh->pdf_path_klien);
+    }
+
+    public function test_correcting_scores_leaves_draft_narasi_terpadu_untouched(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $sample = $this->completedSample($grafolog);
+        $report = $sample->reports()->first();
+        $report->update(['narasi_terpadu' => 'Masih draft.', 'narasi_status' => 'draft']);
+
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/samples/{$sample->id}/scores/correct", $this->skorPayload(3, 9))
+            ->assertOk();
+
+        $this->assertSame('draft', $report->fresh()->narasi_status);
+    }
 }
