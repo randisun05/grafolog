@@ -68,7 +68,7 @@ class ScoringController extends Controller
         // admin belum mengonfigurasi biaya token tier ini - diperlakukan sebagai
         // 0 (tidak ada gate), bukan error, supaya fitur ini tidak diam-diam
         // memblokir grafolog sebelum admin sengaja mengaktifkannya.
-        $tokensRequired = TokenCost::activeTokensFor($sample->tier) ?? 0;
+        $tokensRequired = TokenCost::forSample($sample);
         abort_if($tokensRequired > 0 && $user->token_balance < $tokensRequired, 402, 'Token Anda tidak cukup untuk membuat laporan ini. Silakan beli token terlebih dahulu.');
 
         $report = DB::transaction(function () use ($request, $sample, $user, $tokensRequired) {
@@ -120,8 +120,9 @@ class ScoringController extends Controller
      * pemilik sample untuk memperbaiki salah input skor SETELAH laporan
      * jadi - versi laporan sebelum dikoreksi disimpan dulu ke
      * report_revisions (audit trail), baru report_aspek_scores & data
-     * laporan ditulis ulang. Token TIDAK ditagih ulang - ini koreksi atas
-     * laporan yang sudah dibayar/dipotong tokennya, bukan laporan baru.
+     * laporan ditulis ulang. Regenerasi DITAGIH token lagi dengan tarif yang sama
+     * seperti pembuatan awal (keputusan pemilik 2026-10-31); gagal = tidak dipotong
+     * (satu transaksi). Edit narasi manual dan perubahan hasil ukur tetap gratis.
      */
     public function correct(CorrectScoresRequest $request, HandwritingSample $sample): JsonResponse
     {
@@ -135,7 +136,10 @@ class ScoringController extends Controller
         $report = $sample->reports()->latest()->firstOrFail();
         abort_if($report->hasActiveValidation(), 422, 'Laporan sedang dalam proses supervisi - tidak bisa dikoreksi sampai selesai.');
 
-        $report = DB::transaction(function () use ($request, $report, $user, $sample) {
+        $tokensRequired = TokenCost::forSample($sample);
+        abort_if($tokensRequired > 0 && $user->token_balance < $tokensRequired, 402, "Regenerasi laporan membutuhkan {$tokensRequired} token. Saldo Anda tidak cukup, silakan beli token terlebih dahulu.");
+
+        $report = DB::transaction(function () use ($request, $report, $user, $sample, $tokensRequired) {
             $this->reportRevisions->snapshotBeforeChange($report, 'koreksi_skor', $user, $request->input('catatan'));
 
             $aspekByKode = Aspek::whereIn('kode', collect($request->validated('skor'))->pluck('kode'))
@@ -157,6 +161,11 @@ class ScoringController extends Controller
             $data = $this->attachIndikatorNarasi($this->scoringEngine->generate($skorPerAspek), $sample);
             $report->update(['data' => $data, 'generated_at' => now()]);
             $report->sendBackToReview();
+
+            if ($tokensRequired > 0) {
+                $this->tokenWallet->debit($user, $tokensRequired, ['report_id' => $report->id], 'regeneration',
+                    "Regenerasi laporan membutuhkan {$tokensRequired} token. Saldo Anda tidak cukup.");
+            }
 
             AuditLog::record('koreksi_skor_laporan', PersonalityReport::class, $report->id, $user->id, $request->ip());
 

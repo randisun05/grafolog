@@ -182,6 +182,7 @@ function onNarasiUpdated(updatedReport) {
       <ReportCorrectionPanel
         v-if="canEdit && report.aspek_scores"
         :sample-id="report.sample_id"
+        :cost="report.regeneration_cost ?? 0"
         :aspek-scores="report.aspek_scores"
         @corrected="onCorrected"
       />

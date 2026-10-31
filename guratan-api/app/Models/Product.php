@@ -19,9 +19,11 @@ class Product extends Model
 
     public const MODES = ['online', 'offline'];
 
+    public const COMMISSION_TYPES = ['percent', 'fixed'];
+
     protected $fillable = [
         'kode', 'nama', 'kategori', 'ringkasan', 'deskripsi', 'target', 'requires_handwriting',
-        'is_active', 'is_featured', 'promo_label', 'sort', 'created_by', 'modes', 'requirements',
+        'is_active', 'is_featured', 'promo_label', 'sort', 'created_by', 'modes', 'requirements', 'token_cost', 'commission_type', 'commission_value',
     ];
 
     protected $attributes = [
@@ -38,6 +40,11 @@ class Product extends Model
             'modes' => 'array',
             'requirements' => 'array',
         ];
+    }
+
+    public function commissions(): HasMany
+    {
+        return $this->hasMany(ProductCommission::class);
     }
 
     public function components(): HasMany

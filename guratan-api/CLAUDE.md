@@ -259,9 +259,7 @@ per-user" yang sudah dikunci).
   `completed`, `correct()` JUSTRU MENSYARATKANNYA. Otorisasi sama
   (`isGrafolog` + `isScorableBy` - grafolog pemilik sample, TANPA approval
   tambahan, sesuai keputusan user). Menerima `SubmitScoresRequest` yang
-  sama (40 aspek lengkap wajib) + field `catatan` opsional. **Token TIDAK
-  ditagih ulang** - ini koreksi atas laporan yang sudah dibayar, bukan
-  laporan baru (keputusan desain, bukan bug). `report_aspek_scores` lama
+  sama (40 aspek lengkap wajib) + field `catatan` opsional. **[DIUBAH 2026-10-31: regenerasi KINI ditagih token, lihat bagian terakhir]** `report_aspek_scores` lama
   dihapus & ditulis ulang (bukan diversi terpisah - hanya `data` JSON final
   yang di-versi lewat `report_revisions`, riwayat skor mentah implisit ada
   di situ juga karena JSON-nya menyertakan skor per aspek).
@@ -1889,6 +1887,13 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 
 - `order_messages` + `OrderChatController`: chat TEKS per pesanan B2C (strip_tags, ≤2000, throttle `chat` 30/mnt). Peserta: klien pemilik + grafolog yang sudah MENERIMA (`grafolog_state=diterima`); admin hanya baca (tidak menandai dibaca, audit `lihat_chat_pesanan`). Terbuka selama pesanan diproses; setelah selesai hanya 14 hari; ditutup bila batal/refund. Satu notifikasi per rentetan pesan belum dibaca. `GET .../messages` mengembalikan `read_upto` (id pesan terakhir milik pemanggil yang sudah dibaca lawan) - FE memperbarui status "dibaca" saat polling. `GET /chat/unread` (total + per pesanan). Masuk ekspor data; saat hapus akun body pesan pengirim diganti '[pesan dihapus]'. `GET /grafolog/requests` kini memuat `accepted` (pesanan diterima + unread).
 - Resume: `GET /reports/{r}/resume?lang=` (`ReportResumeService`, deterministik tanpa AI): rata-rata per sindrom + 5 ciri paling menonjol (kalimat pertama narasi KB) + catatan "bukan diagnosis; skor tinggi = ciri menonjol, bukan lebih baik". Akses = aturan laporan. Dashboard klien: KPI `unread_chat`.
+
+## Regenerasi bertoken, komisi grafolog, syarat supervisor — 2026-10-31
+
+- **Keputusan pemilik**: supervisi tetap OPSIONAL (pembuat membayar; tanpa supervisor tersedia = terbit mandiri, TIDAK ada override admin); regenerasi ditagih token dengan tarif sama seperti pembuatan awal.
+- `ScoringController::correct()` kini mendebit `TokenCost::forSample($sample)` (ledger type `regeneration`); kurang saldo → 402 sebelum apa pun berubah; gagal = rollback (satu transaksi). `forSample` = `products.token_cost` (override pesanan produk) ?? tarif tier ?? 0. Edit narasi & hasil ukur gratis. `GET /reports/{r}` memuat `regeneration_cost` untuk grafolog penangan.
+- **Komisi** (`EarningService`): `products.commission_type` (percent|fixed) + `commission_value`, override per grafolog di `product_commissions`. Dihitung dari `orders.amount` (bayar BERSIH) saat pesanan SELESAI (`OrderService::refreshStatus`) → `grafolog_earnings` (diperoleh|dibayar|dibatalkan, snapshot aturan, unik per order+grafolog, 0 = tidak dicatat). Refund (`RefundController`) → `reverse()`: belum dicairkan dibatalkan, sudah dicairkan diberi catatan penyesuaian. Pencairan `POST /admin/earnings/payout` → `grafolog_payouts` (transfer di luar sistem). Endpoint: grafolog `GET /earnings`; admin `GET /admin/earnings`, `.../payout`, `GET|PUT|DELETE /admin/products/{p}/commissions[/{grafolog}]`; produk menerima `token_cost`/`commission_*` di `PUT /admin/products/{p}`. Dashboard: KPI grafolog "Komisi belum dicairkan", aksi admin "Komisi menunggu pencairan". Belum ada data rekening/bank grafolog.
+- **Syarat supervisor**: `config/grafolog.php` `supervisor_min_reports` (env `SUPERVISOR_MIN_REPORTS`, default 5; phpunit 0) = minimal laporan TERBIT yang ditangani; dipakai `validatorsFor()` dan `request()`.
 
 ## Hard constraints (user-stated, still in force)
 

@@ -229,6 +229,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: ['user', 'grafolog', 'administrator'] },
     },
     {
+      path: '/pendapatan',
+      name: 'earnings',
+      component: () => import('../views/EarningsView.vue'),
+      meta: { requiresAuth: true, role: 'grafolog' },
+    },
+    {
+      path: '/admin/komisi',
+      name: 'admin-earnings',
+      component: () => import('../views/AdminEarningsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/kotak-masuk',
       name: 'inbox',
       component: () => import('../views/InboxView.vue'),

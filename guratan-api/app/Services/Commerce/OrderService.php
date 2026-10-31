@@ -286,6 +286,7 @@ class OrderService
 
         if ($graphologyDone && $servicesDone) {
             $order->update(['status' => Order::STATUS_DONE, 'completed_at' => now()]);
+            app(EarningService::class)->accrue($order->fresh(['product', 'grafolog']));
             if ($order->batch && $order->batch->orders()->whereNotIn('status', [Order::STATUS_DONE, Order::STATUS_CANCELLED])->doesntExist()) {
                 $order->batch->update(['status' => Order::STATUS_DONE]);
             }

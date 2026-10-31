@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Admin\ConceptMapController;
 use App\Http\Controllers\Api\Admin\ContentBlockController as AdminContentBlockController;
 use App\Http\Controllers\Api\Admin\CvManagementController;
 use App\Http\Controllers\Api\Admin\DiscountCodeController;
+use App\Http\Controllers\Api\Admin\EarningAdminController;
 use App\Http\Controllers\Api\Admin\GrafologVerificationController;
 use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorController;
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
@@ -47,6 +48,7 @@ use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\CvController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\EarningController;
 use App\Http\Controllers\Api\GameController;
 use App\Http\Controllers\Api\GrafologAvailabilityController;
 use App\Http\Controllers\Api\GrafologDirectoryController;
@@ -154,6 +156,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/chat/unread', [OrderChatController::class, 'unread']);
     Route::middleware('role:user')->get('/grafologs/directory', [GrafologDirectoryController::class, 'index']);
     Route::middleware('role:grafolog')->group(function () {
+        Route::get('/earnings', [EarningController::class, 'index']);
         Route::get('/grafolog/requests', [GrafologRequestController::class, 'index']);
         Route::post('/grafolog/requests/{grafologRequest}/respond', [GrafologRequestController::class, 'respond']);
     });
@@ -275,6 +278,11 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::patch('/discount-codes/{discountCode}', [DiscountCodeController::class, 'update']);
         Route::get('/content', [AdminContentBlockController::class, 'index']);
         Route::put('/content/{key}', [AdminContentBlockController::class, 'update']);
+        Route::get('/earnings', [EarningAdminController::class, 'index']);
+        Route::post('/earnings/payout', [EarningAdminController::class, 'payout']);
+        Route::get('/products/{product}/commissions', [EarningAdminController::class, 'commissions']);
+        Route::put('/products/{product}/commissions/{grafolog}', [EarningAdminController::class, 'setOverride']);
+        Route::delete('/products/{product}/commissions/{grafolog}', [EarningAdminController::class, 'removeOverride']);
         Route::get('/client-orders', [ClientOrderController::class, 'index']);
         Route::post('/client-orders/{order}/assign', [ClientOrderController::class, 'assign']);
         Route::get('/llm-usage', [LlmUsageController::class, 'index']);

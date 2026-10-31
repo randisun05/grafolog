@@ -737,6 +737,10 @@ Wizard `OrderView` jadi 6 langkah (… Persyaratan → **Grafolog** → Bayar): 
 
 `OrderChatView` (`/pesanan/:id/chat`, polling 8 dtk, Enter = kirim, teks dirender sebagai teks), `ReportResume` (di `ReportView` untuk non-grafolog penangan), `ClientOrdersCard` (Dashboard klien: pesanan berjalan + status grafolog + Chat + Laporan). Riwayat & `GrafologRequestsPanel` punya tombol Chat + lencana belum dibaca.  Status "dibaca" pada pesan sendiri ikut diperbarui oleh polling (`read_upto`).
 
+## Komisi & regenerasi — 2026-10-31
+
+`EarningsView` (`/pendapatan`, grafolog), `AdminEarningsView` (`/admin/komisi`: ringkasan per grafolog + catat pencairan), `ProductCommissionOverrides` + bagian "Komisi grafolog & biaya token" di editor produk. `ReportCorrectionPanel` prop `cost` menampilkan biaya regenerasi; panel supervisi menjelaskan terbit langsung bila tak ada supervisor.
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

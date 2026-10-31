@@ -1,4 +1,5 @@
 <script setup>
+import ProductCommissionOverrides from '@/components/commerce/ProductCommissionOverrides.vue'
 // Kelola Produk (2026-10-17): dasar harga (riwayat di pricing_plans per kode produk) dan diskon
 // (kode promo memilih produk). Tiap produk punya komponen; komponen non-grafologi punya template
 // laporan yang diisi grafolog saat layanan selesai.
@@ -58,6 +59,9 @@ function toggle(p) {
     is_featured: p.is_featured,
     promo_label: p.promo_label ?? '',
     modes: [...(p.modes?.length ? p.modes : ['online'])],
+    token_cost: p.token_cost ?? '',
+    commission_type: p.commission_type ?? 'percent',
+    commission_value: p.commission_value ?? 0,
     requirements: (p.requirements ?? []).map((r) => ({
       judul: r.judul,
       keterangan: r.keterangan ?? '',
@@ -105,6 +109,9 @@ async function saveProduct(p) {
     await api.put(`/admin/products/${p.id}`, {
       ...body,
       promo_label: body.promo_label || null,
+      token_cost:
+        body.token_cost === '' || body.token_cost === null ? null : Number(body.token_cost),
+      commission_value: Number(body.commission_value) || 0,
       requirements: body.requirements.filter((r) => r.judul.trim()),
     })
     toast.push('Produk disimpan.', 'success')
@@ -328,6 +335,28 @@ onMounted(load)
               muka)</label
             >
           </div>
+          <h3>Komisi grafolog &amp; biaya token</h3>
+          <p class="ap__hint">
+            Komisi dihitung dari nilai bayar bersih pesanan saat selesai. Biaya token (pembuatan dan
+            regenerasi laporan) mengganti tarif per tier bila diisi.
+          </p>
+          <div class="ap__grid">
+            <label
+              >Jenis komisi
+              <select v-model="edit.commission_type">
+                <option value="percent">Persen (%)</option>
+                <option value="fixed">Tetap (Rp)</option>
+              </select>
+            </label>
+            <label
+              >Nilai komisi <input v-model.number="edit.commission_value" type="number" min="0"
+            /></label>
+            <label
+              >Biaya token (kosong = ikut tarif tier)
+              <input v-model="edit.token_cost" type="number" min="0"
+            /></label>
+          </div>
+          <ProductCommissionOverrides :product-id="p.id" />
           <h3>Persyaratan untuk klien</h3>
           <p class="ap__hint">
             Ditampilkan di katalog dan wizard pesan sebagai daftar yang harus disiapkan.

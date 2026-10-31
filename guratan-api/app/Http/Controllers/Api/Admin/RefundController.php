@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\Order;
+use App\Services\Commerce\EarningService;
 use App\Services\Notifications\Notifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,6 +52,7 @@ class RefundController extends Controller
             ]);
             // Sampel ikut terkunci: HandwritingSample::isPaid() menolak pesanan berstatus dikembalikan.
             $order->deliveries()->whereNotIn('status', ['selesai'])->update(['status' => 'dibatalkan']);
+            app(EarningService::class)->reverse($order);
         });
         AuditLog::record('refund_admin', Order::class, $order->id, $request->user()->id, $request->ip());
         $notifier->send($order->user, 'refund', 'Pesanan Anda di-refund',

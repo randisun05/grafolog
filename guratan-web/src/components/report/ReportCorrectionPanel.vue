@@ -7,6 +7,7 @@ import { useToast } from '@/composables/useToast'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 
 const props = defineProps({
+  cost: { type: Number, default: 0 },
   sampleId: { type: [Number, String], required: true },
   aspekScores: { type: Array, required: true }, // report.aspek_scores (API pakai snake_case) - [{ aspek: {kode,nama}, skor, catatan_grafolog }]
 })
@@ -88,6 +89,11 @@ async function submitCorrection() {
         ⚠ Ini mengubah laporan yang sudah selesai. Versi sebelumnya tetap tersimpan di Riwayat
         Perubahan di bawah, tapi laporan aktif yang dilihat klien akan langsung berubah begitu
         disimpan.
+      </p>
+      <p v-if="cost > 0" class="report-correction__warning">
+        Menyimpan koreksi = regenerasi laporan: <strong>{{ cost }} token</strong> dipotong (tarif
+        sama seperti pembuatan awal). Mengubah hasil ukur dan edit narasi tidak dipotong; gagal =
+        tidak dipotong.
       </p>
       <SkeletonLoader v-if="loading" variant="form" :rows="5" label="Memuat form skor..." />
       <template v-else>

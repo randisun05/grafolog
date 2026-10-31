@@ -49,6 +49,11 @@ class Order extends Model
         ];
     }
 
+    public function earnings(): HasMany
+    {
+        return $this->hasMany(GrafologEarning::class);
+    }
+
     public function messages(): HasMany
     {
         return $this->hasMany(OrderMessage::class);

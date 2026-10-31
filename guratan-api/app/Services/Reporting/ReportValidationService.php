@@ -52,8 +52,17 @@ class ReportValidationService
             ->where(fn ($q) => $q->whereNull('grafolog_status')->orWhere('grafolog_status', 'verified'))
             ->orderBy('name')
             ->get(['id', 'name', 'city', 'bio', 'specializations', 'experience_years'])
-            ->filter(fn (User $g) => GrafologAvailability::forMonth($g, $month)['supervisable'])
+            ->filter(fn (User $g) => GrafologAvailability::forMonth($g, $month)['supervisable'] && $this->meetsSupervisorMinimum($g))
             ->values();
+    }
+
+    /** Syarat supervisor: sudah menerbitkan minimal N laporan (config/grafolog.php). */
+    public function meetsSupervisorMinimum(User $g): bool
+    {
+        $min = (int) config('grafolog.supervisor_min_reports');
+
+        return $min <= 0 || PersonalityReport::where('review_status', PersonalityReport::REVIEW_APPROVED)
+            ->whereHas('sample', fn ($q) => $q->where('created_by', $g->id)->orWhereHas('assignment', fn ($a) => $a->where('grafolog_id', $g->id)))->count() >= $min;
     }
 
     public function publish(PersonalityReport $report, User $grafolog, ?string $ip = null): PersonalityReport
@@ -79,9 +88,9 @@ class ReportValidationService
         abort_if($validator->id === $requester->id, 422, 'Tidak bisa menugaskan diri sendiri.');
         abort_if($report->sample->isScorableBy($validator), 422, 'Validator harus grafolog lain, bukan yang menangani sampel ini.');
         abort_unless(
-            $validator->isGrafolog() && GrafologAvailability::forMonth($validator, now()->format('Y-m'))['supervisable'],
+            $validator->isGrafolog() && GrafologAvailability::forMonth($validator, now()->format('Y-m'))['supervisable'] && $this->meetsSupervisorMinimum($validator),
             422,
-            'Grafolog ini tidak tersedia untuk supervisi bulan ini.',
+            'Grafolog ini tidak tersedia untuk supervisi bulan ini (atau belum memenuhi syarat supervisor).',
         );
         $fee = $this->fee();
 

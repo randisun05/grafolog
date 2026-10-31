@@ -29,6 +29,7 @@ const commands = computed(() => {
     items.push({ label: 'Ditugaskan ke Saya', to: { name: 'assigned-to-me' } })
     items.push({ label: 'Token Saya', to: { name: 'token-wallet' } })
     items.push({ label: 'Supervisi Laporan', to: { name: 'validation-tasks' } })
+    items.push({ label: 'Pendapatan Saya', to: { name: 'earnings' } })
   }
   if (auth.isAdministrator) {
     items.push({ label: 'Pesanan Masuk', to: { name: 'admin-orders' } })
@@ -40,6 +41,7 @@ const commands = computed(() => {
     items.push({ label: 'Kelola Konten', to: { name: 'admin-content' } })
     items.push({ label: 'Cek Tulisan, Mitra & Artikel', to: { name: 'admin-engagement' } })
     items.push({ label: 'Pengumuman', to: { name: 'admin-announcements' } })
+    items.push({ label: 'Komisi Grafolog', to: { name: 'admin-earnings' } })
     items.push({ label: 'Pemakaian & Biaya AI', to: { name: 'admin-ai-usage' } })
     items.push({ label: 'Manajemen CV', to: { name: 'admin-cv' } })
     items.push({ label: 'Broadcast Kotak Masuk', to: { name: 'admin-broadcast' } })

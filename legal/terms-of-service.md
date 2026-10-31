@@ -103,10 +103,14 @@ penarikan ke rekening/e-wallet). Imbalan supervisi dikreditkan ke saldo token su
 setelah pembuat laporan mengonfirmasi hasilnya, dan hanya dapat dipakai untuk layanan di
 Guratan. Token tidak dapat dipindahtangankan di luar sistem.
 
+**Penggunaan token pada laporan.** Pembuatan laporan memotong token sesuai tarif produk. **Regenerasi laporan** (menyimpan koreksi skor) dipotong lagi dengan tarif yang sama seperti pembuatan awal. Edit narasi manual dan perubahan hasil ukur tidak dipotong. Bila pembuatan atau regenerasi gagal, token tidak dipotong.
+
+**Komisi grafolog.** Grafolog memperoleh komisi (persentase atau nominal tetap, diatur per produk dan dapat berbeda per grafolog) dari pesanan klien yang **selesai**. Komisi bukan token, dibayarkan dalam rupiah melalui pencairan yang dicatat administrator, dan dibatalkan bila pesanan direfund sebelum dicairkan.
+
 ## 9. Supervisi Antar-Grafolog
 
 Grafolog pembuat laporan dapat menugaskan grafolog lain yang tersedia sebagai
-supervisor dengan batas waktu yang ia tentukan. Supervisor dapat menolak atau
+supervisor dengan batas waktu yang ia tentukan. Supervisi bersifat **opsional**: pembuat laporan dapat menerbitkan langsung, dan bila tidak ada supervisor tersedia laporan tetap dapat diterbitkan tanpa supervisi (ditandai pada laporan). Supervisor harus grafolog terverifikasi yang telah menerbitkan sejumlah laporan minimum dan bersedia pada bulan tersebut. Supervisor dapat menolak atau
 menyetujui/menolak laporan. Token biaya supervisi ditahan di sistem (escrow) dan baru
 diteruskan ke supervisor setelah pembuat laporan mengonfirmasi hasil; bila supervisor
 melewati batas waktu atau menolak penugasan, token kembali dan penugasan dapat dialihkan.

@@ -21,6 +21,17 @@ class TokenCost extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    /**
+     * Biaya token membuat (dan meregenerasi) laporan untuk sampel ini: override pada produk pesanan bila ada,
+     * kalau tidak tarif per tier. null/0 = gratis.
+     */
+    public static function forSample(HandwritingSample $sample): int
+    {
+        $override = $sample->order?->product?->token_cost;
+
+        return (int) ($override ?? static::activeTokensFor($sample->tier) ?? 0);
+    }
+
     public static function activeTokensFor(string $tier): ?int
     {
         return static::where('tier', $tier)->where('is_active', true)->value('tokens_required');

@@ -14,6 +14,15 @@ class StoreProductRequest extends FormRequest
         return true;
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($v) {
+            if ($this->input('commission_type') === 'percent' && (int) $this->input('commission_value', 0) > 100) {
+                $v->errors()->add('commission_value', 'Komisi persen maksimal 100.');
+            }
+        });
+    }
+
     protected function prepareForValidation(): void
     {
         if ($this->has('kode')) {
@@ -40,6 +49,9 @@ class StoreProductRequest extends FormRequest
             'is_active' => ['sometimes', 'boolean'],
             'is_featured' => ['sometimes', 'boolean'],
             'promo_label' => ['nullable', 'string', 'max:60'],
+            'token_cost' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000'],
+            'commission_type' => ['sometimes', Rule::in(Product::COMMISSION_TYPES)],
+            'commission_value' => ['sometimes', 'integer', 'min:0', 'max:100000000'],
             'modes' => ['sometimes', 'array', 'min:1'],
             'modes.*' => ['string', Rule::in(Product::MODES)],
             'requirements' => ['sometimes', 'nullable', 'array', 'max:15'],

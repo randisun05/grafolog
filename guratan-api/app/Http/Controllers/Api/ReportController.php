@@ -7,6 +7,7 @@ use App\Http\Requests\Reporting\UpdateNarasiOverrideRequest;
 use App\Models\AuditLog;
 use App\Models\PersonalityReport;
 use App\Models\ReportRevision;
+use App\Models\TokenCost;
 use App\Models\User;
 use App\Services\Reporting\ReportLocalizer;
 use App\Services\Reporting\ReportPdfService;
@@ -69,6 +70,7 @@ class ReportController extends Controller
         // Grafolog pemeriksa (untuk menampilkan CV-nya ke klien/HR): yang ditugaskan, atau pembuat sampel bila grafolog.
         $payload['examiner_id'] = $report->sample->assignment?->grafolog_id
             ?? (User::whereKey($report->sample->created_by)->where('role', 'grafolog')->value('id'));
+        $payload['regeneration_cost'] = $payload['can_handle'] ? TokenCost::forSample($report->sample) : null;
         $payload['is_validator'] = $user->isGrafolog() && $report->isValidatedBy($user);
 
         return response()->json($payload);

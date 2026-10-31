@@ -81,6 +81,7 @@ async function handleLogout() {
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/ditugaskan">Ditugaskan ke Saya</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/grafolog/supervisi">Supervisi</RouterLink>
         <RouterLink v-if="auth.isGrafolog" to="/token-saya">Token Saya</RouterLink>
+        <RouterLink v-if="auth.isGrafolog" to="/pendapatan">Pendapatan</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/orders">Pesanan Masuk</RouterLink>
         <RouterLink v-if="auth.isAdministrator" to="/admin/verifikasi" class="app-navbar__verif">
           Verifikasi
@@ -101,6 +102,7 @@ async function handleLogout() {
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
             <RouterLink to="/admin/engagement">Cek Tulisan, Mitra &amp; Artikel</RouterLink>
             <RouterLink to="/admin/announcements">Pengumuman</RouterLink>
+            <RouterLink to="/admin/komisi">Komisi Grafolog</RouterLink>
             <RouterLink to="/admin/ai-usage">Pemakaian &amp; Biaya AI</RouterLink>
             <RouterLink to="/admin/cv">Manajemen CV</RouterLink>
             <RouterLink to="/admin/broadcast">Broadcast Kotak Masuk</RouterLink>

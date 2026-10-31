@@ -196,7 +196,7 @@ onMounted(load)
               {{
                 validators.length
                   ? 'Pilih grafolog...'
-                  : 'Belum ada grafolog tersedia supervisi bulan ini'
+                  : 'Belum ada supervisor yang tersedia - Anda tetap dapat menerbitkan langsung'
               }}
             </option>
             <option v-for="v in validators" :key="v.id" :value="v.id">
