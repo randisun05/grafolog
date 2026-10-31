@@ -97,6 +97,18 @@
                         <p class="fallback">{{ $t['belum_diterjemahkan'] }}</p>
                     @endif
                     <p>{!! nl2br(e($aspek['narasi'])) !!}</p>
+                    @if (!empty($aspek['indikator_terkait']))
+                        <ul class="indikator">
+                            @foreach ($aspek['indikator_terkait'] as $indikator)
+                                <li>
+                                    <span class="kode">{{ $indikator['kode'] }}</span>{{ $indikator['nama'] }}
+                                    @if (!empty($indikator['keterangan']))
+                                        <p class="keterangan">{{ $indikator['keterangan'] }}</p>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
             @endforeach
         </div>

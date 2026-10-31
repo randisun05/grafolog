@@ -2327,3 +2327,16 @@ tidak disentuh.
 - **CI**: `.github/workflows/ci.yml` (backend `phpunit` dengan `memory_limit=1G`, frontend lint [tidak memblokir] + vitest + build).
 - **Sengaja TIDAK diambil**: backup spatie (main sudah punya `db:backup` terjadwal), token Sanctum 24 jam (main memakai 30 hari
   dan sanctum:prune-expired), menu hamburger/tabel meluber (main sudah punya dropdown Admin + `.table-scroll`).
+
+## Narasi terpadu, Kombinasi Temuan, Topik (dari branch lama) — 2026-10-31
+
+- **Narasi terpadu**: grafolog menekan "generate" → `GenerateNarasiTerpaduJob` (antrean, 1 panggilan LLM live per laporan, dedup
+  berdasar hash input) menulis draf ke `personality_reports.narasi_terpadu`; grafolog menyunting lalu menandai `final`. Endpoint:
+  `POST /reports/{id}/narasi-terpadu/generate`, `PATCH /reports/{id}/narasi-terpadu`, `GET /reports/{id}/pdf-narasi`.
+  **Beda dari branch asal (disengaja)**: di sana klien HANYA melihat narasi dan rincian skor disembunyikan. Di main sifatnya
+  TAMBAHAN: klien tetap melihat laporan terstruktur (dua bahasa, resume, QA) dan narasi muncul di atasnya bila `final`;
+  draf tidak pernah terlihat klien. Ini reversi sadar atas prinsip "LLM tidak live per-user", tetap dijaga review manusia.
+- **Kombinasi Temuan** (`/admin/knowledge`, tab "Kombinasi Temuan") + **Topik** (tab "Topik", pengelompokan Aspek/Kombinasi untuk
+  segmentasi laporan): tabel `kombinasi_temuan`, `kombinasi_syarat`, `topik`, `aspek_topik`, `kombinasi_temuan_topik`.
+- PDF laporan kini menampilkan Indikator terkait per Aspek dan bagian Pola Kombinasi.
+- Perlu `php artisan migrate`; antrean harus berjalan (`queue:listen`) agar generate narasi selesai.
