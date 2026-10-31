@@ -39,16 +39,19 @@ class NarasiTerpaduService
         $this->ensureConfigured();
 
         $ringkasan = $this->ringkasSindromAspek($report->data['sindrom'] ?? []);
+        $ringkasan .= $this->ringkasKombinasiDitemukan($report->data['kombinasi_ditemukan'] ?? []);
         $namaBahasa = $bahasa === 'en' ? 'English' : 'Bahasa Indonesia';
 
         $systemPrompt = <<<PROMPT
         Kamu adalah asisten penulisan laporan grafologi. Tugasmu merangkai data
         skor & narasi per-aspek berikut (beberapa aspek juga menyertakan bukti
-        tulisan tangan spesifik dari Indikator yang tercentang) menjadi SATU
-        laporan deskriptif yang mengalir dan komunikatif dalam {$namaBahasa},
-        seolah ditulis langsung oleh seorang grafolog profesional untuk
-        kliennya. Bukti Indikator boleh dipakai untuk memperkuat/mengkonkretkan
-        narasi aspek terkait, bukan didaftar terpisah.
+        tulisan tangan spesifik dari Indikator yang tercentang, dan mungkin ada
+        "Pola Kombinasi" - temuan dari kombinasi beberapa Aspek/Indikator/Sindrom
+        sekaligus, bukan cuma 1 aspek) menjadi SATU laporan deskriptif yang
+        mengalir dan komunikatif dalam {$namaBahasa}, seolah ditulis langsung
+        oleh seorang grafolog profesional untuk kliennya. Bukti Indikator dan
+        Pola Kombinasi boleh dipakai untuk memperkuat/mengkonkretkan narasi,
+        bukan didaftar terpisah dari aspek yang relevan.
 
         ATURAN KETAT:
         - JANGAN menambah klaim, contoh, atau interpretasi baru di luar data yang diberikan.
@@ -145,6 +148,23 @@ class NarasiTerpaduService
                     $baris[] = "  - Bukti tulisan tangan ({$indikator['kode']} {$indikator['nama']}): {$indikator['keterangan']}";
                 }
             }
+        }
+
+        return implode("\n", $baris);
+    }
+
+    /**
+     * @param  array<int, array{id:int, nama:string, teks_interpretasi:string}>  $kombinasiDitemukan
+     */
+    private function ringkasKombinasiDitemukan(array $kombinasiDitemukan): string
+    {
+        if ($kombinasiDitemukan === []) {
+            return '';
+        }
+
+        $baris = ["\n\n## Pola Kombinasi (dari beberapa Aspek/Indikator/Sindrom sekaligus)"];
+        foreach ($kombinasiDitemukan as $temuan) {
+            $baris[] = "- {$temuan['nama']}: {$temuan['teks_interpretasi']}";
         }
 
         return implode("\n", $baris);

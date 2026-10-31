@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ConceptMapExplorer from '@/components/admin/ConceptMapExplorer.vue'
 import KnowledgeMatrixExplorer from '@/components/admin/KnowledgeMatrixExplorer.vue'
+import KombinasiTemuanManager from '@/components/admin/KombinasiTemuanManager.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -16,6 +17,7 @@ const tabs = [
   { key: 'band', label: 'Band Skor' },
   { key: 'peta', label: 'Peta Konsep' },
   { key: 'matriks', label: 'Matriks' },
+  { key: 'kombinasi', label: 'Kombinasi Temuan' },
 ]
 const activeTab = ref('sindrom')
 
@@ -1384,6 +1386,11 @@ onMounted(async () => {
 
       <section v-if="activeTab === 'matriks'" class="admin-km__panel">
         <KnowledgeMatrixExplorer @open-indikator="openIndikatorByKode" />
+      </section>
+
+      <!-- KOMBINASI TEMUAN -->
+      <section v-if="activeTab === 'kombinasi'" class="admin-km__panel">
+        <KombinasiTemuanManager />
       </section>
     </template>
   </div>

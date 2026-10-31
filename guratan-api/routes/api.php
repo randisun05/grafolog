@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\Admin\IndikatorController as AdminIndikatorControll
 use App\Http\Controllers\Api\Admin\IndikatorRuleController;
 use App\Http\Controllers\Api\Admin\KnowledgeMatrixController;
 use App\Http\Controllers\Api\Admin\LlmUsageController;
+use App\Http\Controllers\Api\Admin\KombinasiSyaratController;
+use App\Http\Controllers\Api\Admin\KombinasiTemuanController;
 use App\Http\Controllers\Api\Admin\MeasurementCategoryController;
 use App\Http\Controllers\Api\Admin\MeasurementVariableController as AdminMeasurementVariableController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
@@ -340,6 +342,14 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         // Matriks keterkaitan (2026-10-16): struktur aturan + korelasi empiris, murni baca.
         Route::get('/knowledge/matrix', [KnowledgeMatrixController::class, 'struktur']);
         Route::get('/knowledge/matrix/empiris', [KnowledgeMatrixController::class, 'empiris']);
+
+        // Kombinasi Temuan (2026-08-22) - lihat CLAUDE.md.
+        Route::get('/knowledge/kombinasi', [KombinasiTemuanController::class, 'index']);
+        Route::post('/knowledge/kombinasi', [KombinasiTemuanController::class, 'store']);
+        Route::put('/knowledge/kombinasi/{kombinasiTemuan}', [KombinasiTemuanController::class, 'update']);
+        Route::delete('/knowledge/kombinasi/{kombinasiTemuan}', [KombinasiTemuanController::class, 'destroy']);
+        Route::post('/knowledge/kombinasi/{kombinasiTemuan}/syarat', [KombinasiSyaratController::class, 'store']);
+        Route::delete('/knowledge/kombinasi-syarat/{kombinasiSyarat}', [KombinasiSyaratController::class, 'destroy']);
     });
 
     Route::middleware('role:hr')->prefix('hr')->group(function () {

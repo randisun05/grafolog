@@ -137,6 +137,29 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
   branch rendering it as "Tercentang jika Indikator {kode} tercentang".
   Browser-verified: added a real rule this way, confirmed it lists and
   deletes correctly, confirmed the tab itself is gone from the tab bar.
+  **Gained a new 7th tab, "Kombinasi Temuan", 2026-08-22** — new component
+  `components/admin/KombinasiTemuanManager.vue` (self-contained, own
+  `<style scoped>`, same pattern as `ConceptMapExplorer.vue` rather than
+  growing the already-1300+-line `AdminKnowledgeView.vue` further). Create
+  form (nama/logika_gabung AND-OR/teks_interpretasi) + list with inline
+  expand-to-edit (same convention as every other KM tab), each item's
+  expanded panel has a nested "Syarat" builder: level dropdown
+  (indikator/aspek/sindrom) drives which target dropdown shows
+  (`indikatorOptions` from the existing `/admin/knowledge/indikator-options`
+  endpoint reused as-is; `aspekOptions`/`sindromOptions` are its own fetches
+  of the existing `/admin/knowledge/aspek` and `/admin/knowledge/sindrom`
+  list endpoints — both already unpaginated, fine to reuse for a dropdown)
+  and which `kondisi` options show (tercentang/tidak_tercentang for
+  Indikator; low/medium/high/very_high — the same 4-bucket narasi_level
+  already used elsewhere — for Aspek/Sindrom). See `guratan-api/CLAUDE.md`'s
+  "Kombinasi Temuan" for the backend half and why this is a genuinely
+  different mechanism from the cascade rule above (produces a NEW
+  interpretation from a combination of conditions, not just extending the
+  same evidence to another Indikator). `ReportDocument.vue` gained a
+  "Pola Kombinasi Ditemukan" section rendering `data.kombinasi_ditemukan`
+  (only present when a report has at least one match) at the end of the
+  document, styled with its own gold-accent left border to read as a
+  distinct finding type from the per-Aspek narasi above it.
   **Below is the original (now-removed) tab's history, kept for context:**
   **Gained a 6th tab, "Referensi Silang", 2026-08-08 (KM-F)** — same
   paginated-search pattern as the Indikator tab (280 rows). Table columns:

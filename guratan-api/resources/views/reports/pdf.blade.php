@@ -26,6 +26,15 @@
         .aspek p { text-align: justify; line-height: 1.45; margin: 0; }
         .aspek .fallback { font-size: 9.5px; color: #a15c00; font-style: italic; margin-bottom: 3px; }
         .catatan { font-size: 9.5px; color: #777; margin: -8px 0 14px; }
+        .aspek .indikator { margin: 6px 0 0 0; padding-left: 16px; font-size: 11px; color: #333; }
+        .aspek .indikator li { margin-bottom: 4px; }
+        .aspek .indikator .kode { font-weight: bold; margin-right: 4px; }
+        .aspek .indikator .keterangan { color: #555; margin: 2px 0 0 0; }
+        .kombinasi { margin-top: 24px; border-top: 2px solid #ccc; padding-top: 12px; }
+        .kombinasi h2 { font-size: 15px; margin-bottom: 8px; }
+        .kombinasi-item { margin: 0 10px 12px 10px; padding-left: 10px; border-left: 2px solid #999; }
+        .kombinasi-item h3 { font-size: 13px; margin-bottom: 2px; }
+        .kombinasi-item p { text-align: justify; line-height: 1.4; margin: 0; }
     </style>
 </head>
 <body>
@@ -92,5 +101,17 @@
             @endforeach
         </div>
     @endforeach
+
+    @if (!empty($report->data['kombinasi_ditemukan']))
+        <div class="kombinasi">
+            <h2>Pola Kombinasi Ditemukan</h2>
+            @foreach ($report->data['kombinasi_ditemukan'] as $temuan)
+                <div class="kombinasi-item">
+                    <h3>{{ $temuan['nama'] }}</h3>
+                    <p>{{ $temuan['teks_interpretasi'] }}</p>
+                </div>
+            @endforeach
+        </div>
+    @endif
 </body>
 </html>
