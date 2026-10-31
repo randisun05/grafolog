@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ActivityLogController;
+use App\Http\Controllers\Api\Admin\NotificationLogController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AffiliateAdminController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
@@ -246,6 +247,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/broadcasts', [BroadcastController::class, 'index']);
         Route::post('/broadcasts', [BroadcastController::class, 'store']);
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+        Route::get('/notification-logs', [NotificationLogController::class, 'index']);
         Route::get('/company-applications', [CompanyVerificationController::class, 'index']);
         Route::get('/validations', [ValidationIndexController::class, 'index']);
         Route::get('/refunds', [RefundController::class, 'index']);

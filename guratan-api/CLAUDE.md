@@ -1944,3 +1944,15 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
   Xendit belum pernah dites terhadap akun sungguhan - cek `notification_payload` pada transaksi test pertama.
 - Klien bawaan grafolog (`referred_by`) tetap langsung ditugaskan ke pembawanya saat lunas
   (`GrafologMatchingService::startOnPaid`), walau alur T2 umumnya meminta konfirmasi grafolog 24 jam.
+
+## Operasional dari branch lama (pelajari-sistem) — 2026-10-31
+
+- **WhatsApp (Fonnte)**: `Notifier::send()` kini juga mengantrekan `SendWhatsAppNotification` (paralel dengan email, hanya bila
+  `FONNTE_TOKEN` terisi dan pengguna punya `phone`; ikut aturan opt-out email). Tiap percobaan dicatat di `notification_logs`
+  (sent/failed/skipped), dilihat admin di `/admin/notification-logs` (`GET /api/admin/notification-logs`).
+- **Sentry**: `bootstrap/app.php` memanggil `Integration::handles()` bila paketnya terpasang (`class_exists`); no-op tanpa
+  `SENTRY_LARAVEL_DSN`. **`composer.lock` belum diperbarui** (tak ada akses packagist dari mesin yang mengerjakannya):
+  jalankan `composer update sentry/sentry-laravel` sekali di mesin dengan koneksi normal.
+- **CI**: `.github/workflows/ci.yml` (backend `phpunit` dengan `memory_limit=1G`, frontend lint [tidak memblokir] + vitest + build).
+- **Sengaja TIDAK diambil**: backup spatie (main sudah punya `db:backup` terjadwal), token Sanctum 24 jam (main memakai 30 hari
+  dan sanctum:prune-expired), menu hamburger/tabel meluber (main sudah punya dropdown Admin + `.table-scroll`).

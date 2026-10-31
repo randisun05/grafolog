@@ -5,6 +5,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { initAnalytics } from './lib/analytics'
 
 const app = createApp(App)
 
@@ -12,3 +13,6 @@ app.use(createPinia())
 app.use(router)
 
 app.mount('#app')
+
+// GA4: no-op sampai VITE_GA_MEASUREMENT_ID diisi.
+initAnalytics()

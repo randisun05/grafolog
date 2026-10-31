@@ -2,6 +2,7 @@
 
 namespace App\Services\Notifications;
 
+use App\Jobs\SendWhatsAppNotification;
 use App\Mail\NotificationMail;
 use App\Models\Broadcast;
 use App\Models\InboxMessage;
@@ -23,6 +24,7 @@ class Notifier
         ]);
         if ($mail && ($user->email_notifications !== false || in_array($type, User::ESSENTIAL_NOTICE_TYPES, true))) {
             $this->mail($user, $title, $body, $url);
+            $this->whatsApp($user, $type, $title, $body);
         }
 
         return $message;
@@ -52,6 +54,22 @@ class Notifier
         $broadcast->update(['recipients_count' => $count]);
 
         return $count;
+    }
+
+    /**
+     * WhatsApp paralel dengan email (Fonnte), lewat antrean. Hanya bila token Fonnte terisi dan pengguna punya
+     * nomor HP: tanpa itu tidak ada baris log (yang dicatat hanya percobaan nyata), email tetap jalan.
+     */
+    private function whatsApp(User $user, string $type, string $title, string $body): void
+    {
+        if (blank(config('services.fonnte.token')) || blank($user->phone)) {
+            return;
+        }
+        try {
+            SendWhatsAppNotification::dispatch($user->id, $type, $user->phone, "*{$title}*\n{$body}");
+        } catch (\Throwable $e) {
+            Log::warning('Notifier: WhatsApp gagal diantrekan', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
     }
 
     private function mail(User $user, string $title, string $body, ?string $url): void

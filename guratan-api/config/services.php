@@ -122,4 +122,18 @@ return [
         'success_redirect_url' => env('XENDIT_SUCCESS_REDIRECT_URL', rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/dashboard'),
     ],
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fonnte (WhatsApp gateway)
+    |--------------------------------------------------------------------------
+    |
+    | Token perangkat dari https://fonnte.com (Perangkat > pilih perangkat > Token).
+    | Kosong = notifikasi WhatsApp tidak dikirim sama sekali (email tetap jalan).
+    |
+    */
+    'fonnte' => [
+        'token' => env('FONNTE_TOKEN'),
+    ],
+
 ];

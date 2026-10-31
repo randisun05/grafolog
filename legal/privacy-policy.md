@@ -71,7 +71,9 @@ sesuai UU PDP.
 
 | Pihak | Data | Tujuan |
 |---|---|---|
-| DOKU | Nama, email, detail transaksi | Pembayaran |
+| DOKU / Xendit | Nama, email, detail transaksi | Pembayaran (salah satu, sesuai pilihan Anda) |
+| Fonnte (WhatsApp) | Nomor HP, isi notifikasi | Notifikasi WhatsApp, hanya bila Anda mengisi nomor HP |
+| Google Analytics | Data statistik kunjungan situs (halaman dibuka, durasi) — bukan skor atau isi laporan | Memahami pola penggunaan situs (aktif hanya bila dikonfigurasi) |
 | Penyedia email [PENYEDIA EMAIL] | Alamat email, isi notifikasi | Pengiriman email |
 | Penyedia AI | Data teranonimkan | Analisis gabungan |
 | Penyedia hosting [PENYEDIA HOSTING] | Seluruh data tersimpan terenkripsi sesuai konfigurasi | Infrastruktur |

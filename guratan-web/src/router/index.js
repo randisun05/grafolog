@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { trackPageview } from '@/lib/analytics'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -247,6 +248,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/notification-logs',
+      name: 'admin-notification-logs',
+      component: () => import('../views/AdminNotificationLogsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/log-aktivitas',
       name: 'admin-activity',
       component: () => import('../views/AdminActivityView.vue'),
@@ -367,6 +374,11 @@ router.beforeEach((to) => {
   }
 
   return true
+})
+
+// SPA: pageview GA dikirim manual per navigasi (no-op bila GA belum dikonfigurasi).
+router.afterEach((to) => {
+  trackPageview(to.fullPath)
 })
 
 export default router
