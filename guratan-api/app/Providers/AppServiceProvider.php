@@ -38,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
         // Kunci terpisah per jenis aksi (throttle:N,M bernama-angka berbagi kunci dengan grup auth).
         RateLimiter::for('data-export', fn (Request $request) => Limit::perHour(3)->by('export|'.$request->user()?->id));
         RateLimiter::for('account-delete', fn (Request $request) => Limit::perHour(10)->by('delete|'.$request->user()?->id));
+        RateLimiter::for('chat', fn (Request $request) => Limit::perMinute(30)->by('chat|'.$request->user()?->id));
         RateLimiter::for('cv-upload', fn (Request $request) => Limit::perMinute(20)->by('cvup|'.$request->user()?->id));
 
         ResetPassword::createUrlUsing(fn ($user, string $token) => rtrim(config('app.frontend_url'), '/')

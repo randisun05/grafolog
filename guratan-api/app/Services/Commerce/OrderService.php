@@ -251,11 +251,11 @@ class OrderService
                 $order->deliveries()->create([
                     'product_component_id' => $component->id,
                     'user_id' => $order->user_id,
-                ] + ($order->grafolog_id ? ['assigned_to' => $order->grafolog_id, 'status' => 'ditugaskan'] : []));
+                ] + ($order->grafolog_id && $order->batch_id ? ['assigned_to' => $order->grafolog_id, 'status' => 'ditugaskan'] : []));
             }
 
-            // Grafolog pilihan pemesan (B2B: HR memilih grafolog) langsung menangani sampelnya.
-            if ($order->grafolog_id && $order->sample_id) {
+            // Grafolog pilihan HR (B2B) langsung menangani sampelnya. Pesanan klien individu: menunggu konfirmasi grafolog.
+            if ($order->grafolog_id && $order->sample_id && $order->batch_id) {
                 Assignment::updateOrCreate(
                     ['sample_id' => $order->sample_id],
                     ['grafolog_id' => $order->grafolog_id, 'assigned_by' => $order->created_by, 'status' => 'assigned'],
@@ -268,9 +268,8 @@ class OrderService
             $this->notifier->send($order->user, 'pembayaran', 'Pembayaran diterima',
                 "Pesanan #{$order->id} ({$order->product->nama}) sudah dibayar dan sedang diproses.", '/riwayat');
         }
-        if ($order->grafolog_id && ! $order->batch_id) {
-            $this->notifier->send($order->grafolog, 'penugasan', 'Penugasan baru',
-                "Anda ditugaskan menangani pesanan #{$order->id} ({$order->product->nama}) untuk kandidat/klien.", '/grafolog/ditugaskan');
+        if (! $order->batch_id) {
+            app(GrafologMatchingService::class)->startOnPaid($order->fresh(['user', 'product']));
         }
     }
 

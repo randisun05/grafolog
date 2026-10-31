@@ -211,6 +211,30 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/ai-usage',
+      name: 'admin-ai-usage',
+      component: () => import('../views/AdminLlmUsageView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/produk',
+      name: 'catalog',
+      component: () => import('../views/ProductCatalogView.vue'),
+    },
+    {
+      path: '/produk/:kode',
+      name: 'product-detail',
+      component: () => import('../views/ProductDetailView.vue'),
+      props: true,
+    },
+    {
+      path: '/pesanan/:id/chat',
+      name: 'order-chat',
+      component: () => import('../views/OrderChatView.vue'),
+      props: true,
+      meta: { requiresAuth: true, role: ['user', 'grafolog', 'administrator'] },
+    },
+    {
       path: '/kotak-masuk',
       name: 'inbox',
       component: () => import('../views/InboxView.vue'),

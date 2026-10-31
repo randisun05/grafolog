@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 import { formatRupiah, formatTanggal, STATUS_PESANAN } from '@/lib/format'
+import SampleImages from '@/components/shared/SampleImages.vue'
+import GrafologPicker from '@/components/order/GrafologPicker.vue'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ServiceDeliveryCard from '@/components/commerce/ServiceDeliveryCard.vue'
 import { useToast } from '@/composables/useToast'
@@ -29,6 +31,7 @@ async function load() {
     ])
     reports.value = data.data
     orders.value = ordersRes.data
+    if (auth.isClient) unreadByOrder.value = (await api.get('/chat/unread')).data.by_order ?? {}
   } catch (e) {
     error.value = e.response?.data?.message ?? 'Gagal memuat riwayat.'
   } finally {
@@ -47,6 +50,31 @@ async function payOrder(order) {
     }
   } catch (e) {
     toast.push(e.response?.data?.message ?? 'Gagal memulai pembayaran.')
+  }
+}
+
+const GSTATE = {
+  menunggu_konfirmasi: 'Menunggu konfirmasi grafolog',
+  menunggu_pilih: 'Perlu memilih grafolog lain',
+  menunggu_admin: 'Tim kami sedang mencarikan grafolog',
+  diterima: 'Diterima grafolog',
+}
+const pickerOpen = ref(null)
+const unreadByOrder = ref({})
+const declinedIds = (o) =>
+  (o.grafolog_history ?? [])
+    .filter((h) => ['ditolak', 'kedaluwarsa'].includes(h.status))
+    .map((h) => h.grafolog_id)
+const hoursLeft = (d) => Math.max(0, Math.round((new Date(d) - Date.now()) / 3600000))
+
+async function chooseGrafolog(order, payload) {
+  try {
+    await api.post(`/orders/${order.id}/grafolog`, payload)
+    toast.push('Pilihan grafolog dikirim.', 'success')
+    pickerOpen.value = null
+    await load()
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal memilih grafolog.')
   }
 }
 
@@ -84,6 +112,67 @@ onMounted(load)
             <span :class="['riwayat__badge', `riwayat__badge--${o.status}`]">{{
               STATUS_PESANAN[o.status] ?? o.status
             }}</span>
+          </div>
+
+          <p v-if="o.delivery_mode" class="riwayat__meta">
+            {{ o.delivery_mode === 'offline' ? 'Tatap muka' : 'Online' }}
+            <template v-if="o.location_note"> · {{ o.location_note }}</template>
+            <template v-if="o.scheduled_for">
+              · Tanggal diinginkan {{ formatTanggal(o.scheduled_for) }}</template
+            >
+            <template v-if="o.upload_deadline">
+              · Batas unggah {{ formatTanggal(o.upload_deadline) }}</template
+            >
+          </p>
+          <details
+            v-if="o.sample_id && o.status === 'diproses' && o.sample_status !== 'completed'"
+            class="riwayat__upload"
+            :open="!o.image_count"
+          >
+            <summary>
+              Persyaratan: scan tulisan tangan
+              <span class="riwayat__meta">({{ o.image_count }} berkas)</span>
+            </summary>
+            <SampleImages :sample-id="o.sample_id" :can-upload="true" @changed="load" />
+          </details>
+
+          <div v-if="o.grafolog_state" class="riwayat__grafolog">
+            <strong>{{ GSTATE[o.grafolog_state] }}</strong>
+            <template v-if="o.grafolog?.name"> · {{ o.grafolog.name }}</template>
+            <template v-if="o.grafolog_state === 'menunggu_konfirmasi'">
+              · sisa ± {{ hoursLeft(o.grafolog_deadline) }} jam
+            </template>
+            <ul v-if="o.grafolog_history?.length" class="riwayat__meta">
+              <li v-for="(h, i) in o.grafolog_history" :key="i">
+                {{ h.grafolog }}: {{ h.status }}
+              </li>
+            </ul>
+            <div v-if="o.grafolog_state === 'diterima'" class="riwayat__actions">
+              <RouterLink :to="`/pesanan/${o.id}/chat`" class="btn btn--primary">
+                Chat dengan grafolog
+                <span v-if="unreadByOrder[o.id]" class="riwayat__badge">{{
+                  unreadByOrder[o.id]
+                }}</span>
+              </RouterLink>
+            </div>
+            <div v-if="o.grafolog_state === 'menunggu_pilih'" class="riwayat__actions">
+              <button
+                type="button"
+                class="btn btn--primary"
+                @click="pickerOpen = pickerOpen === o.id ? null : o.id"
+              >
+                Pilih grafolog lain
+              </button>
+              <button type="button" class="btn" @click="chooseGrafolog(o, { rekomendasi: true })">
+                Minta rekomendasi tim
+              </button>
+            </div>
+            <GrafologPicker
+              v-if="pickerOpen === o.id"
+              :month="(o.scheduled_for || new Date().toISOString()).slice(0, 7)"
+              :exclude-ids="declinedIds(o)"
+              @select="(g) => chooseGrafolog(o, { grafolog_id: g.id })"
+            />
           </div>
 
           <div v-if="o.status === 'menunggu_pembayaran'" class="riwayat__actions">
@@ -221,5 +310,21 @@ onMounted(load)
   margin: 8px 0 0;
   font-size: 13px;
   color: var(--color-text-soft);
+}
+.riwayat__grafolog {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-gold);
+  background: var(--color-gold-soft);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+}
+.riwayat__badge {
+  background: var(--color-seal);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 11px;
+  margin-left: 4px;
 }
 </style>

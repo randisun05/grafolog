@@ -41,10 +41,11 @@ class CvService
             if ($viewer->isHr() && $viewer->company_id) {
                 $candidateIds = CandidateProfile::where('company_id', $viewer->company_id)->pluck('user_id')->all();
 
-                return $this->examines($subject->id, $candidateIds) ? 'subject' : null;
+                return $this->examines($subject->id, $candidateIds) ? 'subject' : 'public';
             }
 
-            return null;
+            // Portofolio grafolog terverifikasi dapat dilihat klien (variabel tidak tersembunyi) untuk memilih.
+            return $viewer->role === 'user' ? 'public' : null;
         }
         if ($viewer->isHr() && $viewer->company_id
             && CandidateProfile::where('user_id', $subject->id)->where('company_id', $viewer->company_id)->exists()) {
@@ -132,6 +133,17 @@ class CvService
             $stored = $value === null || $value === '' ? null : (is_bool($value) ? ($value ? '1' : '0') : (string) $value);
             CvValue::updateOrCreate(['user_id' => $subject->id, 'cv_field_id' => $fields[$key]->id], ['value' => $stored]);
         }
+    }
+
+    /** Jumlah variabel WAJIB (untuk jenis CV pemilik ini, termasuk yang tersembunyi) yang belum terisi. */
+    public function missingRequired(User $subject): int
+    {
+        $values = CvValue::where('user_id', $subject->id)->pluck('value', 'cv_field_id');
+        $applies = $this->appliesTo($subject);
+
+        return CvField::where('is_active', true)->where('required', true)->whereIn('applies_to', $applies)
+            ->whereHas('group', fn ($q) => $q->where('is_active', true))->get()
+            ->filter(fn (CvField $f) => blank($values[$f->id] ?? null))->count();
     }
 
     /** Field berkas yang boleh diakses relasi ini (404 bila tidak berlaku/tersembunyi). */

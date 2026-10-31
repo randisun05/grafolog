@@ -41,13 +41,14 @@ class CvController extends Controller
     {
         $relation = $this->cv->relation($request->user(), $user);
         abort_if($relation === null, 403, 'Anda tidak berhak melihat CV ini.');
-        if ($relation !== 'self') {
+        if (! in_array($relation, ['self', 'public'], true)) {
             AuditLog::record('lihat_cv', User::class, $user->id, $request->user()->id, $request->ip());
         }
 
         return response()->json([
             'user' => ['id' => $user->id, 'name' => $user->name],
             'editable' => $this->cv->canEdit($relation),
+            'missing_required' => $relation === 'self' ? $this->cv->missingRequired($user) : null,
             'groups' => $this->cv->render($user, $relation),
         ]);
     }

@@ -99,6 +99,7 @@ async function handleLogout() {
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
             <RouterLink to="/admin/engagement">Cek Tulisan, Mitra &amp; Artikel</RouterLink>
             <RouterLink to="/admin/announcements">Pengumuman</RouterLink>
+            <RouterLink to="/admin/ai-usage">Pemakaian &amp; Biaya AI</RouterLink>
             <RouterLink to="/admin/cv">Manajemen CV</RouterLink>
             <RouterLink to="/admin/broadcast">Broadcast Kotak Masuk</RouterLink>
             <RouterLink to="/admin/log-aktivitas">Log Aktivitas</RouterLink>
@@ -136,6 +137,7 @@ async function handleLogout() {
         <button type="button" class="app-navbar__logout" @click="handleLogout">Keluar</button>
       </template>
       <template v-else>
+        <RouterLink to="/produk">Produk</RouterLink>
         <RouterLink to="/cek-tulisan">Cek Tulisan Gratis</RouterLink>
         <RouterLink to="/produk-mitra">Produk Mitra</RouterLink>
         <RouterLink to="/artikel">Artikel</RouterLink>

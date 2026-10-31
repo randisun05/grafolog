@@ -25,7 +25,7 @@ lewat Guratan menurut UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU 
 | CV / profil | Isian CV yang diatur administrator (mis. profil, pendidikan, keluarga, kontak), termasuk **foto profil dan dokumen CV** (PDF/DOCX). Variabel bertanda tersembunyi hanya terlihat oleh Anda dan administrator. |
 | Grafolog | Profil, sertifikat, CV profesional, ketersediaan bulanan, saldo dan riwayat token, riwayat supervisi. |
 | Transaksi | Nomor pesanan/invoice, jumlah, status; detail kartu/rekening **tidak** kami simpan (diproses DOKU). |
-| Komunikasi | Pesan kotak masuk, riwayat email notifikasi, jadwal konsultasi. |
+| Komunikasi | Pesan kotak masuk, riwayat email notifikasi, jadwal konsultasi, **pesan chat** klien↔grafolog per pesanan (teks; dapat ditinjau administrator bila ada sengketa). |
 | Log aktivitas | Waktu, akun, jenis kejadian (permintaan/login/login gagal/logout), alamat endpoint, kode status, alamat IP, user agent. **Tanpa isi permintaan** dan tanpa isi tulisan/laporan. |
 | Log audit | Setiap akses ke laporan/scan dan tindakan penting administratif. |
 

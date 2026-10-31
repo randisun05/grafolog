@@ -10,5 +10,5 @@ namespace App\Services\Llm;
 interface TextGenerator
 {
     /** @throws LlmUnavailableException */
-    public function generateText(string $system, string $prompt): string;
+    public function generateText(string $system, string $prompt, string $purpose = 'analisis_kandidat'): string;
 }

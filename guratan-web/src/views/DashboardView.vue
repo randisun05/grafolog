@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ClientOffers from '@/components/commerce/ClientOffers.vue'
 import PromoList from '@/components/commerce/PromoList.vue'
+import ClientOrdersCard from '@/components/commerce/ClientOrdersCard.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -122,6 +123,7 @@ onMounted(async () => {
         </ul>
       </section>
     </template>
+    <ClientOrdersCard v-if="auth.isClient" />
     <ClientOffers v-if="auth.isClient" />
     <PromoList v-if="auth.isGrafolog" />
   </div>

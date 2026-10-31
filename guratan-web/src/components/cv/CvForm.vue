@@ -5,6 +5,7 @@ import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { useToast } from '@/composables/useToast'
 
 /** Form/tampilan CV. userId kosong = CV sendiri; selain itu CV orang lain (disaring server per peran). */
+const emit = defineEmits(['loaded'])
 const props = defineProps({
   userId: { type: [Number, String], default: null },
 })
@@ -73,6 +74,7 @@ async function download(f) {
 const base = () => (props.userId ? `/cv/users/${props.userId}` : '/cv')
 
 function apply(data) {
+  emit('loaded', { missing_required: data.missing_required ?? 0, editable: data.editable })
   groups.value = data.groups
   editable.value = data.editable
   values.value = Object.fromEntries(

@@ -48,6 +48,12 @@ class GrafologAvailability extends Model
         $capacity = $row?->capacity;
         $workload = Order::whereHas('batch', fn ($q) => $q->where('grafolog_id', $grafolog->id)->where('service_month', $month))
             ->whereNotIn('status', [Order::STATUS_CANCELLED, Order::STATUS_REFUNDED])->count();
+        // Pesanan klien individu: dihitung dari bulan jadwal (atau bulan bayar) selama masih menunggu konfirmasi/diterima.
+        $workload += Order::whereNull('batch_id')->where('grafolog_id', $grafolog->id)
+            ->whereIn('grafolog_state', ['menunggu_konfirmasi', 'diterima'])
+            ->whereNotIn('status', [Order::STATUS_CANCELLED, Order::STATUS_REFUNDED, Order::STATUS_DONE])
+            ->get(['scheduled_for', 'paid_at', 'created_at'])
+            ->filter(fn (Order $o) => ($o->scheduled_for ?? $o->paid_at ?? $o->created_at)->format('Y-m') === $month)->count();
         $slotsLeft = $capacity === null ? null : max(0, $capacity - $workload);
         $statusOk = in_array($status, self::BOOKABLE, true);
 

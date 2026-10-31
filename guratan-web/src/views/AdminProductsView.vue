@@ -57,6 +57,11 @@ function toggle(p) {
     is_active: p.is_active,
     is_featured: p.is_featured,
     promo_label: p.promo_label ?? '',
+    modes: [...(p.modes?.length ? p.modes : ['online'])],
+    requirements: (p.requirements ?? []).map((r) => ({
+      judul: r.judul,
+      keterangan: r.keterangan ?? '',
+    })),
     sort: p.sort,
     components: p.components.map((c) => ({
       ...c,
@@ -97,7 +102,11 @@ async function saveProduct(p) {
   busy.value = true
   try {
     const { components: _c, ...body } = edit.value // eslint-disable-line no-unused-vars
-    await api.put(`/admin/products/${p.id}`, { ...body, promo_label: body.promo_label || null })
+    await api.put(`/admin/products/${p.id}`, {
+      ...body,
+      promo_label: body.promo_label || null,
+      requirements: body.requirements.filter((r) => r.judul.trim()),
+    })
     toast.push('Produk disimpan.', 'success')
     const keep = openId.value
     await load()
@@ -311,6 +320,30 @@ onMounted(load)
               tangan</label
             >
           </div>
+          <div class="ap__checks">
+            <span>Pelaksanaan:</span>
+            <label><input v-model="edit.modes" type="checkbox" value="online" /> Online</label>
+            <label
+              ><input v-model="edit.modes" type="checkbox" value="offline" /> Offline (tatap
+              muka)</label
+            >
+          </div>
+          <h3>Persyaratan untuk klien</h3>
+          <p class="ap__hint">
+            Ditampilkan di katalog dan wizard pesan sebagai daftar yang harus disiapkan.
+          </p>
+          <div v-for="(r, i) in edit.requirements" :key="i" class="ap__grid">
+            <label>Persyaratan <input v-model="r.judul" type="text" maxlength="120" /></label>
+            <label>Keterangan <input v-model="r.keterangan" type="text" maxlength="500" /></label>
+            <button type="button" class="btn" @click="edit.requirements.splice(i, 1)">Hapus</button>
+          </div>
+          <button
+            type="button"
+            class="btn"
+            @click="edit.requirements.push({ judul: '', keterangan: '' })"
+          >
+            + Tambah persyaratan
+          </button>
           <div class="ap__actions">
             <button type="button" class="btn btn--primary" :disabled="busy" @click="saveProduct(p)">
               Simpan produk

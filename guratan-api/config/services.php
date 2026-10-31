@@ -44,6 +44,18 @@ return [
         'selfhosted_model' => env('LLM_SELFHOSTED_MODEL', 'qwen2.5:14b'),
     ],
 
+    // Pemantauan biaya AI (2026-10-28). Harga USD per 1 juta token per model - ISI/CEK ULANG dari halaman
+    // harga Google (Gemini API pricing); angka di sini hanya perkiraan awal, bukan tagihan resmi.
+    'llm_cost' => [
+        'pricing' => [
+            'gemini-2.5-flash' => ['input' => (float) env('LLM_PRICE_INPUT_USD', 0.30), 'output' => (float) env('LLM_PRICE_OUTPUT_USD', 2.50)],
+        ],
+        'default_pricing' => ['input' => (float) env('LLM_PRICE_INPUT_USD', 0.30), 'output' => (float) env('LLM_PRICE_OUTPUT_USD', 2.50)],
+        'usd_idr' => (float) env('LLM_USD_IDR', 16500),
+        // Anggaran bulanan (Rp). Kosong = tanpa anggaran. Peringatan admin di 80% dan 100%.
+        'monthly_budget_idr' => env('LLM_MONTHLY_BUDGET_IDR') !== null && env('LLM_MONTHLY_BUDGET_IDR') !== '' ? (int) env('LLM_MONTHLY_BUDGET_IDR') : null,
+    ],
+
     // LLM_PROVIDER=gemini: sampai 10 key, dirotasi otomatis saat limit
     // (GeminiKeyPool). Cooldown dalam detik.
     'gemini' => [

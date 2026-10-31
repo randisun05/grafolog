@@ -106,3 +106,19 @@ jangan asumsikan akun Gmail dev ini siap dipakai untuk trafik nyata.
 - `php artisan samples:privatize-legacy-images --dry-run` lalu tanpa `--dry-run`: memindahkan gambar Rapid lama dari disk publik ke privat.
 - Hapus data demo bila terbawa (`@guratan.test`); `DemoDataSeeder` menolak jalan di production.
 - DOKU Back Office: isi Notification URL `https://<api>/api/payments/notification`; cek ulang nama channel di `config/payment_methods.php` terhadap dokumentasi DOKU terbaru.
+
+## Mengaktifkan DOKU sungguhan (sandbox → produksi)
+
+1. **Kredensial**: DOKU Back Office → Sandbox → Client ID + Secret Key. Isi di `guratan-api/.env` (jangan commit, jangan kirim lewat chat):
+   ```
+   PAYMENT_BYPASS=false
+   DOKU_CLIENT_ID=...
+   DOKU_SECRET_KEY=...
+   DOKU_IS_PRODUCTION=false
+   DOKU_CALLBACK_URL=https://<domain-frontend>/dashboard
+   ```
+   `php artisan config:clear`. Mode uji mati otomatis juga di `APP_ENV=production`.
+2. **Notification URL** (Back Office → Settings → Payment → Notification): `https://<domain-api>/api/payments/notification`. DOKU tidak bisa memanggil localhost - untuk uji dari laptop buka tunnel ke port API, mis. `cloudflared tunnel --url http://localhost:8123` atau `ngrok http 8123`, lalu pakai URL https yang dihasilkan sebagai Notification URL dan `APP_URL`.
+3. **Uji sandbox** (urutan): pesanan klien (B2C) → pesanan HR (B2B) → pembelian token → promo dengan batas metode bayar. Setelah bayar di halaman DOKU, pastikan status order jadi *diproses* dan `payments.notification_payload` terisi. Bandingkan isi payload dengan field yang dibaca `PaymentController::notification` (`order.invoice_number`, `transaction.status`) dan header `Client-Id`/`Signature`; bila beda, perbaiki di sana.
+4. **Cek nama channel** di `config/payment_methods.php` (DOKU `payment_method_types`) terhadap dokumentasi DOKU terbaru.
+5. **Produksi**: kredensial produksi + `DOKU_IS_PRODUCTION=true`, Notification URL produksi, lalu `php artisan app:preflight --strict`.

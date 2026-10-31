@@ -31,11 +31,16 @@ class GeminiLlmProvider implements LlmProviderInterface, TextGenerator
     - Output HANYA paragraf hasil terjemahan, tanpa embel-embel/preamble.
     PROMPT;
 
-    public function __construct(private GeminiKeyPool $pool) {}
+    public function __construct(private GeminiKeyPool $pool, private ?LlmUsageRecorder $recorder = null) {}
+
+    private function recorder(): LlmUsageRecorder
+    {
+        return $this->recorder ??= app(LlmUsageRecorder::class);
+    }
 
     public function rangkaiSatuAspek(string $teksAsli, array $context = []): string
     {
-        return $this->complete([
+        return $this->complete(LlmUsageRecorder::PURPOSE_NARASI, [
             'systemInstruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
             'contents' => [[
                 'role' => 'user',
@@ -49,9 +54,9 @@ class GeminiLlmProvider implements LlmProviderInterface, TextGenerator
     }
 
     /** Teks bebas dengan instruksi sistem sendiri (analisis kandidat HR) - lihat CandidateAiAnalysisService. */
-    public function generateText(string $system, string $prompt): string
+    public function generateText(string $system, string $prompt, string $purpose = LlmUsageRecorder::PURPOSE_ANALISIS): string
     {
-        return $this->complete([
+        return $this->complete($purpose, [
             'systemInstruction' => ['parts' => [['text' => $system]]],
             'contents' => [['role' => 'user', 'parts' => [['text' => $prompt]]]],
             'generationConfig' => [
@@ -62,7 +67,7 @@ class GeminiLlmProvider implements LlmProviderInterface, TextGenerator
     }
 
     /** Kirim payload memutar API key (cooldown/limit ditangani pool); kegagalan = LlmUnavailableException. */
-    private function complete(array $payload): string
+    private function complete(string $purpose, array $payload): string
     {
         if ($this->pool->isEmpty()) {
             throw new LlmUnavailableException('Belum ada GEMINI_API_KEY_1..10 yang diisi.');
@@ -70,22 +75,33 @@ class GeminiLlmProvider implements LlmProviderInterface, TextGenerator
 
         $available = $this->pool->available();
         if ($available === []) {
+            $this->recorder()->record($purpose, 'gagal', ['error' => 'semua key limit/istirahat']);
             throw new LlmUnavailableException('Semua API key Gemini sedang limit/istirahat.');
         }
 
         foreach ($available as $slot => $key) {
+            $started = microtime(true);
             try {
                 $response = Http::withHeaders(['x-goog-api-key' => $key])
                     ->timeout((int) config('services.gemini.timeout', 60))
                     ->post($this->endpoint(), $payload);
             } catch (ConnectionException $e) {
                 Log::warning('Gemini: koneksi gagal, coba key berikutnya', ['slot' => $slot, 'error' => $e->getMessage()]);
+                $this->recorder()->record($purpose, 'gagal', ['key_slot' => $slot, 'error' => 'koneksi gagal', 'latency_ms' => (int) ((microtime(true) - $started) * 1000)]);
 
                 continue;
             }
+            $latency = (int) ((microtime(true) - $started) * 1000);
 
             if ($response->successful()) {
                 $text = $this->extractText($response);
+                // Token "berpikir" ditagih sebagai output.
+                $this->recorder()->record($purpose, $text === null ? 'gagal' : 'ok', [
+                    'key_slot' => $slot, 'http_status' => 200, 'latency_ms' => $latency,
+                    'prompt_tokens' => (int) $response->json('usageMetadata.promptTokenCount', 0),
+                    'output_tokens' => (int) $response->json('usageMetadata.candidatesTokenCount', 0) + (int) $response->json('usageMetadata.thoughtsTokenCount', 0),
+                    'error' => $text === null ? 'tanpa teks: '.$response->json('candidates.0.finishReason') : null,
+                ]);
                 if ($text === null) {
                     Log::warning('Gemini: respons tanpa teks', ['slot' => $slot, 'finish_reason' => $response->json('candidates.0.finishReason')]);
                     throw new LlmUnavailableException('Gemini tidak mengembalikan teks (mis. diblokir safety filter).');
@@ -95,6 +111,10 @@ class GeminiLlmProvider implements LlmProviderInterface, TextGenerator
                 return $text;
             }
 
+            $this->recorder()->record($purpose, 'gagal', [
+                'key_slot' => $slot, 'http_status' => $response->status(), 'latency_ms' => $latency,
+                'error' => (string) ($response->json('error.status') ?: 'HTTP '.$response->status()),
+            ]);
             $this->handleFailure($slot, $response);
         }
 

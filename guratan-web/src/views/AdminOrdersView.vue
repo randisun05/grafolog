@@ -5,6 +5,7 @@ import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import SampleImages from '@/components/shared/SampleImages.vue'
 import AdminServiceQueue from '@/components/commerce/AdminServiceQueue.vue'
 import AdminRefundQueue from '@/components/commerce/AdminRefundQueue.vue'
+import AdminClientOrdersPanel from '@/components/order/AdminClientOrdersPanel.vue'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
@@ -138,6 +139,7 @@ onMounted(() => Promise.all([loadOrders(), loadGrafologs()]))
         <SampleImages v-if="expanded === o.id" :sample-id="o.id" />
       </li>
     </ul>
+    <AdminClientOrdersPanel />
     <AdminRefundQueue />
     <AdminServiceQueue :grafologs="grafologs" />
   </div>

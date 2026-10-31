@@ -4,13 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\GrafologRequest;
 use App\Models\HandwritingSample;
 use App\Models\Order;
+use App\Models\OrderMessage;
 use App\Models\Payment;
 use App\Models\PersonalityReport;
 use App\Models\Project;
 use App\Models\ReportValidation;
 use App\Models\User;
+use App\Services\Llm\LlmUsageRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -62,6 +65,11 @@ class DashboardController extends Controller
                     'value' => (int) Payment::where('status', 'paid')->whereBetween('paid_at', $monthRange)->sum('amount'),
                 ],
                 [
+                    'key' => 'ai_cost_month',
+                    'label' => 'Biaya AI Bulan Ini (Rp)',
+                    'value' => (int) LlmUsageRecorder::monthSpendIdr(),
+                ],
+                [
                     'key' => 'active_grafologs',
                     'label' => 'Grafolog Terdaftar',
                     'value' => User::where('role', 'grafolog')->count(),
@@ -73,6 +81,8 @@ class DashboardController extends Controller
                 ['label' => 'Perusahaan menunggu verifikasi', 'count' => Company::where('status', 'pending')->count(), 'to' => '/admin/verifikasi?tab=perusahaan'],
                 ['label' => 'Pesanan lunas perlu ditugaskan', 'count' => $unassigned, 'to' => '/admin/orders'],
                 ['label' => 'Pesanan > 90 hari belum selesai (kandidat refund)', 'count' => Order::where('status', Order::STATUS_PROCESSING)->where('paid_at', '<', now()->subDays(Order::REFUND_OVERDUE_DAYS))->count(), 'to' => '/admin/orders'],
+                ['label' => 'Pesanan klien menunggu rekomendasi grafolog', 'count' => Order::whereNull('batch_id')->where('grafolog_state', 'menunggu_admin')->count(), 'to' => '/admin/orders'],
+                ['label' => 'Konfirmasi grafolog melewati 24 jam', 'count' => GrafologRequest::where('status', 'menunggu')->where('expires_at', '<', now())->count(), 'to' => '/admin/orders'],
                 ['label' => 'Penugasan supervisi melewati tenggat', 'count' => ReportValidation::where('status', ReportValidation::WAITING)->where('due_at', '<', now())->count(), 'to' => '/admin/validasi'],
             ],
             'activity' => $this->recentActivity(HandwritingSample::pluck('id')),
@@ -129,6 +139,11 @@ class DashboardController extends Controller
                         ->count(),
                 ],
                 [
+                    'key' => 'requests_waiting',
+                    'label' => 'Permintaan Menunggu Konfirmasi',
+                    'value' => GrafologRequest::where('grafolog_id', $user->id)->where('status', 'menunggu')->where('expires_at', '>', now())->count(),
+                ],
+                [
                     'key' => 'pending_review',
                     'label' => 'Menunggu Skor',
                     'value' => HandwritingSample::whereIn('id', $sampleIds)->where('status', 'pending')->count(),
@@ -177,6 +192,7 @@ class DashboardController extends Controller
             'role' => 'client',
             'kpi' => [
                 ['key' => 'total_assessments', 'label' => 'Total Assessment', 'value' => $sampleIds->count()],
+                ['key' => 'unread_chat', 'label' => 'Pesan Belum Dibaca', 'value' => OrderMessage::whereNull('read_at')->where('sender_id', '!=', $user->id)->whereHas('order', fn ($q) => $q->where('user_id', $user->id))->count()],
                 ['key' => 'completed', 'label' => 'Selesai', 'value' => $completed],
                 ['key' => 'in_progress', 'label' => 'Sedang Diproses', 'value' => $sampleIds->count() - $completed],
                 [

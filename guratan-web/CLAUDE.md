@@ -721,6 +721,22 @@ code on 2026-07-26 — no `CLAUDE.md` existed here before this one.
 
 Tabel lebar dibungkus `.table-scroll` (main.css) agar gulir di dalam kartu; cek 390px untuk semua halaman admin lewat Playwright tanpa overflow horizontal.
 
+## Pemakaian & Biaya AI — 2026-10-28
+
+`AdminLlmUsageView` (`/admin/ai-usage`, menu Admin + palette): periode 7/30/90 hari atau bulan ini, KPI, bar anggaran (merah ≥80%), batang biaya per hari (CSS murni, hover = detail), tabel per kegunaan, per slot key, dan panggilan terbaru. Biaya ditandai perkiraan.
+
+## Alur klien individu T1 — 2026-10-30
+
+Dua jalur masuk: (A) daftar/login → `/pesan`; (B) katalog publik `/produk`, `/produk/:kode` (CTA "Daftar & pesan" membawa `?redirect=/pesan?produk=kode` lewat Register/Login yang saling menaut dengan redirect). `OrderView` = wizard 5 langkah: Produk → Pelaksanaan & waktu (mode online/offline, lokasi, tanggal, batas unggah) → CV (`CvForm @loaded` → `missing_required` memblokir) → Persyaratan (daftar dari admin + scan opsional; boleh unggah belakangan di Pesanan Saya via `SampleImages`) → Bayar. Admin produk: centang mode + editor persyaratan.
+
+## Alur klien individu T2 — 2026-10-30
+
+Wizard `OrderView` jadi 6 langkah (… Persyaratan → **Grafolog** → Bayar): pilih sendiri (`components/order/GrafologPicker.vue`: direktori + portofolio via `CvForm`) atau minta rekomendasi tim. `RiwayatView`: panel status grafolog (menunggu/diterima/pilih ulang/admin) + pilih ulang. `AssignedToMeView`: `GrafologRequestsPanel` (terima/tolak, sisa jam). Admin `/admin/orders`: `AdminClientOrdersPanel` (antrean per tahap + rekomendasi + tugaskan).
+
+## Alur klien individu T3 — 2026-10-30
+
+`OrderChatView` (`/pesanan/:id/chat`, polling 8 dtk, Enter = kirim, teks dirender sebagai teks), `ReportResume` (di `ReportView` untuk non-grafolog penangan), `ClientOrdersCard` (Dashboard klien: pesanan berjalan + status grafolog + Chat + Laporan). Riwayat & `GrafologRequestsPanel` punya tombol Chat + lencana belum dibaca.  Status "dibaca" pada pesan sendiri ikut diperbarui oleh polling (`read_upto`).
+
 ## Stack
 
 Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +

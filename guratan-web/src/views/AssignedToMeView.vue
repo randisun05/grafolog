@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import ServiceDeliveryCard from '@/components/commerce/ServiceDeliveryCard.vue'
+import GrafologRequestsPanel from '@/components/order/GrafologRequestsPanel.vue'
 
 const samples = ref([])
 const revisions = ref([])
@@ -58,6 +59,7 @@ onMounted(async () => {
 <template>
   <div class="assigned">
     <h1>Ditugaskan ke Saya</h1>
+    <GrafologRequestsPanel />
     <p class="assigned__note">
       Sample yang perlu Anda isi skornya - baik dari klien yang Anda daftarkan lewat Klien Saya,
       maupun yang ditugaskan HR/Administrator.

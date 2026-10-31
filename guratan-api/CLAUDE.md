@@ -1866,6 +1866,30 @@ Hasil simulasi end-to-end semua role (lihat ROADMAP "Kesiapan Publik"). Perubaha
 
 `app:preflight [--strict]` (cek env/DB/email/DOKU/antrean/scheduler/akun demo; exit 1 bila ada GAGAL), `db:backup [--keep=14] [--connection=]` (mysqldump gz / salin SQLite; terjadwal 02:30), `samples:privatize-legacy-images [--dry-run]` (gambar Rapid lama public→privat; menutup temuan keamanan 2026-07-27). Scheduler menulis `scheduler_heartbeat` tiap menit. Runbook: `DEPLOYMENT.md` "Operasional". 526 tes backend; FE punya 13 tes vitest (`npm test`).
 
+## Pemantauan pemakaian & biaya AI — 2026-10-28
+
+- `llm_usages` (metadata saja, TANPA isi prompt/jawaban): provider, model, purpose (`terjemah_narasi`|`analisis_kandidat`), status (`ok`|`gagal`|`cache`), key_slot, http_status, error singkat, prompt/output tokens (output = kandidat + token "berpikir", sesuai penagihan), `cost_usd`, latency. `LlmUsageRecorder::record()` dipanggil `GeminiLlmProvider::complete()` per percobaan HTTP (termasuk 429/koneksi/semua key limit) dan `CandidateAiAnalysisService` saat hasil diambil dari cache. Gagal mencatat tidak pernah mengganggu alur utama.
+- Biaya = PERKIRAAN: token × `config('services.llm_cost.pricing')` (USD per 1 juta token; default gemini-2.5-flash 0,30/2,50 dari env `LLM_PRICE_INPUT_USD`/`LLM_PRICE_OUTPUT_USD` - CEK harga resmi Google sebelum dipercaya) × kurs `LLM_USD_IDR` (16500). Anggaran bulanan `LLM_MONTHLY_BUDGET_IDR` (kosong = tanpa); admin dapat notifikasi kotak masuk sekali di 80% dan 100% per bulan.
+- `GET /admin/llm-usage?days=|month=1`: ringkasan, anggaran + proyeksi, per kegunaan/model/slot key, per hari, 40 panggilan terbaru. Dashboard admin: KPI "Biaya AI Bulan Ini". FE `/admin/ai-usage` (`AdminLlmUsageView`). Provider lain (Api/SelfHosted) belum mencatat.
+
+## Alur klien individu T1 (katalog, mode, jadwal) — 2026-10-30
+
+- `products.modes` (online|offline, default online) + `products.requirements` ([{judul, keterangan}]), diatur admin (`StoreProductRequest`); `Product::availableModes()`, ikut di `toCatalogArray()`. `GET /products/{kode}` publik (detail).
+- `orders.delivery_mode/scheduled_for/upload_deadline/location_note`: `POST /orders` memvalidasi mode ∈ modes produk, offline wajib `location_note`, `scheduled_for` ≥ hari ini, `upload_deadline` ≤ jadwal; produk berscan tanpa deadline → default +3 hari. Pemesanan ditolak 422 bila isian WAJIB CV (`CvService::missingRequired`) belum lengkap; `GET /cv` mengembalikan `missing_required`. `OrderController::present` memuat mode/jadwal/`image_count`.
+- Rencana T2/T3 (lanjutan, keputusan pemilik 2026-10-30): klien pilih grafolog / minta rekomendasi ADMIN (bukan mesin otomatis); bayar dulu lalu grafolog konfirmasi 24 jam, tolak/lewat → klien pilih ulang, 3x gagal → antrean admin; penugasan admin tetap; chat teks per pesanan; "resume" = ringkasan laporan untuk klien; offline = kota/tempat saja.
+
+## Alur klien individu T2 (pilih grafolog, konfirmasi 24 jam) — 2026-10-30
+
+- `GrafologMatchingService`: bayar → `startOnPaid` (B2C saja; batch HR tetap langsung ditugaskan). `grafolog_choice=pilih` → `GrafologRequest` (24 jam, `CONFIRM_HOURS`), `orders.grafolog_state` menunggu_konfirmasi; `rekomendasi`/tanpa pilihan → `menunggu_admin` (admin yang mencarikan; BUKAN refund). Terima → `finalize()`: Assignment sampel + layanan pendukung `ditugaskan` + notifikasi (inbox+email). Tolak/lewat waktu → `release()`: attempts++, `menunggu_pilih` (klien pilih ulang via `POST /orders/{o}/grafolog {grafolog_id|rekomendasi}`; yang pernah menolak ditolak 422); attempts ≥ 3 → `menunggu_admin` otomatis. `sweep()` tiap 15 menit (`konfirmasi-grafolog-sweep`) + saat daftar dibuka; `remind()` (dipanggil sweep) mengirim SATU pengingat (inbox+email, tipe `pengingat_permintaan`, `grafolog_requests.reminded_at`) saat sisa waktu ≤ 12 jam. Penugasan admin (`POST /admin/client-orders/{o}/assign` atau `POST /samples/{s}/assignment` oleh admin) final & menyinkronkan state.
+- `markPaid` TIDAK lagi menugaskan pesanan B2C otomatis; hanya batch HR. Kapasitas bulan (`GrafologAvailability::forMonth`) kini juga menghitung pesanan klien menunggu_konfirmasi/diterima (bulan jadwal/bayar).
+- Endpoint: `GET /grafologs/directory?month&q&all` (role user), `GET /grafolog/requests`, `POST /grafolog/requests/{id}/respond {decision, note}`, admin `GET /admin/client-orders?state=` (+ `recommend()`: skor keahlian/kota offline/beban/pengalaman, hanya yang bookable & belum menolak). Portofolio = `GET /cv/users/{grafolog}` relasi baru `public` (klien/HR bisa baca CV non-tersembunyi grafolog terverifikasi; tidak diaudit).
+- `POST /orders` menerima `grafolog_choice`/`grafolog_id` (tervalidasi: terverifikasi + tersedia di bulan jadwal); default rekomendasi.
+
+## Alur klien individu T3 (chat, resume) — 2026-10-30
+
+- `order_messages` + `OrderChatController`: chat TEKS per pesanan B2C (strip_tags, ≤2000, throttle `chat` 30/mnt). Peserta: klien pemilik + grafolog yang sudah MENERIMA (`grafolog_state=diterima`); admin hanya baca (tidak menandai dibaca, audit `lihat_chat_pesanan`). Terbuka selama pesanan diproses; setelah selesai hanya 14 hari; ditutup bila batal/refund. Satu notifikasi per rentetan pesan belum dibaca. `GET .../messages` mengembalikan `read_upto` (id pesan terakhir milik pemanggil yang sudah dibaca lawan) - FE memperbarui status "dibaca" saat polling. `GET /chat/unread` (total + per pesanan). Masuk ekspor data; saat hapus akun body pesan pengirim diganti '[pesan dihapus]'. `GET /grafolog/requests` kini memuat `accepted` (pesanan diterima + unread).
+- Resume: `GET /reports/{r}/resume?lang=` (`ReportResumeService`, deterministik tanpa AI): rata-rata per sindrom + 5 ciri paling menonjol (kalimat pertama narasi KB) + catatan "bukan diagnosis; skor tinggi = ciri menonjol, bukan lebih baik". Akses = aturan laporan. Dashboard klien: KPI `unread_chat`.
+
 ## Hard constraints (user-stated, still in force)
 
 1. Never call an LLM per-report — always go through `NarasiCacheService`.

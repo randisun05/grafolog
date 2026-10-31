@@ -11,6 +11,7 @@ use App\Models\ServiceDelivery;
 use App\Models\User;
 use App\Services\Llm\LlmProviderInterface;
 use App\Services\Llm\LlmUnavailableException;
+use App\Services\Llm\LlmUsageRecorder;
 use App\Services\Llm\NarasiCacheService;
 use App\Services\Llm\TextGenerator;
 use App\Services\Scoring\ScoringEngineService;
@@ -128,6 +129,8 @@ class CandidateAiAnalysisService
         }
         $hash = hash('sha256', json_encode($input, JSON_UNESCAPED_UNICODE));
         if ($existing = CandidateAnalysis::where('candidate_profile_id', $profile->id)->where('input_hash', $hash)->first()) {
+            app(LlmUsageRecorder::class)->record(LlmUsageRecorder::PURPOSE_ANALISIS, 'cache');
+
             return ['analysis' => $existing, 'cached' => true];
         }
 
