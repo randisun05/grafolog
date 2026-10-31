@@ -474,6 +474,10 @@ onMounted(async () => {
       <span aria-hidden="true">·</span>
       <RouterLink to="/kuis">Kuis Ciri Tulisan</RouterLink>
       <span aria-hidden="true">·</span>
+      <RouterLink to="/kegiatan">Kegiatan</RouterLink>
+      <span aria-hidden="true">·</span>
+      <RouterLink to="/games">Games</RouterLink>
+      <span aria-hidden="true">·</span>
       <RouterLink to="/daftar-perusahaan">Untuk Perusahaan</RouterLink>
     </footer>
   </div>

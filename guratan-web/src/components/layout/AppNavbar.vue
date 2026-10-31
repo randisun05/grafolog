@@ -97,6 +97,8 @@ async function handleLogout() {
             <RouterLink to="/admin/validasi">Penugasan Supervisi</RouterLink>
             <RouterLink to="/admin/tokens">Kelola Token</RouterLink>
             <RouterLink to="/admin/content">Kelola Konten</RouterLink>
+            <RouterLink to="/admin/events">Kelola Kegiatan</RouterLink>
+            <RouterLink to="/admin/games">Kelola Games</RouterLink>
             <RouterLink to="/admin/engagement">Cek Tulisan, Mitra &amp; Artikel</RouterLink>
             <RouterLink to="/admin/announcements">Pengumuman</RouterLink>
             <RouterLink to="/admin/ai-usage">Pemakaian &amp; Biaya AI</RouterLink>
@@ -142,6 +144,8 @@ async function handleLogout() {
         <RouterLink to="/cek-tulisan">Cek Tulisan Gratis</RouterLink>
         <RouterLink to="/produk-mitra">Produk Mitra</RouterLink>
         <RouterLink to="/artikel">Artikel</RouterLink>
+        <RouterLink to="/kegiatan">Kegiatan</RouterLink>
+        <RouterLink to="/games">Games</RouterLink>
         <RouterLink to="/login">Masuk</RouterLink>
         <RouterLink to="/register">Daftar</RouterLink>
       </template>

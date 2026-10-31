@@ -2340,3 +2340,14 @@ tidak disentuh.
   segmentasi laporan): tabel `kombinasi_temuan`, `kombinasi_syarat`, `topik`, `aspek_topik`, `kombinasi_temuan_topik`.
 - PDF laporan kini menampilkan Indikator terkait per Aspek dan bagian Pola Kombinasi.
 - Perlu `php artisan migrate`; antrean harus berjalan (`queue:listen`) agar generate narasi selesai.
+
+## Kegiatan & Mini Games publik (dari branch lama) — 2026-10-31
+
+- **Kegiatan**: `events`, `event_registrations`; publik `GET /api/events[/{slug}]`, daftar/batal `POST|DELETE /api/events/{event}/register`
+  (login), admin CRUD + peserta + ekspor CSV (`App\Support\CsvStreamer`). Deskripsi memakai rich text (HTML) lewat `POST /api/admin/media`
+  (upload gambar editor, disk publik, maks 2 MB).
+- **Mini Games** (tanpa login, `throttle:60,1,games-group`; submit skor tambahan `throttle:10,1,games-scores` — prefix beda wajib):
+  Tebak Kepribadian, Trivia, Memory Match + leaderboard publik; konten trivia/glosarium & moderasi skor di admin
+  (`TriviaQuestionSeeder`, `GlossaryTermSeeder` dipanggil `DatabaseSeeder`). Terpisah dari `GET /api/games/quiz` (kuis ciri tulisan).
+- **Sengaja tidak diambil**: Artikel/Berita rich-text milik branch lama (main sudah punya Artikel teks polos + `/admin/engagement`,
+  tabel `articles` bentrok); peran Supervisor perusahaan (main menggantinya dengan supervisi antar-grafolog 2026-10-18).

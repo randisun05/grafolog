@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             ContentBlockSeeder::class,
             SelfCheckSeeder::class, // setelah KB: melengkapi pemetaan opsi -> Indikator
             ContentSeeder::class,
+            TriviaQuestionSeeder::class,
+            GlossaryTermSeeder::class,
         ]);
     }
 }

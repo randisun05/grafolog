@@ -248,6 +248,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/events',
+      name: 'admin-events',
+      component: () => import('../views/AdminEventsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/games',
+      name: 'admin-games',
+      component: () => import('../views/AdminGamesView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/notification-logs',
       name: 'admin-notification-logs',
       component: () => import('../views/AdminNotificationLogsView.vue'),
@@ -316,6 +328,37 @@ const router = createRouter({
       name: 'admin-verification',
       component: () => import('../views/AdminVerificationView.vue'),
       meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/kegiatan',
+      name: 'kegiatan-list',
+      component: () => import('../views/KegiatanListView.vue'),
+    },
+    {
+      path: '/kegiatan/:slug',
+      name: 'kegiatan-detail',
+      component: () => import('../views/KegiatanDetailView.vue'),
+      props: true,
+    },
+    {
+      path: '/games',
+      name: 'games-hub',
+      component: () => import('../views/GamesHubView.vue'),
+    },
+    {
+      path: '/games/tebak-kepribadian',
+      name: 'game-tebak-kepribadian',
+      component: () => import('../views/GameTebakKepribadianView.vue'),
+    },
+    {
+      path: '/games/trivia',
+      name: 'game-trivia',
+      component: () => import('../views/GameTriviaView.vue'),
+    },
+    {
+      path: '/games/memory-match',
+      name: 'game-memory-match',
+      component: () => import('../views/GameMemoryMatchView.vue'),
     },
     {
       path: '/kuis',

@@ -832,3 +832,9 @@ Vue 3.5, vue-router 5, Pinia 4, axios 1.18, Vite 8. Lint: `eslint` +
   Pengungkapan Google Analytics, Fonnte, dan Xendit sudah ditambahkan ke `legal/privacy-policy.md` (perlu ditinjau pemilik
   hukum; versi dokumen belum dinaikkan jadi pengguna belum diminta persetujuan ulang).
 - `PaymentMethodPicker`: pilihan "Penyedia pembayaran" (DOKU/Xendit) muncul hanya bila >1 gateway aktif.
+
+## Kegiatan & Mini Games — 2026-10-31
+
+`/kegiatan`, `/kegiatan/:slug`, `/games` (+ `tebak-kepribadian`, `trivia`, `memory-match`), admin `/admin/events`, `/admin/games`
+(menu Admin + palette; tautan Kegiatan/Games di navbar tamu & footer landing). `components/shared/RichTextEditor|RichTextViewer`
+(Tiptap + DOMPurify, dependensi npm baru) dipakai deskripsi Kegiatan. `lib/downloadBlob.js` untuk ekspor peserta.

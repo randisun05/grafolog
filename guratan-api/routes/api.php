@@ -2,6 +2,12 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ActivityLogController;
+use App\Http\Controllers\Api\Admin\EventController as AdminEventController;
+use App\Http\Controllers\Api\Admin\EventRegistrationController as AdminEventRegistrationController;
+use App\Http\Controllers\Api\Admin\GameScoreController;
+use App\Http\Controllers\Api\Admin\GlossaryTermController as AdminGlossaryTermController;
+use App\Http\Controllers\Api\Admin\MediaController;
+use App\Http\Controllers\Api\Admin\TriviaQuestionController as AdminTriviaQuestionController;
 use App\Http\Controllers\Api\Admin\NotificationLogController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AffiliateAdminController;
@@ -51,7 +57,13 @@ use App\Http\Controllers\Api\ConsultationController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\CvController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\EventController;
+use App\Http\Controllers\Api\EventRegistrationController;
 use App\Http\Controllers\Api\GameController;
+use App\Http\Controllers\Api\Games\MemoryMatchController;
+use App\Http\Controllers\Api\Games\ScoreController as GameScoreApiController;
+use App\Http\Controllers\Api\Games\TebakKepribadianController;
+use App\Http\Controllers\Api\Games\TriviaController as GameTriviaController;
 use App\Http\Controllers\Api\GrafologAvailabilityController;
 use App\Http\Controllers\Api\GrafologDirectoryController;
 use App\Http\Controllers\Api\GrafologRequestController;
@@ -121,6 +133,23 @@ Route::get('/articles', [ArticleController::class, 'index']);
 Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 Route::middleware('throttle:30,1')->get('/games/quiz', [GameController::class, 'quiz']);
 
+// Kegiatan publik (dari branch lama, 2026-10-31).
+Route::get('/events', [EventController::class, 'index']);
+Route::get('/events/{slug}', [EventController::class, 'show']);
+
+// Mini Games publik tanpa login (dari branch lama). Dua throttle diberi PREFIX berbeda ('games-group' / 'games-scores'):
+// tanpa prefix, ThrottleRequests menyatukan counter keduanya (kunci hanya domain+IP), sehingga GET biasa
+// ikut menghabiskan jatah 10/menit yang khusus untuk submit skor.
+Route::middleware('throttle:60,1,games-group')->prefix('games')->group(function () {
+    Route::get('/tebak-kepribadian/question', [TebakKepribadianController::class, 'question']);
+    Route::post('/tebak-kepribadian/answer', [TebakKepribadianController::class, 'answer']);
+    Route::get('/trivia/questions', [GameTriviaController::class, 'questions']);
+    Route::post('/trivia/check', [GameTriviaController::class, 'check']);
+    Route::get('/memory-match/terms', [MemoryMatchController::class, 'terms']);
+    Route::middleware('throttle:10,1,games-scores')->post('/scores', [GameScoreApiController::class, 'store']);
+    Route::get('/{gameType}/leaderboard', [GameScoreApiController::class, 'leaderboard']);
+});
+
 // 120/menit: halaman HR & SampleImages memuat pratinjau per scan (1 GET per gambar).
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -139,6 +168,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware('role:hr')->delete('/cv/users/{user}/files/{key}', [CvController::class, 'fileDestroy']);
     Route::middleware('role:hr')->put('/cv/users/{user}', [CvController::class, 'update']);
     Route::middleware('role:user')->get('/candidate/tasks', [CandidateTaskController::class, 'index']);
+    Route::post('/events/{event}/register', [EventRegistrationController::class, 'store']);
+    Route::delete('/events/{event}/register', [EventRegistrationController::class, 'destroy']);
+    Route::get('/event-registrations/mine', [EventRegistrationController::class, 'mine']);
     Route::get('/inbox', [InboxController::class, 'index']);
     Route::get('/inbox/unread-count', [InboxController::class, 'unreadCount']);
     Route::post('/inbox/read-all', [InboxController::class, 'readAll']);
@@ -255,6 +287,24 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::post('/broadcasts', [BroadcastController::class, 'store']);
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
         Route::get('/notification-logs', [NotificationLogController::class, 'index']);
+
+        // Kegiatan + pendaftaran, upload gambar editor, konten & moderasi Mini Games (dari branch lama).
+        Route::get('/events', [AdminEventController::class, 'index']);
+        Route::post('/events', [AdminEventController::class, 'store']);
+        Route::patch('/events/{event}', [AdminEventController::class, 'update']);
+        Route::get('/events/{event}/registrations', [AdminEventRegistrationController::class, 'index']);
+        Route::get('/events/{event}/registrations/export', [AdminEventRegistrationController::class, 'export']);
+        Route::post('/media', [MediaController::class, 'store']);
+        Route::get('/trivia-questions', [AdminTriviaQuestionController::class, 'index']);
+        Route::post('/trivia-questions', [AdminTriviaQuestionController::class, 'store']);
+        Route::patch('/trivia-questions/{triviaQuestion}', [AdminTriviaQuestionController::class, 'update']);
+        Route::delete('/trivia-questions/{triviaQuestion}', [AdminTriviaQuestionController::class, 'destroy']);
+        Route::get('/glossary-terms', [AdminGlossaryTermController::class, 'index']);
+        Route::post('/glossary-terms', [AdminGlossaryTermController::class, 'store']);
+        Route::patch('/glossary-terms/{glossaryTerm}', [AdminGlossaryTermController::class, 'update']);
+        Route::delete('/glossary-terms/{glossaryTerm}', [AdminGlossaryTermController::class, 'destroy']);
+        Route::get('/game-scores', [GameScoreController::class, 'index']);
+        Route::delete('/game-scores/{gameScore}', [GameScoreController::class, 'destroy']);
         Route::get('/company-applications', [CompanyVerificationController::class, 'index']);
         Route::get('/validations', [ValidationIndexController::class, 'index']);
         Route::get('/refunds', [RefundController::class, 'index']);

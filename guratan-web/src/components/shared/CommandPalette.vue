@@ -45,6 +45,8 @@ const commands = computed(() => {
     items.push({ label: 'Broadcast Kotak Masuk', to: { name: 'admin-broadcast' } })
     items.push({ label: 'Log Aktivitas', to: { name: 'admin-activity' } })
     items.push({ label: 'Log Notifikasi', to: { name: 'admin-notification-logs' } })
+    items.push({ label: 'Kelola Kegiatan', to: { name: 'admin-events' } })
+    items.push({ label: 'Kelola Games', to: { name: 'admin-games' } })
     items.push({ label: 'Kelola Token', to: { name: 'admin-tokens' } })
     items.push({ label: 'Knowledge Base', to: { name: 'admin-knowledge' } })
   }
