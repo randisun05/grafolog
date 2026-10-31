@@ -32,3 +32,4 @@
 - [Alur klien T2] — 2026-10-30: pilih grafolog/rekomendasi admin, konfirmasi 24 jam, pilih ulang, 3x→admin; T3 chat+resume menyusul
 - [Alur klien T3] — 2026-10-30: chat teks per pesanan, resume laporan klien, dashboard pesanan; seluruh alur T1-T3 selesai
 - [Komisi/regenerasi] — 2026-10-31: regenerasi ditagih; komisi per produk(+override grafolog), earnings+payout; syarat supervisor min laporan; supervisi tetap opsional
+- [Rekening pencairan] — 2026-10-31: grafolog_bank_accounts terenkripsi; admin buka lewat audit

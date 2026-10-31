@@ -11,6 +11,7 @@ const data = ref(null)
 const loading = ref(true)
 const status = ref('')
 const reference = ref({})
+const shown = ref({})
 
 async function load() {
   loading.value = true
@@ -20,6 +21,13 @@ async function load() {
     ).data
   } finally {
     loading.value = false
+  }
+}
+async function showBank(g) {
+  try {
+    shown.value[g.grafolog_id] = (await api.get(`/admin/earnings/bank/${g.grafolog_id}`)).data
+  } catch (e) {
+    toast.push(e.response?.data?.message ?? 'Gagal membuka rekening.')
   }
 }
 async function payout(g) {
@@ -62,6 +70,7 @@ onMounted(load)
               <th>Grafolog</th>
               <th>Menunggu</th>
               <th>Dicairkan</th>
+              <th>Rekening</th>
               <th>Catat pencairan</th>
             </tr>
           </thead>
@@ -72,6 +81,17 @@ onMounted(load)
                 <strong>{{ formatRupiah(g.menunggu) }}</strong>
               </td>
               <td>{{ formatRupiah(g.dibayar) }}</td>
+              <td>
+                <template v-if="shown[g.grafolog_id]">
+                  {{ shown[g.grafolog_id].bank_name }} {{ shown[g.grafolog_id].account_number
+                  }}<br /><small>a.n. {{ shown[g.grafolog_id].account_holder }}</small>
+                </template>
+                <template v-else-if="g.bank">
+                  {{ g.bank }}
+                  <button type="button" class="btn" @click="showBank(g)">Tampilkan</button>
+                </template>
+                <small v-else>Belum diisi</small>
+              </td>
               <td class="ae__act">
                 <input
                   v-model="reference[g.grafolog_id]"

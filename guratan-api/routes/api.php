@@ -157,6 +157,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware('role:user')->get('/grafologs/directory', [GrafologDirectoryController::class, 'index']);
     Route::middleware('role:grafolog')->group(function () {
         Route::get('/earnings', [EarningController::class, 'index']);
+        Route::get('/bank-account', [EarningController::class, 'bank']);
+        Route::middleware('throttle:cv-upload')->put('/bank-account', [EarningController::class, 'saveBank']);
         Route::get('/grafolog/requests', [GrafologRequestController::class, 'index']);
         Route::post('/grafolog/requests/{grafologRequest}/respond', [GrafologRequestController::class, 'respond']);
     });
@@ -280,6 +282,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::put('/content/{key}', [AdminContentBlockController::class, 'update']);
         Route::get('/earnings', [EarningAdminController::class, 'index']);
         Route::post('/earnings/payout', [EarningAdminController::class, 'payout']);
+        Route::get('/earnings/bank/{grafolog}', [EarningAdminController::class, 'bankAccount']);
         Route::get('/products/{product}/commissions', [EarningAdminController::class, 'commissions']);
         Route::put('/products/{product}/commissions/{grafolog}', [EarningAdminController::class, 'setOverride']);
         Route::delete('/products/{product}/commissions/{grafolog}', [EarningAdminController::class, 'removeOverride']);

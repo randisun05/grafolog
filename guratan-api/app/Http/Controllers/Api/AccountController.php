@@ -7,6 +7,8 @@ use App\Models\ActivityLog;
 use App\Models\Assignment;
 use App\Models\AuditLog;
 use App\Models\CvValue;
+use App\Models\GrafologBankAccount;
+use App\Models\GrafologEarning;
 use App\Models\HandwritingSample;
 use App\Models\InboxMessage;
 use App\Models\Order;
@@ -63,6 +65,9 @@ class AccountController extends Controller
             'log_aktivitas_90_hari' => ActivityLog::where('user_id', $user->id)->latest('id')->limit(1000)->get(['event', 'method', 'path', 'status', 'ip', 'created_at'])->toArray(),
         ];
         if ($user->role === 'grafolog') {
+            $b = GrafologBankAccount::where('user_id', $user->id)->first();
+            $data['rekening_pencairan'] = $b ? ['bank' => $b->bank_name, 'nomor' => $b->account_number, 'atas_nama' => $b->account_holder] : null;
+            $data['komisi'] = GrafologEarning::where('grafolog_id', $user->id)->get(['order_id', 'amount', 'status', 'earned_at'])->toArray();
             $data['grafolog'] = ['saldo_token' => $user->token_balance, 'nomor_sertifikat' => $user->certificate_number];
         }
         AuditLog::record('ekspor_data_pribadi', User::class, $user->id, $user->id, $request->ip());
@@ -96,6 +101,7 @@ class AccountController extends Controller
                 }
             }
             CvValue::where('user_id', $user->id)->delete();
+            GrafologBankAccount::where('user_id', $user->id)->delete();
 
             $sampleIds = HandwritingSample::where('user_id', $user->id)->pluck('id');
             foreach (SampleImage::whereIn('sample_id', $sampleIds)->get() as $img) {

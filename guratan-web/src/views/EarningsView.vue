@@ -3,14 +3,43 @@ import { onMounted, ref } from 'vue'
 import api from '@/lib/api'
 import SkeletonLoader from '@/components/shared/SkeletonLoader.vue'
 import { formatRupiah, formatTanggal } from '@/lib/format'
+import { useToast } from '@/composables/useToast'
 
 /** Grafolog: komisi dari pesanan selesai + riwayat pencairan. Token bukan uang dan terpisah dari komisi. */
 const data = ref(null)
 const loading = ref(true)
+const editing = ref(false)
+const bank = ref({ bank_name: '', account_number: '', account_holder: '' })
+const saving = ref(false)
+const bankError = ref('')
+const toast = useToast()
 const STATUS = {
   diperoleh: 'Menunggu pencairan',
   dibayar: 'Sudah dicairkan',
   dibatalkan: 'Dibatalkan',
+}
+
+async function openEdit() {
+  const { data: b } = await api.get('/bank-account')
+  if (b) bank.value = b
+  editing.value = true
+}
+async function saveBank() {
+  saving.value = true
+  bankError.value = ''
+  try {
+    await api.put('/bank-account', bank.value)
+    toast.push('Rekening disimpan.', 'success')
+    editing.value = false
+    data.value = (await api.get('/earnings')).data
+  } catch (e) {
+    bankError.value =
+      e.response?.data?.errors?.account_number?.[0] ??
+      e.response?.data?.message ??
+      'Gagal menyimpan.'
+  } finally {
+    saving.value = false
+  }
 }
 
 onMounted(async () => {
@@ -39,6 +68,38 @@ onMounted(async () => {
           <span>Sudah dicairkan</span><strong>{{ formatRupiah(data.totals.dibayar) }}</strong>
         </div>
       </div>
+      <section class="earn__bank">
+        <h2>Rekening pencairan</h2>
+        <p v-if="data.bank && !editing">
+          {{ data.bank.bank_name }} · {{ data.bank.masked }}
+          <button type="button" class="btn" @click="openEdit">Ubah</button>
+        </p>
+        <p v-else-if="!editing" class="earn__hint">
+          Belum diisi - isi agar komisi dapat dicairkan.
+          <button type="button" class="btn btn--primary" @click="openEdit">Isi rekening</button>
+        </p>
+        <form v-if="editing" class="earn__form" @submit.prevent="saveBank">
+          <label
+            >Bank <input v-model="bank.bank_name" required maxlength="80" placeholder="mis. BCA"
+          /></label>
+          <label
+            >Nomor rekening
+            <input v-model="bank.account_number" required inputmode="numeric" maxlength="30"
+          /></label>
+          <label>Atas nama <input v-model="bank.account_holder" required maxlength="120" /></label>
+          <p v-if="bankError" class="error">{{ bankError }}</p>
+          <div>
+            <button class="btn btn--primary" :disabled="saving">
+              {{ saving ? 'Menyimpan...' : 'Simpan' }}
+            </button>
+            <button type="button" class="btn" @click="editing = false">Batal</button>
+          </div>
+          <small class="earn__hint"
+            >Nomor rekening disimpan terenkripsi dan hanya dibuka administrator saat mencatat
+            pencairan (tercatat di audit).</small
+          >
+        </form>
+      </section>
       <h2>Komisi per pesanan</h2>
       <p v-if="!data.earnings.length" class="earn__hint">Belum ada komisi.</p>
       <div v-else class="table-scroll">
@@ -128,5 +189,17 @@ onMounted(async () => {
 .earn__payouts {
   padding-left: 18px;
   font-size: 14px;
+}
+.earn__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 360px;
+}
+.earn__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
 }
 </style>

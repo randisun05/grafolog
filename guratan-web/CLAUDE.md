@@ -739,7 +739,7 @@ Wizard `OrderView` jadi 6 langkah (… Persyaratan → **Grafolog** → Bayar): 
 
 ## Komisi & regenerasi — 2026-10-31
 
-`EarningsView` (`/pendapatan`, grafolog), `AdminEarningsView` (`/admin/komisi`: ringkasan per grafolog + catat pencairan), `ProductCommissionOverrides` + bagian "Komisi grafolog & biaya token" di editor produk. `ReportCorrectionPanel` prop `cost` menampilkan biaya regenerasi; panel supervisi menjelaskan terbit langsung bila tak ada supervisor.
+`EarningsView` (`/pendapatan`, grafolog; termasuk formulir rekening pencairan), `AdminEarningsView` (`/admin/komisi`: ringkasan per grafolog + catat pencairan), `ProductCommissionOverrides` + bagian "Komisi grafolog & biaya token" di editor produk. `ReportCorrectionPanel` prop `cost` menampilkan biaya regenerasi; panel supervisi menjelaskan terbit langsung bila tak ada supervisor.
 
 ## Stack
 

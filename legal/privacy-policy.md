@@ -24,6 +24,7 @@ lewat Guratan menurut UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU 
 | Kandidat (B2B) | Nama, identitas akun yang dibuat HR, posisi/jabatan yang dinilai, status penugasan. |
 | CV / profil | Isian CV yang diatur administrator (mis. profil, pendidikan, keluarga, kontak), termasuk **foto profil dan dokumen CV** (PDF/DOCX). Variabel bertanda tersembunyi hanya terlihat oleh Anda dan administrator. |
 | Grafolog | Profil, sertifikat, CV profesional, ketersediaan bulanan, saldo dan riwayat token, riwayat supervisi. |
+| Komisi & rekening (grafolog) | Komisi per pesanan, riwayat pencairan, dan **rekening bank pencairan** (nama bank, nomor, atas nama; nomor disimpan terenkripsi dan hanya dibuka administrator saat mencatat pencairan, tercatat di log audit). |
 | Transaksi | Nomor pesanan/invoice, jumlah, status; detail kartu/rekening **tidak** kami simpan (diproses DOKU). |
 | Komunikasi | Pesan kotak masuk, riwayat email notifikasi, jadwal konsultasi, **pesan chat** klien↔grafolog per pesanan (teks; dapat ditinjau administrator bila ada sengketa). |
 | Log aktivitas | Waktu, akun, jenis kejadian (permintaan/login/login gagal/logout), alamat endpoint, kode status, alamat IP, user agent. **Tanpa isi permintaan** dan tanpa isi tulisan/laporan. |

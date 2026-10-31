@@ -144,4 +144,21 @@ class CommissionAndRegenTokenTest extends TestCase
         config(['grafolog.supervisor_min_reports' => 0]);
         $this->assertTrue($svc->meetsSupervisorMinimum(User::factory()->create(['role' => 'grafolog'])));
     }
+
+    public function test_bank_account_is_encrypted_validated_masked_and_audited_on_admin_view(): void
+    {
+        $g = User::factory()->create(['role' => 'grafolog', 'grafolog_status' => 'verified']);
+        $admin = User::factory()->create(['role' => 'administrator']);
+        $this->actingAs($g, 'sanctum')->putJson('/api/bank-account', ['bank_name' => 'BCA', 'account_number' => '12ab', 'account_holder' => 'A'])->assertStatus(422);
+        $this->actingAs($g, 'sanctum')->putJson('/api/bank-account', ['bank_name' => 'BCA', 'account_number' => '1234567890', 'account_holder' => 'Ani Grafolog'])->assertOk()->assertJsonPath('account_number', '1234567890');
+        $this->assertStringNotContainsString('1234567890', (string) \DB::table('grafolog_bank_accounts')->value('account_number')); // terenkripsi di DB
+        $this->actingAs($g, 'sanctum')->getJson('/api/earnings')->assertJsonPath('bank.masked', '••••••7890');
+
+        $e = GrafologEarning::create(['grafolog_id' => $g->id, 'order_id' => Order::create(['user_id' => User::factory()->create()->id, 'product_id' => Product::first()->id, 'base_amount' => 1, 'amount' => 1])->id, 'base_amount' => 1, 'commission_type' => 'fixed', 'commission_value' => 1, 'amount' => 50000, 'status' => 'diperoleh', 'earned_at' => now()]);
+        $this->actingAs($admin, 'sanctum')->getJson('/api/admin/earnings')->assertJsonPath('per_grafolog.0.bank', 'BCA ••••••7890');
+        $this->actingAs($admin, 'sanctum')->getJson("/api/admin/earnings/bank/{$g->id}")->assertOk()->assertJsonPath('account_number', '1234567890');
+        $this->assertDatabaseHas('audit_logs', ['aksi' => 'lihat_rekening_grafolog', 'actor_user_id' => $admin->id]);
+        $this->actingAs($g, 'sanctum')->getJson("/api/admin/earnings/bank/{$g->id}")->assertForbidden();
+        $this->assertNotNull($e);
+    }
 }

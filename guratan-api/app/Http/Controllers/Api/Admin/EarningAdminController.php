@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\GrafologBankAccount;
 use App\Models\GrafologEarning;
 use App\Models\GrafologPayout;
 use App\Models\Product;
@@ -27,7 +28,7 @@ class EarningAdminController extends Controller
 
         $perGrafolog = GrafologEarning::selectRaw("grafolog_id, sum(case when status = 'diperoleh' then amount else 0 end) as menunggu, sum(case when status = 'dibayar' then amount else 0 end) as dibayar")
             ->groupBy('grafolog_id')->with('grafolog:id,name')->get()
-            ->map(fn ($r) => ['grafolog_id' => $r->grafolog_id, 'name' => $r->grafolog?->name, 'menunggu' => (int) $r->menunggu, 'dibayar' => (int) $r->dibayar]);
+            ->map(fn ($r) => ['grafolog_id' => $r->grafolog_id, 'name' => $r->grafolog?->name, 'bank' => ($b = GrafologBankAccount::where('user_id', $r->grafolog_id)->first()) ? $b->bank_name.' '.$b->masked() : null, 'menunggu' => (int) $r->menunggu, 'dibayar' => (int) $r->dibayar]);
 
         return response()->json([
             'per_grafolog' => $perGrafolog->sortByDesc('menunggu')->values(),
@@ -48,6 +49,16 @@ class EarningAdminController extends Controller
         AuditLog::record('cairkan_komisi', GrafologPayout::class, $payout->id, $request->user()->id, $request->ip());
 
         return response()->json($payout, 201);
+    }
+
+    /** Rekening lengkap hanya untuk mencatat pencairan; setiap pembukaan tercatat audit. */
+    public function bankAccount(Request $request, User $grafolog): JsonResponse
+    {
+        $b = GrafologBankAccount::where('user_id', $grafolog->id)->first();
+        abort_unless($b, 404, 'Grafolog belum mengisi rekening.');
+        AuditLog::record('lihat_rekening_grafolog', GrafologBankAccount::class, $b->id, $request->user()->id, $request->ip());
+
+        return response()->json(['bank_name' => $b->bank_name, 'account_number' => $b->account_number, 'account_holder' => $b->account_holder]);
     }
 
     public function commissions(Product $product): JsonResponse
