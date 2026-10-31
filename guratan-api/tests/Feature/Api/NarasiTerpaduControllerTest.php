@@ -90,6 +90,29 @@ class NarasiTerpaduControllerTest extends TestCase
         ]);
     }
 
+    public function test_generate_includes_indikator_terkait_evidence_in_the_prompt(): void
+    {
+        $grafolog = User::factory()->create(['role' => 'grafolog']);
+        $report = $this->completedReportFor($grafolog);
+        $data = $report->data;
+        $data['sindrom'][0]['aspek'][0]['indikator_terkait'] = [
+            ['kode' => '01-1a', 'nama' => 'Indikator Contoh', 'keterangan' => 'Bukti tulisan tangan spesifik dari worksheet.'],
+        ];
+        $report->update(['data' => $data]);
+        $this->fakeLlm('Draft.');
+
+        $this->actingAs($grafolog, 'sanctum')
+            ->postJson("/api/reports/{$report->id}/narasi-terpadu/generate", ['bahasa' => 'id'])
+            ->assertOk();
+
+        Http::assertSent(function ($request) {
+            $content = $request->data()['messages'][0]['content'];
+
+            return str_contains($content, '01-1a')
+                && str_contains($content, 'Bukti tulisan tangan spesifik dari worksheet.');
+        });
+    }
+
     public function test_generate_returns_clean_503_when_llm_unconfigured(): void
     {
         $grafolog = User::factory()->create(['role' => 'grafolog']);
