@@ -106,6 +106,11 @@ async function handleLogout() {
             <RouterLink to="/admin/broadcast">Broadcast Kotak Masuk</RouterLink>
             <RouterLink to="/admin/log-aktivitas">Log Aktivitas</RouterLink>
             <RouterLink to="/admin/notification-logs">Log Notifikasi</RouterLink>
+            <RouterLink to="/admin/recap/users">Rekap Pengguna</RouterLink>
+            <RouterLink to="/admin/recap/grafolog">Rekap Grafolog</RouterLink>
+            <RouterLink to="/admin/recap/token-purchases">Rekap Token</RouterLink>
+            <RouterLink to="/admin/recap/payments">Rekap Pembayaran</RouterLink>
+            <RouterLink to="/admin/analytics">Analitik</RouterLink>
             <RouterLink to="/admin/knowledge">Knowledge Base</RouterLink>
           </div>
         </details>

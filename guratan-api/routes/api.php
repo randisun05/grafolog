@@ -2,6 +2,11 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\Admin\ActivityLogController;
+use App\Http\Controllers\Api\Admin\AnalyticsController;
+use App\Http\Controllers\Api\Admin\GrafologRecapController;
+use App\Http\Controllers\Api\Admin\PaymentRecapController;
+use App\Http\Controllers\Api\Admin\TokenPurchaseRecapController;
+use App\Http\Controllers\Api\Admin\UserRecapController;
 use App\Http\Controllers\Api\Admin\EventController as AdminEventController;
 use App\Http\Controllers\Api\Admin\EventRegistrationController as AdminEventRegistrationController;
 use App\Http\Controllers\Api\Admin\GameScoreController;
@@ -287,6 +292,22 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::post('/broadcasts', [BroadcastController::class, 'store']);
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
         Route::get('/notification-logs', [NotificationLogController::class, 'index']);
+
+        // Laporan/Rekap admin + dashboard analitik (dari branch lama).
+        Route::get('/recap/users', [UserRecapController::class, 'index']);
+        Route::get('/recap/users/export', [UserRecapController::class, 'export']);
+        Route::get('/recap/grafolog', [GrafologRecapController::class, 'index']);
+        Route::get('/recap/grafolog/export', [GrafologRecapController::class, 'export']);
+        Route::get('/recap/token-purchases', [TokenPurchaseRecapController::class, 'index']);
+        Route::get('/recap/token-purchases/export', [TokenPurchaseRecapController::class, 'export']);
+        Route::get('/recap/payments', [PaymentRecapController::class, 'index']);
+        Route::get('/recap/payments/export', [PaymentRecapController::class, 'export']);
+        Route::get('/analytics/revenue', [AnalyticsController::class, 'revenue']);
+        Route::get('/analytics/product-usage', [AnalyticsController::class, 'productUsage']);
+        Route::get('/analytics/user-growth', [AnalyticsController::class, 'userGrowth']);
+        Route::get('/analytics/grafolog-performance', [AnalyticsController::class, 'grafologPerformance']);
+        Route::get('/analytics/token-economy', [AnalyticsController::class, 'tokenEconomy']);
+        Route::get('/analytics/discount-effectiveness', [AnalyticsController::class, 'discountEffectiveness']);
 
         // Kegiatan + pendaftaran, upload gambar editor, konten & moderasi Mini Games (dari branch lama).
         Route::get('/events', [AdminEventController::class, 'index']);

@@ -2351,3 +2351,11 @@ tidak disentuh.
   (`TriviaQuestionSeeder`, `GlossaryTermSeeder` dipanggil `DatabaseSeeder`). Terpisah dari `GET /api/games/quiz` (kuis ciri tulisan).
 - **Sengaja tidak diambil**: Artikel/Berita rich-text milik branch lama (main sudah punya Artikel teks polos + `/admin/engagement`,
   tabel `articles` bentrok); peran Supervisor perusahaan (main menggantinya dengan supervisi antar-grafolog 2026-10-18).
+
+## Rekap & Analitik admin (dari branch lama) — 2026-10-31
+
+`/api/admin/recap/{users,grafolog,token-purchases,payments}` (+ `/export` CSV via `App\Support\CsvStreamer`, tercatat di audit log) dan
+`/api/admin/analytics/{revenue,product-usage,user-growth,grafolog-performance,token-economy,discount-effectiveness}`.
+Disesuaikan ke main: omzet dikelompokkan per kode produk (order/batch) lalu jatuh ke tier sample; rekap pembayaran memuat kolom gateway.
+`PersonalityReport::avgTurnaroundDaysFor()` dipakai controller baru (DashboardController/CompanyController lama belum direfaktor).
+FE: halaman `/admin/recap/*` dan `/admin/analytics` (Chart.js + vue-chartjs, tema di `lib/chartTheme.js`), menu Admin + palette.

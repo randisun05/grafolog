@@ -260,6 +260,36 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'administrator' },
     },
     {
+      path: '/admin/recap/users',
+      name: 'admin-recap-users',
+      component: () => import('../views/AdminRecapUsersView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/recap/grafolog',
+      name: 'admin-recap-grafolog',
+      component: () => import('../views/AdminRecapGrafologView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/recap/token-purchases',
+      name: 'admin-recap-token-purchases',
+      component: () => import('../views/AdminRecapTokenPurchasesView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/recap/payments',
+      name: 'admin-recap-payments',
+      component: () => import('../views/AdminRecapPaymentsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
+      path: '/admin/analytics',
+      name: 'admin-analytics',
+      component: () => import('../views/AdminAnalyticsView.vue'),
+      meta: { requiresAuth: true, role: 'administrator' },
+    },
+    {
       path: '/admin/notification-logs',
       name: 'admin-notification-logs',
       component: () => import('../views/AdminNotificationLogsView.vue'),
